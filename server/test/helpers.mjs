@@ -1,6 +1,6 @@
 import fs from 'fs';
 
-export const API = 'http://localhost:4000';
+export const API = process.env.API_URL || 'http://localhost:4000';
 export const FIXTURE = fs.readFileSync(new URL('./fixtures/doc.jpg', import.meta.url));
 export const JPG = `data:image/jpeg;base64,${FIXTURE.toString('base64')}`;
 

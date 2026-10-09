@@ -98,3 +98,22 @@ Por defecto el mapa usa los servidores públicos de OpenStreetMap, que no están
 (por eso el sitio envía `Referrer-Policy: strict-origin-when-cross-origin`). Para producción conviene un proveedor propio o de pago: define en Railway
 `VITE_TILE_URL` (por ejemplo `https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=TU_CLAVE`) y `VITE_TILE_ATTRIBUTION`; el servidor ajusta solo la política de seguridad.
 `npm run test:tiles` (con el servidor en modo producción) comprueba que las baldosas carguen y que se envíe el Referer.
+
+## Fase 6: operación profesional
+
+**Emergencias por SMS.** Al pulsar el botón 🆘, además de verse en el panel, se envía un SMS a los teléfonos de `SOS_ALERT_PHONES` (separados por coma, 8 dígitos) con quién pide ayuda, su teléfono y el mapa. Si nadie la atiende se repite cada `SOS_REMINDER_MINUTES` (3 por defecto) hasta 4 avisos en total. `PUBLIC_URL` agrega el enlace al panel.
+**Importante:** el SMS solo sale de verdad cuando Twilio está configurado; sin él, en desarrollo queda en `server/.sms-dev.log`. El panel avisa en rojo al superadmin si `SOS_ALERT_PHONES` está vacío, y suena y notifica si entra una emergencia con el panel abierto (botón "Activar avisos sonoros").
+
+**Integración continua.** `.github/workflows/ci.yml` corre las pruebas en cada subida a `main`: crea la base de datos desde cero, arranca el servidor y ejecuta `npm test`. En Railway activa **Settings → Source → Wait for CI** para que un despliegue espere a que pasen. (No incluye el recorrido en Chrome ni la prueba de carga.)
+
+**Errores y registros.** Con `SENTRY_DSN` los errores inesperados se reportan a Sentry (sin datos personales). En producción cada petición a la API deja una línea JSON (método, ruta, estado, milisegundos) en los registros de Railway. Para saber si el servicio se cae, crea un monitor gratuito (UptimeRobot u otro) sobre `https://TU-DOMINIO/api/health` con aviso a tu correo o teléfono.
+
+**Prueba de carga.** `PORT=4200 OSRM_URL=http://127.0.0.1:9 node src/index.js` y luego `LOAD_URL=http://localhost:4200 npm run test:load` (solo contra un servidor local). Variables: `LOAD_DRIVERS`, `LOAD_PASSENGERS`, `LOAD_RIDES`.
+Resultados en una PC local (MySQL local, un solo proceso):
+
+| Escenario | Conexiones | Viajes completados | Pedido → 1ª oferta (p95) | Salud del servicio (p95) | RAM del servidor |
+|---|---|---|---|---|---|
+| 30 conductores y 500 pasajeros, 100 viajes | 530/530 | 100% | 0.5 s | 3 ms | ~117 MB |
+| 150 conductores y 2500 pasajeros, 300 viajes | 2650/2650 | 95% | 0.7 s | 65 ms | ~330 MB |
+
+Esto mide el servidor y la base de datos, no redes móviles ni la distancia a Railway; cada viaje de la prueba dura ~1 s, no minutos. Cada pasajero recibe como máximo los 25 conductores más cercanos (con más, mostrar la lista completa saturaba el servidor).

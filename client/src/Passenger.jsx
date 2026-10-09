@@ -155,7 +155,7 @@ export default function Passenger({ socket, token }) {
         {!active && !ended && (
           <>
             <div className="row between">
-              <b>{drivers.length} conductor{drivers.length === 1 ? '' : 'es'} libre{drivers.length === 1 ? '' : 's'} cerca</b>
+              <b>{drivers.length}{drivers.length >= 25 ? '+' : ''} conductor{drivers.length === 1 ? '' : 'es'} libre{drivers.length === 1 ? '' : 's'} cerca</b>
               <span className="dot" />
             </div>
 

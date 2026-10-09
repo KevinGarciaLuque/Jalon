@@ -19,6 +19,17 @@ import { normalizePhone, toE164 } from './phone.js';
 import { createOtp, consumeOtp, OtpError } from './otp.js';
 import { sendSms, smsConfigured } from './sms.js';
 
+// Monitoreo de errores (opcional): con SENTRY_DSN los errores inesperados del servidor se reportan a Sentry (sin datos personales)
+const Sentry = process.env.SENTRY_DSN ? await import('@sentry/node') : null;
+Sentry?.init({
+  dsn: process.env.SENTRY_DSN,
+  environment: process.env.NODE_ENV || 'development',
+  release: process.env.RAILWAY_GIT_COMMIT_SHA,
+  tracesSampleRate: 0,
+  sendDefaultPii: false,
+});
+const reportError = (e) => { console.error(e); Sentry?.captureException(e); };
+
 const PORT = Number(process.env.PORT || 4000);
 const ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
@@ -48,6 +59,11 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 // En Railway el disco se borra en cada despliegue: monta un Volume y apunta UPLOADS_DIR a él (ej. /data/uploads)
 const UPLOADS = process.env.UPLOADS_DIR || path.join(HERE, '..', 'uploads');
 const DOC_TYPES = ['photo', 'license', 'registration'];
+// Teléfonos del equipo que reciben un SMS cuando alguien pulsa el botón de emergencia (separados por coma)
+const SOS_PHONES = (process.env.SOS_ALERT_PHONES || '').split(',').map((p) => normalizePhone(p)).filter(Boolean);
+const SOS_REMINDER_MIN = Number(process.env.SOS_REMINDER_MINUTES || 3); // mientras nadie la atienda, se repite el aviso
+const SOS_MAX_NOTICES = 4; // el aviso inicial y hasta 3 recordatorios
+const PUBLIC_URL = process.env.PUBLIC_URL || process.env.CLIENT_ORIGIN || '';
 const TERMS_VERSION = '1.0'; // súbela cuando cambien los términos o la política de privacidad
 
 // En desarrollo se acepta cualquier puerto de localhost (Vite cambia de puerto si el 5173 está ocupado)
@@ -69,6 +85,16 @@ app.use(helmet({
 app.use(cors({ origin: allowOrigin }));
 const smallJson = express.json({ limit: '10kb' });
 app.use((req, res, next) => (req.path.startsWith('/api/driver/documents') ? next() : smallJson(req, res, next)));
+
+// Una línea JSON por petición a la API (método, ruta, estado y milisegundos), útil en los registros de Railway. Sin teléfonos ni contraseñas.
+if (isProd || process.env.LOG_REQUESTS === 'true') {
+  app.use((req, res, next) => {
+    if (!req.path.startsWith('/api/') || req.path === '/api/health') return next();
+    const t0 = Date.now();
+    res.on('finish', () => console.log(JSON.stringify({ t: new Date().toISOString(), m: req.method, p: req.route?.path || req.path, s: res.statusCode, ms: Date.now() - t0 })));
+    next();
+  });
+}
 
 const limitMsg = { error: 'Demasiados intentos. Intenta de nuevo en unos minutos.' };
 // Solo cuentan los intentos fallidos de login (contra fuerza bruta)
@@ -446,6 +472,7 @@ app.get('/api/admin/stats', staffOnly('view'), async (_req, res) => {
     pendingDrivers: Number(u.pending || 0),
     blockedUsers: Number(u.blocked || 0),
     openAlerts: (await pool.query("SELECT COUNT(*) AS n FROM alerts WHERE status = 'open'"))[0][0].n,
+    sosPhones: SOS_PHONES.length, // cuántos teléfonos reciben las emergencias por SMS (0 = nadie)
     driversOnline: [...drivers.values()].length,
     driversFree: [...drivers.values()].filter((d) => d.available).length,
     rides: { total: r.total, completed: Number(r.completed || 0), cancelled: Number(r.cancelled || 0), active: Number(r.active || 0) },
@@ -742,10 +769,20 @@ async function rideView(ride) {
   };
 }
 
+// Solo se mandan los más cercanos: con cientos de conductores, enviar la lista completa a cada pasajero cada 3 s satura el servidor
+// y en un teléfono no se distinguen más. El cliente muestra "25+" cuando llega al tope.
+const MAX_NEARBY = 25;
 function nearbyDrivers(lat, lng) {
-  return [...drivers.values()]
-    .filter((d) => d.available && d.lat != null && distanceKm(lat, lng, d.lat, d.lng) <= NEARBY_KM)
-    .map((d) => ({ id: d.id, name: d.name, vehicle: d.vehicle, lat: d.lat, lng: d.lng }));
+  const near = [];
+  for (const d of drivers.values()) {
+    if (!d.available || d.lat == null) continue;
+    const km = distanceKm(lat, lng, d.lat, d.lng);
+    if (km <= NEARBY_KM) near.push({ km, d });
+  }
+  return near
+    .sort((a, b) => a.km - b.km)
+    .slice(0, MAX_NEARBY)
+    .map(({ d }) => ({ id: d.id, name: d.name, vehicle: d.vehicle, lat: d.lat, lng: d.lng }));
 }
 
 function openRidesNear(lat, lng) {
@@ -809,7 +846,7 @@ io.use(async (socket, next) => {
 io.on('connection', async (socket) => {
   const user = socket.user;
   // Un error dentro de un manejador no debe tumbar el servidor
-  const on = (ev, fn) => socket.on(ev, (...args) => Promise.resolve(fn(...args)).catch((e) => console.error(`[${ev}]`, e)));
+  const on = (ev, fn) => socket.on(ev, (...args) => Promise.resolve(fn(...args)).catch((e) => reportError(Object.assign(e, { event: ev }))));
   socket.join(room(user.id));
   if (user.role === 'driver') socket.join('drivers');
   socket.emit('account:status', { status: user.status });
@@ -963,9 +1000,10 @@ io.on('connection', async (socket) => {
     if (!ride || ride.status === 'requested') return ack?.({ error: 'Solo disponible durante un viaje' });
     const live = user.role === 'driver' ? drivers.get(user.id) : passengers.get(user.id);
     const at = isPoint(pos) ? pos : live?.lat != null ? live : null;
-    await pool.query('INSERT INTO alerts (ride_id, user_id, lat, lng) VALUES (?,?,?,?)', [ride.id, user.id, at?.lat ?? null, at?.lng ?? null]);
+    const [r] = await pool.query('INSERT INTO alerts (ride_id, user_id, lat, lng) VALUES (?,?,?,?)', [ride.id, user.id, at?.lat ?? null, at?.lng ?? null]);
     console.warn(`🆘 SOS de ${user.name} (viaje ${ride.id})`);
     ack?.({ ok: true });
+    notifySos(r.insertId, false).catch((e) => console.error('SOS:', e)); // el SMS no debe retrasar la respuesta al usuario
   });
 
   socket.on('disconnect', async () => {
@@ -986,6 +1024,33 @@ setInterval(() => {
     io.to(room(p.id)).emit('drivers:nearby', nearbyDrivers(p.lat, p.lng));
   }
 }, 3000);
+
+// SMS al equipo con lo esencial (sin tildes ni emojis para que cada SMS sea de un solo tramo y no cueste de más)
+async function notifySos(alertId, reminder) {
+  const [[a]] = await pool.query(
+    `SELECT a.id, a.ride_id, a.lat, a.lng, a.status, a.notified_count, u.name, u.phone, u.role
+     FROM alerts a JOIN users u ON u.id = a.user_id WHERE a.id = ?`, [alertId]
+  );
+  if (!a || a.status !== 'open') return;
+  const where = a.lat != null ? ` Mapa: https://maps.google.com/?q=${a.lat},${a.lng}` : ' Sin ubicacion.';
+  const text = `${reminder ? 'RECORDATORIO ' : ''}JALON SOS #${a.id}: ${a.name} (${a.role === 'driver' ? 'conductor' : 'pasajero'}) en viaje ${a.ride_id}. Tel ${a.phone}.${where}${PUBLIC_URL ? ` Panel: ${PUBLIC_URL}` : ''}`;
+  await pool.query('UPDATE alerts SET notified_count = notified_count + 1, last_notified_at = NOW() WHERE id = ?', [alertId]);
+  if (!SOS_PHONES.length) return console.warn('⚠ SOS sin SMS: define SOS_ALERT_PHONES para que alguien reciba las emergencias');
+  const results = await Promise.allSettled(SOS_PHONES.map((p) => sendSms(toE164(p), text)));
+  results.forEach((r, i) => r.status === 'rejected' && console.error(`SOS: no se pudo avisar a ${SOS_PHONES[i]}:`, r.reason?.message));
+}
+
+// Una emergencia que nadie atiende se vuelve a avisar cada SOS_REMINDER_MIN minutos
+async function remindOpenAlerts() {
+  const [rows] = await pool.query(
+    `SELECT id FROM alerts WHERE status = 'open' AND notified_count BETWEEN 1 AND ? AND last_notified_at < NOW() - INTERVAL ? MINUTE`,
+    [SOS_MAX_NOTICES - 1, SOS_REMINDER_MIN]
+  );
+  for (const a of rows) await notifySos(a.id, true);
+}
+setInterval(() => remindOpenAlerts().catch(console.error), 30000);
+
+if (isProd && !SOS_PHONES.length) console.warn('⚠ SOS_ALERT_PHONES no está definido: las emergencias solo se ven en el panel');
 
 // Viajes sin conductor tras REQUEST_TTL_MIN minutos se cancelan solos
 async function expireStaleRides() {
@@ -1020,15 +1085,23 @@ if (existsSync(DIST)) {
 // Errores no controlados: siempre JSON, sin filtrar detalles internos
 app.use((err, _req, res, _next) => {
   const status = err.status >= 400 && err.status < 500 ? err.status : 500;
-  if (status === 500) console.error(err);
+  if (status === 500) reportError(err);
   res.status(status).json({ error: status === 500 ? 'Error del servidor' : 'Solicitud inválida' });
+});
+
+// Errores que se escapan de todo: se reportan y, si el estado puede estar dañado, el proceso se reinicia (Railway lo levanta de nuevo)
+process.on('unhandledRejection', (e) => reportError(e));
+process.on('uncaughtException', async (e) => {
+  reportError(e);
+  await Sentry?.close(2000);
+  process.exit(1);
 });
 
 // Railway envía SIGTERM al desplegar una versión nueva: se cierran las conexiones con orden
 for (const sig of ['SIGTERM', 'SIGINT']) {
   process.on(sig, () => {
     console.log(`${sig} recibido: cerrando…`);
-    io.close(() => pool.end().finally(() => process.exit(0)));
+    io.close(() => pool.end().finally(async () => { await Sentry?.close(2000); process.exit(0); }));
     setTimeout(() => process.exit(0), 8000).unref();
   });
 }

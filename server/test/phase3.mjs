@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 import { pool } from '../src/db.js';
 import { registerUser } from './helpers.mjs';
 
-const API = 'http://localhost:4000';
+const API = process.env.API_URL || 'http://localhost:4000';
 const rnd = String(Math.floor(Math.random() * 1e7)).padStart(7, '0');
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 let fails = 0;

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { API, lempiras } from './lib.js';
 import { Stars } from './components.jsx';
 import DocsModal from './DocsModal.jsx';
@@ -10,6 +10,19 @@ const RIDE_STATUS = {
 };
 const CANCELLED_BY = { passenger: 'pasajero', driver: 'conductor', admin: 'personal', system: 'sistema' };
 const isActive = (s) => ['requested', 'accepted', 'arrived', 'started'].includes(s);
+// Tres pitidos para llamar la atención (el navegador solo deja sonar tras un clic, por eso el botón "Activar avisos")
+function beep(ctx) {
+  [0, 0.35, 0.7].forEach((delay) => {
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.frequency.value = 880;
+    g.gain.value = 0.25;
+    o.connect(g); g.connect(ctx.destination);
+    o.start(ctx.currentTime + delay);
+    o.stop(ctx.currentTime + delay + 0.22);
+  });
+}
+
 const when = (d) => new Date(d).toLocaleString('es-HN', { dateStyle: 'medium', timeStyle: 'short' });
 
 export default function Admin({ token }) {
@@ -26,6 +39,9 @@ export default function Admin({ token }) {
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState('all');
   const [staffForm, setStaffForm] = useState({ name: '', phone: '', role: 'support' });
+  const [alertsOn, setAlertsOn] = useState(false);
+  const audio = useRef(null);
+  const seen = useRef(null); // ids de emergencias ya vistas (null = todavía no se cargó la primera lista)
 
   const { users, perms, me } = directory;
   const can = (p) => perms.includes(p);
@@ -51,6 +67,31 @@ export default function Admin({ token }) {
       setError(e.message);
     }
   }, [call]);
+
+  // Emergencia nueva mientras el panel está abierto: sonido, notificación del sistema y título parpadeando
+  useEffect(() => {
+    const ids = new Set(alerts.map((a) => a.id));
+    if (seen.current) {
+      const fresh = alerts.filter((a) => !seen.current.has(a.id));
+      if (fresh.length) {
+        if (audio.current) beep(audio.current);
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('🆘 Emergencia en Jalón', { body: `${fresh[0].user_name} pidió ayuda (viaje #${fresh[0].ride_id})`, requireInteraction: true });
+        }
+      }
+    }
+    seen.current = ids;
+    document.title = alerts.length ? `🆘 (${alerts.length}) EMERGENCIA · Jalón` : 'Jalón';
+    return () => { document.title = 'Jalón'; };
+  }, [alerts]);
+
+  async function enableAlerts() {
+    audio.current = new (window.AudioContext || window.webkitAudioContext)();
+    await audio.current.resume();
+    beep(audio.current); // prueba para que sepas cómo suena
+    if ('Notification' in window && Notification.permission === 'default') await Notification.requestPermission();
+    setAlertsOn(true);
+  }
 
   useEffect(() => {
     load();
@@ -105,6 +146,13 @@ export default function Admin({ token }) {
   return (
     <div className="admin">
       {error && <div className="error">{error}</div>}
+
+      {stats && stats.sosPhones === 0 && can('staff.manage') && (
+        <div className="hint">⚠ Ningún teléfono recibe las emergencias por SMS: si alguien pulsa el botón y nadie está mirando este panel, nadie se entera. Configura <b>SOS_ALERT_PHONES</b> en Railway.</div>
+      )}
+      {!alertsOn && (
+        <button className="sm left" onClick={enableAlerts}>🔔 Activar avisos sonoros de emergencia</button>
+      )}
 
       {alerts.map((a) => (
         <div className="sos-alert" key={a.id}>

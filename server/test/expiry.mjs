@@ -3,7 +3,7 @@ import { io } from 'socket.io-client';
 import { pool } from '../src/db.js';
 import { registerUser } from './helpers.mjs';
 
-const API = 'http://localhost:4000';
+const API = process.env.API_URL || 'http://localhost:4000';
 const phone = '7' + String(Math.floor(Math.random() * 1e7)).padStart(7, '0');
 const { token } = await registerUser({ name: 'Exp', phone, password: 'secreto1', role: 'passenger' });
 const ps = io(API, { auth: { token } });

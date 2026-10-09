@@ -8,7 +8,7 @@ import jwt from 'jsonwebtoken';
 import { pool } from '../src/db.js';
 import { registerUser } from './helpers.mjs';
 
-const API = 'http://localhost:4000';
+const API = process.env.API_URL || 'http://localhost:4000';
 const CLIENT = process.env.CLIENT_URL || 'http://localhost:5174';
 const SHOTS = process.env.SHOTS_DIR || path.join(process.cwd(), 'test', 'shots');
 fs.mkdirSync(SHOTS, { recursive: true });

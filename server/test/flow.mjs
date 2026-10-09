@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 import { pool } from '../src/db.js';
 import { registerUser, uploadDocs } from './helpers.mjs';
 
-const API = 'http://localhost:4000';
+const API = process.env.API_URL || 'http://localhost:4000';
 // Token de admin firmado con el mismo secreto que usa el servidor (para probar los endpoints /api/admin)
 const [[adm]] = await pool.query("SELECT id FROM users WHERE role = 'superadmin' LIMIT 1");
 const adminToken = jwt.sign({ id: adm.id, role: 'superadmin' }, process.env.JWT_SECRET, { expiresIn: '5m' });

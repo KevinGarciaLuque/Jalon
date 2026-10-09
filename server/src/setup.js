@@ -188,5 +188,9 @@ if (ADMIN_PHONE && ADMIN_PASSWORD) {
   }
 }
 
+// Fase 6: avisos por SMS de las emergencias (cuántas veces se avisó y cuándo fue la última)
+await addColumn('alerts', 'notified_count', 'TINYINT NOT NULL DEFAULT 0');
+await addColumn('alerts', 'last_notified_at', 'TIMESTAMP NULL');
+
 console.log(`Base de datos "${DB_NAME}" lista.`);
 await conn.end();

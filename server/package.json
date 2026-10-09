@@ -10,9 +10,11 @@
     "dev": "node --watch src/index.js",
     "test": "node test/run.mjs",
     "test:e2e": "node test/e2e.mjs",
-    "test:tiles": "node test/tiles.mjs"
+    "test:tiles": "node test/tiles.mjs",
+    "test:load": "node test/load.mjs"
   },
   "dependencies": {
+    "@sentry/node": "^11.6.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^18.0.6",
