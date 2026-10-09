@@ -211,3 +211,5 @@ Pestaña **Mapa en vivo** del panel. Muestra a los conductores conectados en un 
 
 - **Restablecer contraseñas:** en la ficha de cualquier usuario, el botón «🔑 Restablecer contraseña» genera una contraseña temporal que se muestra **una sola vez**; la persona debe cambiarla al entrar y sus sesiones se cierran. El superadmin lo puede hacer con administradores, soporte, conductores y pasajeros; un administrador, solo con conductores y pasajeros. Queda en el Registro.
 - **Si el superadmin olvida la suya:** en Railway define `RESET_PASSWORD_FOR=<su teléfono>` y `RESET_PASSWORD_TO=<contraseña nueva>`, reinicia el servicio, entra, y **borra las dos variables**. Solo funciona con cuentas del personal. (Para perder el teléfono del autenticador existe `RESET_2FA_FOR`.)
+
+**Agregar un pasajero (solo superadmin):** en Usuarios, «➕ Agregar pasajero» (nombre, teléfono y correo opcional). Se genera una contraseña temporal que se muestra una sola vez; la persona debe cambiarla al entrar. No repite teléfono ni correo y queda en el Registro. Esa cuenta nace sin aceptación de términos registrada.

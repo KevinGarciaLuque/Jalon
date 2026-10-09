@@ -300,6 +300,17 @@ try {
   await click(admin, 'Cerrar ✕');
   await shot(admin, '8-admin');
 
+  // ---- El superadmin agrega a un pasajero desde Usuarios ----
+  await click(admin, 'Usuarios');
+  await click(admin, 'Agregar pasajero');
+  await admin.type('input[placeholder="Nombre"]', 'P10 Creado');
+  await admin.type('input[placeholder^="Teléfono"]', `6${rnd}`);
+  await click(admin, 'Crear cuenta');
+  check('al agregar un pasajero se muestra su contraseña temporal una sola vez', await see(admin, 'Solo se muestra ahora'));
+  await shot(admin, '0t-pasajero-creado');
+  await click(admin, 'Listo, ya la anoté');
+  check('y el pasajero aparece en la lista de usuarios', await see(admin, 'P10 Creado'));
+
   // ---- Personal: el superadmin crea a alguien de soporte y esa persona debe cambiar la contraseña temporal ----
   const staffPhone = `7${rnd}`;
   await click(admin, 'Personal');

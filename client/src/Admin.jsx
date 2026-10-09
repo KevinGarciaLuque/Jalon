@@ -43,6 +43,7 @@ export default function Admin({ token, onGate }) {
   const [detailId, setDetailId] = useState(null);
   const [docsUser, setDocsUser] = useState(null);
   const [temp, setTemp] = useState(null);
+  const [newPass, setNewPass] = useState(null); // formulario para agregar un pasajero (solo superadmin)
   const [chatView, setChatView] = useState(null); // { rideId, messages } del chat de una emergencia
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState('all');
@@ -146,6 +147,19 @@ export default function Admin({ token, onGate }) {
       const r = await call('staff', staffForm);
       setTemp({ who: staffForm.name, password: r.tempPassword });
       setStaffForm({ name: '', phone: '', role: 'support' });
+      await load();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function createPassenger(e) {
+    e.preventDefault();
+    try {
+      const r = await call('users', newPass);
+      setTemp({ who: newPass.name, password: r.tempPassword });
+      setNewPass(null);
+      setError('');
       await load();
     } catch (err) {
       setError(err.message);
@@ -289,6 +303,20 @@ export default function Admin({ token, onGate }) {
 
       {tab === 'users' && (
         <>
+          {can('users.create') && !newPass && <button className="sm left" onClick={() => setNewPass({ name: '', phone: '', email: '' })}>➕ Agregar pasajero</button>}
+          {newPass && (
+            <form className="req" onSubmit={createPassenger}>
+              <b>Agregar un pasajero</b>
+              <input placeholder="Nombre" value={newPass.name} onChange={(e) => setNewPass({ ...newPass, name: e.target.value })} required />
+              <input placeholder="Teléfono (8 dígitos)" inputMode="tel" value={newPass.phone} onChange={(e) => setNewPass({ ...newPass, phone: e.target.value })} required />
+              <input placeholder="Correo electrónico (opcional)" type="email" inputMode="email" value={newPass.email} onChange={(e) => setNewPass({ ...newPass, email: e.target.value })} />
+              <p className="muted small">Se genera una contraseña temporal que verás una sola vez; la persona la cambiará al entrar. Con el correo podrá recuperar su contraseña sola.</p>
+              <div className="row">
+                <button className="primary grow">Crear cuenta</button>
+                <button type="button" onClick={() => setNewPass(null)}>Cancelar</button>
+              </div>
+            </form>
+          )}
           <input placeholder="Buscar por nombre, teléfono o placa" value={q} onChange={(e) => setQ(e.target.value)} />
           <div className="chips">
             {[['all', 'Todos'], ['passenger', 'Pasajeros'], ['driver', 'Conductores'], ['blocked', 'Bloqueados']].map(([k, label]) => (

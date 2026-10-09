@@ -1,8 +1,10 @@
 import 'dotenv/config';
 // Fase 10: código de verificación por correo (y SMS opcional), correo válido y único
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 import { pool } from '../src/db.js';
 import { normalizeEmail } from '../src/mail.js';
-import { http } from './helpers.mjs';
+import { http, createTestSuperadmin } from './helpers.mjs';
 
 const rnd = String(Math.floor(Math.random() * 1e6)).padStart(6, '0');
 let fails = 0;
@@ -58,6 +60,31 @@ const del = await http('POST', 'me/delete', logged.token, { password: 'Otra-clav
 const [[after]] = await pool.query('SELECT email FROM users WHERE id = ?', [logged.user.id]);
 check('al eliminar la cuenta se borra el correo', (del.ok === true || del.status === 200) && after.email === null);
 check('y el correo queda libre para registrarse otra vez', !!(await http('POST', 'otp/send', null, { phone: phone('94'), email: mail })).devCode);
+
+// ---- El superadmin agrega a un pasajero ----
+const root = await createTestSuperadmin(pool);
+const SA = jwt.sign({ id: root.id, role: 'superadmin' }, process.env.JWT_SECRET, { expiresIn: '5m' });
+const [adm] = await pool.query("INSERT INTO users (name, phone, password_hash, role, status, totp_enabled, terms_accepted_at) VALUES ('T Admin', ?, ?, 'admin', 'active', 1, NOW())", [phone('54'), await bcrypt.hash('no-se-usa-1', 4)]);
+const ADM = jwt.sign({ id: adm.insertId, role: 'admin' }, process.env.JWT_SECRET, { expiresIn: '5m' });
+const np = phone('95');
+const nmail = `creado-${rnd}@prueba.jalon.test`;
+check('sin sesión no se pueden crear cuentas', (await http('POST', 'admin/users', null, { name: 'X', phone: np })).status === 401);
+check('un administrador tampoco (solo el superadmin)', (await http('POST', 'admin/users', ADM, { name: 'P10 Creado', phone: np })).status === 403);
+check('nombre vacío es rechazado', (await http('POST', 'admin/users', SA, { name: ' ', phone: np })).status === 400);
+check('teléfono inválido es rechazado', (await http('POST', 'admin/users', SA, { name: 'P10 Creado', phone: '123' })).status === 400);
+check('correo inválido es rechazado', (await http('POST', 'admin/users', SA, { name: 'P10 Creado', phone: np, email: 'nada' })).status === 400);
+const made = await http('POST', 'admin/users', SA, { name: 'P10 Creado', phone: np, email: nmail.toUpperCase() });
+check('el superadmin crea un pasajero y recibe una contraseña temporal', !!made.id && typeof made.tempPassword === 'string' && made.tempPassword.length >= 8);
+const [[row2]] = await pool.query('SELECT role, status, email, must_change_password FROM users WHERE id = ?', [made.id]);
+check('queda como pasajero activo, con correo en minúsculas y obligado a cambiar la contraseña', row2.role === 'passenger' && row2.status === 'active' && row2.email === nmail && row2.must_change_password === 1);
+const lg = await http('POST', 'login', null, { phone: np, password: made.tempPassword });
+check('puede entrar con la temporal y se le exige cambiarla', !!lg.token && lg.user.mustChangePassword === true && lg.user.role === 'passenger');
+check('no se repite el teléfono', (await http('POST', 'admin/users', SA, { name: 'P10 Creado 2', phone: np })).status === 409);
+check('ni el correo', (await http('POST', 'admin/users', SA, { name: 'P10 Creado 2', phone: phone('96'), email: nmail })).status === 409);
+const noMail = await http('POST', 'admin/users', SA, { name: 'P10 Creado 2', phone: phone('96') });
+check('el correo es opcional', !!noMail.id);
+const aud = await http('GET', 'admin/audit', SA);
+check('queda en el registro quién creó la cuenta', aud.some((a) => a.action === 'user.create' && a.target_user_id === made.id));
 
 await pool.query("DELETE FROM users WHERE name = 'P10 Antiguo'");
 await pool.end();

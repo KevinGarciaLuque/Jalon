@@ -9,6 +9,7 @@ export const isStaffRole = (r) => ['superadmin', 'admin', 'support'].includes(r)
 
 export const ACTION_LABEL = {
   'staff.create': 'Creó una cuenta del personal',
+  'user.create': 'Creó la cuenta de un pasajero',
   'staff.role': 'Cambió el rol',
   'user.approve': 'Aprobó al conductor',
   'user.block': 'Bloqueó la cuenta',

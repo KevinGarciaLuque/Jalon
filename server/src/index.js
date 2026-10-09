@@ -858,7 +858,7 @@ const STAFF = ['superadmin', 'admin', 'support'];
 const isStaff = (role) => STAFF.includes(role);
 // Qué puede hacer cada rol: el superadmin todo; el administrador opera la plataforma; soporte mira y atiende emergencias
 const PERMS = {
-  superadmin: ['view', 'alerts', 'rides.cancel', 'users.manage', 'docs', 'audit', 'staff.manage', 'wallet', 'wallet.adjust', 'settings'],
+  superadmin: ['view', 'alerts', 'rides.cancel', 'users.manage', 'users.create', 'docs', 'audit', 'staff.manage', 'wallet', 'wallet.adjust', 'settings'],
   admin: ['view', 'alerts', 'rides.cancel', 'users.manage', 'docs', 'audit', 'wallet'],
   support: ['view', 'alerts', 'rides.cancel'],
 };
@@ -1140,6 +1140,30 @@ app.post('/api/admin/staff', staffOnly('staff.manage'), async (req, res) => {
     res.json({ id: r.insertId, tempPassword: temp });
   } catch (e) {
     if (e.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'Ese teléfono ya está registrado' });
+    throw e;
+  }
+});
+
+// El superadmin da de alta a un pasajero (por ejemplo, alguien que no puede registrarse solo). Recibe una contraseña temporal y debe cambiarla al entrar.
+app.post('/api/admin/users', staffOnly('users.create'), async (req, res) => {
+  const { name, phone } = req.body || {};
+  const p = normalizePhone(phone);
+  const rawEmail = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
+  const email = rawEmail ? normalizeEmail(rawEmail) : null;
+  if (typeof name !== 'string' || !name.trim() || name.length > 100) return res.status(400).json({ error: 'Nombre inválido' });
+  if (!p) return res.status(400).json({ error: 'Teléfono inválido (8 dígitos de Honduras)' });
+  if (rawEmail && !email) return res.status(400).json({ error: 'El correo no es válido' });
+  if (email && !(await domainAcceptsMail(email))) return res.status(400).json({ error: 'Ese correo no parece existir. Revisa cómo lo escribiste.' });
+  const temp = tempPassword();
+  try {
+    const [r] = await pool.query(
+      "INSERT INTO users (name, phone, email, password_hash, role, status, must_change_password) VALUES (?,?,?,?, 'passenger', 'active', 1)",
+      [name.trim(), p, email, await bcrypt.hash(temp, 10)]
+    );
+    await audit(req.staff, 'user.create', { target: r.insertId, details: { role: 'passenger' } });
+    res.json({ id: r.insertId, tempPassword: temp });
+  } catch (e) {
+    if (e.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: /email/.test(e.message) ? 'Ese correo ya está registrado' : 'Ese teléfono ya está registrado' });
     throw e;
   }
 });
