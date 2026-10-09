@@ -229,5 +229,25 @@ await conn.query(`
   )
 `);
 
+// Fase 8B: chat del viaje
+await conn.query(`
+  CREATE TABLE IF NOT EXISTS messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    ride_id INT NOT NULL,
+    sender_id INT NOT NULL,
+    text VARCHAR(500) NOT NULL,
+    read_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    KEY by_ride (ride_id, id),
+    KEY by_created (created_at),
+    FOREIGN KEY (ride_id) REFERENCES rides(id),
+    FOREIGN KEY (sender_id) REFERENCES users(id)
+  )
+`);
+
+// Fase 8C: las ofertas de los conductores vencen
+await conn.query("ALTER TABLE offers MODIFY status ENUM('pending','accepted','rejected','expired') NOT NULL DEFAULT 'pending'");
+await addColumn('offers', 'expires_at', 'TIMESTAMP NULL');
+
 console.log(`Base de datos "${DB_NAME}" lista.`);
 await conn.end();

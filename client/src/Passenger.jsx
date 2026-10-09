@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, useMap, useMapEvents } from 'react-leaflet';
-import { icons, useGeo, apiGet, lempiras, minutes, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
-import { AddressSearch, FitTo, Rate, SafetyBar, Stars } from './components.jsx';
+import { icons, useGeo, apiGet, lempiras, minutes, useChat, useNow, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
+import { AddressSearch, Chat, FitTo, Rate, SafetyBar, Stars } from './components.jsx';
 
 function Recenter({ pos }) {
   const map = useMap();
@@ -32,7 +32,9 @@ const CANCELLED = {
 
 const ROUTE_STYLE = { color: '#0a7d4f', weight: 5, opacity: 0.85 };
 
-export default function Passenger({ socket, token }) {
+const QUICK = ['Ya salgo', 'Dame 2 minutos', 'Estoy en la esquina', '¿Dónde estás?'];
+
+export default function Passenger({ socket, token, userId }) {
   const { pos, setPos, denied } = useGeo();
   const [drivers, setDrivers] = useState([]);
   const [origin, setOrigin] = useState(null); // punto de recogida elegido a mano; null = mi GPS
@@ -43,9 +45,12 @@ export default function Passenger({ socket, token }) {
   const priceEdited = useRef(false);
   const [ride, setRide] = useState(null);
   const [offers, setOffers] = useState([]);
+  const [eta, setEta] = useState(null); // tiempo estimado de llegada del conductor
+  const now = useNow();
   const [driverPos, setDriverPos] = useState(null);
   const [error, setError] = useState('');
 
+  const chat = useChat(socket, ride, userId);
   const active = ride && ['requested', 'accepted', 'arrived', 'started'].includes(ride.status);
   const from = origin || (pos && { ...pos, text: 'Mi ubicación' });
   // Se redondea (~100 m) para no recalcular la ruta por pequeños saltos del GPS
@@ -57,15 +62,19 @@ export default function Passenger({ socket, token }) {
     socket.on('ride:state', (r) => {
       setRide(r);
       if (r.status !== 'requested') setOffers([]);
+      setEta((cur) => (cur && cur.rideId === r.id ? cur : null));
     });
-    socket.on('offer:new', (o) => setOffers((cur) => [...cur.filter((x) => x.driver.id !== o.driver.id), o]));
+    // Cada oferta vale unos segundos (ttl): se guarda cuándo vence para mostrar la cuenta regresiva
+    socket.on('offer:new', (o) => setOffers((cur) => [...cur.filter((x) => x.driver.id !== o.driver.id), { ...o, expiresAt: Date.now() + (o.ttl || 90) * 1000 }]));
+    socket.on('offer:expired', ({ offerId }) => setOffers((cur) => cur.filter((x) => x.id !== offerId)));
+    socket.on('ride:eta', setEta);
     socket.on('ride:driver_location', setDriverPos);
     // El conductor ya no está disponible: se quita su oferta
     socket.on('offer:invalid', ({ offerId }) => {
       setOffers((cur) => cur.filter((x) => x.id !== offerId));
       setError('Ese conductor ya no está disponible. Elige otra oferta.');
     });
-    return () => ['drivers:nearby', 'ride:state', 'offer:new', 'ride:driver_location', 'offer:invalid'].forEach((e) => socket.off(e));
+    return () => ['drivers:nearby', 'ride:state', 'offer:new', 'offer:expired', 'ride:eta', 'ride:driver_location', 'offer:invalid'].forEach((e) => socket.off(e));
   }, [socket]);
 
   // Los conductores cercanos se buscan alrededor del punto de recogida
@@ -114,10 +123,14 @@ export default function Passenger({ socket, token }) {
     setPreview(null);
     setPrice('');
     setDriverPos(null);
+    setEta(null);
     priceEdited.current = false;
   }
 
   const showDrivers = !active || ride?.status === 'requested';
+  const liveOffers = offers.filter((o) => o.expiresAt > now);
+  // Mientras nadie acepta, se puede subir la oferta: los conductores cercanos ven el precio nuevo
+  const raise = (inc) => socket.emit('ride:raise', { rideId: ride.id, price: Number(ride.offered_price) + inc }, (res) => setError(res?.error || ''));
   const routeLine = active ? ride.route : preview?.coords;
   const fitPoints = routeLine?.length > 1 ? routeLine : from && dest && !active ? [[from.lat, from.lng], [dest.lat, dest.lng]] : [];
   const ended = ride && !active;
@@ -196,17 +209,34 @@ export default function Passenger({ socket, token }) {
             <p className="muted">
               {ride.dest_text || 'Destino'} · {ride.distance_km.toFixed(1)} km{ride.duration_min ? ` · ${minutes(ride.duration_min)}` : ''}
             </p>
+            {eta && eta.rideId === ride.id && ['accepted', 'started'].includes(ride.status) && (
+              <p className="eta">
+                {ride.status === 'accepted' ? '🚕 Tu conductor llega en' : '🏁 Llegan a tu destino en'} <b>~{eta.minutes} min</b>{' '}
+                <span className="muted">({eta.km} km{eta.estimated ? ', aproximado' : ''})</span>
+              </p>
+            )}
 
             {ride.status === 'requested' && (
               <>
                 <p className="muted">Ofreciste {lempiras(ride.offered_price)}. Elige una oferta cuando lleguen:</p>
                 {error && <div className="error">{error}</div>}
-                {offers.length === 0 && <div className="pulse">Esperando ofertas de conductores…</div>}
-                {offers.map((o) => (
+                {liveOffers.length === 0 && <div className="pulse">Esperando ofertas de conductores…</div>}
+                {liveOffers.length === 0 && now - new Date(ride.created_at).getTime() > 40000 && (
+                  <div className="hint">Nadie ha ofertado todavía. Prueba subir tu precio para atraer conductores.</div>
+                )}
+                <div className="raise">
+                  <span className="muted small">¿Nadie acepta? Sube tu oferta:</span>
+                  <div className="row">
+                    <button className="sm" onClick={() => raise(5)}>+ L5</button>
+                    <button className="sm" onClick={() => raise(10)}>+ L10</button>
+                  </div>
+                </div>
+                {liveOffers.map((o) => (
                   <div className="offer" key={o.id}>
                     <div>
                       <b>{o.driver.name}</b> <Stars rating={o.driver.rating} />
                       <div className="muted">{o.driver.vehicle} · {o.driver.plate}{o.distanceToPickupKm != null && ` · a ${o.distanceToPickupKm.toFixed(1)} km`}</div>
+                      <div className="muted small">vence en {Math.max(0, Math.ceil((o.expiresAt - now) / 1000))} s</div>
                     </div>
                     <button className="primary sm" onClick={() => socket.emit('offer:accept', { offerId: o.id })}>{lempiras(o.price)}</button>
                   </div>
@@ -220,9 +250,13 @@ export default function Passenger({ socket, token }) {
                   <b>{ride.driver.name}</b> <Stars rating={ride.driver.rating} />
                   <div className="muted">{ride.driver.vehicle} · {ride.driver.plate}</div>
                 </div>
-                <a className="primary sm" href={`tel:${ride.driver.phone}`}>Llamar</a>
+                <div className="row">
+                  {ride.driver.phone && <a className="sm" href={`tel:${ride.driver.phone}`}>Llamar</a>}
+                  <button className="primary sm" onClick={chat.open ? chat.closeChat : chat.openChat}>💬 Chat{chat.unread ? ` (${chat.unread})` : ''}</button>
+                </div>
               </div>
             )}
+            {chat.open && <Chat chat={chat} meId={userId} quick={QUICK} />}
 
             {ride.status !== 'requested' && <SafetyBar token={token} rideId={ride.id} socket={socket} getPos={() => pos} />}
 
@@ -239,6 +273,10 @@ export default function Passenger({ socket, token }) {
               <>
                 <p>Total a pagar en efectivo: <b>{lempiras(ride.final_price)}</b></p>
                 {ride.driver && <Rate token={token} rideId={ride.id} who={ride.driver.name} />}
+                {chat.chatable && !chat.closed && (
+                  <button onClick={chat.open ? chat.closeChat : chat.openChat}>💬 ¿Olvidaste algo? Escribe al conductor{chat.unread ? ` (${chat.unread})` : ''}</button>
+                )}
+                {chat.open && <Chat chat={chat} meId={userId} quick={['Creo que dejé algo en tu carro']} />}
               </>
             )}
             <button className="primary" onClick={newTrip}>Nuevo viaje</button>

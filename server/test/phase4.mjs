@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import jwt from 'jsonwebtoken';
 import { pool } from '../src/db.js';
+import { TERMS_VERSION } from '../src/legal.js';
 import { API, FIXTURE, JPG, http, registerUser, uploadDocs, createTestSuperadmin } from './helpers.mjs';
 import { sanitizeJpeg } from '../src/jpeg.js';
 
@@ -32,7 +33,7 @@ check('código incorrecto es rechazado', (await http('POST', 'register', null, {
 const reg = await http('POST', 'register', null, { ...base, code: sent.devCode });
 check('registro con el código correcto', !!reg.token && reg.user.status === 'active');
 const [[acc]] = await pool.query('SELECT terms_accepted_at, terms_version FROM users WHERE id = ?', [reg.user.id]);
-check('queda registrada la aceptación de los términos', !!acc.terms_accepted_at && acc.terms_version === '1.1');
+check('queda registrada la aceptación de los términos', !!acc.terms_accepted_at && acc.terms_version === TERMS_VERSION);
 check('el código solo sirve una vez', (await http('POST', 'register', null, { ...base, code: sent.devCode })).status === 400);
 check('no se envía código a un teléfono ya registrado', (await http('POST', 'otp/send', null, { phone: ph })).status === 409);
 

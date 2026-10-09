@@ -1,6 +1,6 @@
 import { io } from 'socket.io-client';
 import L from 'leaflet';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 // Desarrollo: API en :4000. Producción: el mismo servidor entrega la web, así que se usa la misma dirección ('')
 export const API = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? 'http://localhost:4000' : '');
@@ -140,3 +140,71 @@ export async function disablePush(token) {
   await apiPost('push/unsubscribe', token, { endpoint: sub.endpoint }).catch(() => {});
   await sub.unsubscribe();
 }
+
+// ---- Chat del viaje ----
+// Mantiene los mensajes, cuántos no se han leído y si el chat está abierto en pantalla (los eventos llegan aunque esté cerrado).
+export function useChat(socket, ride, myId) {
+  const rideId = ride?.id;
+  const chatable = !!ride?.driver_id && ['accepted', 'arrived', 'started', 'completed'].includes(ride.status);
+  const [messages, setMessages] = useState([]);
+  const [unread, setUnread] = useState(0);
+  const [open, setOpen] = useState(false);
+  const [closed, setClosed] = useState(false); // el chat ya no admite mensajes nuevos (pasaron 30 min del viaje)
+  const [error, setError] = useState('');
+  const openRef = useRef(false);
+  openRef.current = open;
+
+  const load = () => {
+    if (!rideId || !chatable) return;
+    socket.emit('chat:history', { rideId }, (res) => {
+      if (!res?.ok) return;
+      setMessages(res.messages);
+      setUnread(openRef.current ? 0 : res.unread);
+      setClosed(!res.open);
+    });
+  };
+
+  useEffect(() => {
+    setMessages([]); setUnread(0); setOpen(false); setClosed(false); setError('');
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rideId, chatable]);
+
+  useEffect(() => {
+    const onMessage = (m) => {
+      if (m.rideId !== rideId) return;
+      setMessages((cur) => (cur.some((x) => x.id === m.id) ? cur : [...cur, m]));
+      if (m.senderId !== myId) {
+        if (openRef.current) socket.emit('chat:read', { rideId });
+        else setUnread((n) => n + 1);
+      }
+    };
+    const onRead = ({ rideId: r }) => r === rideId && setMessages((cur) => cur.map((m) => (m.senderId === myId ? { ...m, read: true } : m)));
+    socket.on('chat:message', onMessage);
+    socket.on('chat:read', onRead);
+    socket.on('connect', load); // al reconectarse se recuperan los mensajes que llegaron mientras no había señal
+    return () => { socket.off('chat:message', onMessage); socket.off('chat:read', onRead); socket.off('connect', load); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [socket, rideId, myId, chatable]);
+
+  return {
+    chatable, messages, unread, open, closed, error,
+    openChat: () => { setOpen(true); setUnread(0); socket.emit('chat:read', { rideId }); },
+    closeChat: () => setOpen(false),
+    send: (text) => new Promise((res) => socket.emit('chat:send', { rideId, text }, (r) => { setError(r?.error || ''); res(r); })),
+  };
+}
+
+// Devuelve la hora actual y se actualiza cada `ms` (para cuentas regresivas)
+export function useNow(ms = 1000) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), ms);
+    return () => clearInterval(t);
+  }, [ms]);
+  return now;
+}
+
+// Enlaces para abrir la navegación en Waze o Google Maps hacia un punto
+export const wazeUrl = ({ lat, lng }) => `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`;
+export const mapsUrl = ({ lat, lng }) => `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;

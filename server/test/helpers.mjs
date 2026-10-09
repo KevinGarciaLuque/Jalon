@@ -1,4 +1,7 @@
 import fs from 'fs';
+import crypto from 'crypto';
+import nodeHttp from 'http';
+import { createRequire } from 'module';
 import bcrypt from 'bcryptjs';
 import { encryptText } from '../src/secure.js';
 import { generateSecret, hotp, stepOf } from '../src/totp.js';
@@ -53,4 +56,28 @@ export async function enroll2fa(token) {
   const setup = await http('POST', '2fa/setup', token, {});
   const done = await http('POST', '2fa/enable', token, { code: totpNow(setup.secret) });
   return { secret: setup.secret, backupCodes: done.backupCodes, status: done.status };
+}
+
+// ---- Servicio de notificaciones falso ----
+// Cada "dispositivo" es una dirección local con sus propias llaves; sus mensajes se descifran para poder verificarlos.
+export async function startFakePush() {
+  const ece = createRequire(import.meta.url)('http_ece');
+  const received = [];
+  const server = nodeHttp.createServer((req, res) => {
+    const chunks = [];
+    req.on('data', (c) => chunks.push(c));
+    req.on('end', () => { received.push({ id: req.url.split('/').pop(), headers: req.headers, body: Buffer.concat(chunks) }); res.writeHead(201).end(); });
+  });
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const device = (id) => {
+    const ecdh = crypto.createECDH('prime256v1');
+    ecdh.generateKeys();
+    const auth = crypto.randomBytes(16);
+    return {
+      subscription: { endpoint: `${base}/push/${id}`, keys: { p256dh: ecdh.getPublicKey().toString('base64url'), auth: auth.toString('base64url') } },
+      messages: () => received.filter((m) => m.id === id).map((m) => JSON.parse(ece.decrypt(m.body, { version: 'aes128gcm', privateKey: ecdh, authSecret: auth.toString('base64url') }).toString())),
+    };
+  };
+  return { device, stop: () => server.close() };
 }

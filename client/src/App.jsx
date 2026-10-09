@@ -86,8 +86,8 @@ export default function App() {
       {connError && <div className="banner">{connError}</div>}
       {staff && !session.user.mustChangePassword && !session.user.mustEnrollTwoFactor && <Admin token={session.token} onGate={onGate} />}
       {socket && !session.user.mustChangePassword && (session.user.role === 'driver'
-        ? <Driver socket={socket} token={session.token} status={accountStatus} />
-        : <Passenger socket={socket} token={session.token} />)}
+        ? <Driver socket={socket} token={session.token} userId={session.user.id} status={accountStatus} />
+        : <Passenger socket={socket} token={session.token} userId={session.user.id} />)}
       {(showAccount || session.user.mustChangePassword) && (
         <Account
           forced={!!session.user.mustChangePassword}

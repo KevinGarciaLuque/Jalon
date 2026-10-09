@@ -1,6 +1,6 @@
 // Términos de uso y política de privacidad. Si cambias el contenido, sube TERMS_VERSION en server/src/index.js.
-const VERSION = '1.1';
-const UPDATED = '9 de octubre de 2026';
+const VERSION = '1.2';
+const UPDATED = '10 de octubre de 2026';
 const CONTACT = import.meta.env.VITE_CONTACT_EMAIL; // se define al compilar (variable en Railway)
 
 const Contact = () => (CONTACT ? <a href={`mailto:${CONTACT}`}>{CONTACT}</a> : <i>[correo de soporte: falta definir VITE_CONTACT_EMAIL]</i>);
@@ -104,6 +104,11 @@ function Privacy() {
           viaje; en el conductor, mientras está disponible y durante los viajes.
         </li>
         <li><b>Viajes:</b> origen, destino, ruta, precio, estado y fechas; las calificaciones y comentarios; y las alertas de emergencia que envíes.</li>
+        <li>
+          <b>Chat del viaje:</b> los mensajes que te escribes con el conductor o el pasajero. Los teléfonos no se comparten entre ustedes: se coordina por el
+          chat. Los mensajes se borran automáticamente a los 90 días, y el personal solo los lee si el viaje tiene una emergencia (queda anotado quién los leyó).
+        </li>
+        <li><b>Notificaciones:</b> si las activas, guardamos un identificador de tu dispositivo para enviártelas (puedes desactivarlas en Cuenta).</li>
         <li><b>Técnicos:</b> tu dirección IP y registros del servidor, para seguridad y para limitar intentos de acceso abusivos.</li>
         <li>La sesión se guarda en tu navegador (almacenamiento local). No usamos cookies de publicidad ni rastreadores de terceros.</li>
       </ul>
@@ -119,8 +124,8 @@ function Privacy() {
       <h2>3. Con quién se comparten</h2>
       <ul>
         <li>
-          <b>Pasajero y conductor del mismo viaje:</b> se ven el nombre, el teléfono, la calificación y la ubicación necesaria para el viaje; el pasajero
-          ve además el vehículo y la placa.
+          <b>Pasajero y conductor del mismo viaje:</b> se ven el nombre, la calificación y la ubicación necesaria para el viaje; el pasajero ve además el
+          vehículo y la placa. <b>No se ven el teléfono.</b>
         </li>
         <li>
           <b>Enlace de viaje compartido:</b> quien reciba el enlace ve el nombre de pila del conductor, su vehículo y placa, la ruta y la ubicación en vivo,

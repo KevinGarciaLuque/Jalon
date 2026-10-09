@@ -1,4 +1,5 @@
-// Un viaje sin conductor debe cancelarse solo (el servidor revisa cada 30 s)
+// Un viaje sin conductor debe cancelarse solo (el servidor revisa cada 30 s).
+// Se comprueba en la base de datos: no importa cuál de los servidores que comparten la base lo cancele primero.
 import { io } from 'socket.io-client';
 import { pool } from '../src/db.js';
 import { registerUser } from './helpers.mjs';
@@ -13,8 +14,16 @@ const created = new Promise((r) => ps.on('ride:state', (x) => x.status === 'requ
 ps.emit('ride:request', { origin: p, dest: { lat: 14.1, lng: -87.2 }, price: 80 }, () => {});
 const ride = await created;
 await pool.query('UPDATE rides SET created_at = NOW() - INTERVAL 11 MINUTE WHERE id = ?', [ride.id]);
-console.log('viaje', ride.id, 'envejecido; esperando cancelación (máx 35 s)…');
-const t = setTimeout(() => { console.log('FAIL no se canceló'); process.exit(1); }, 35000);
-ps.on('ride:state', async (x) => {
-  if (x.status === 'cancelled') { clearTimeout(t); console.log('OK   se canceló solo'); ps.close(); await pool.end(); process.exit(0); }
-});
+console.log('viaje', ride.id, 'envejecido; esperando cancelación (máx 45 s)…');
+
+let row;
+for (let i = 0; i < 45; i++) {
+  [[row]] = await pool.query('SELECT status, cancelled_by FROM rides WHERE id = ?', [ride.id]);
+  if (row.status === 'cancelled') break;
+  await new Promise((r) => setTimeout(r, 1000));
+}
+const ok = row.status === 'cancelled' && row.cancelled_by === 'system';
+console.log(ok ? 'OK   se canceló solo (por el sistema)' : `FAIL no se canceló (estado: ${row.status})`);
+ps.close();
+await pool.end();
+process.exit(ok ? 0 : 1);

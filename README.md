@@ -144,3 +144,20 @@ Llegan aunque la app esté cerrada (Android/Chrome, escritorio, y en iPhone **so
 - **Seguridad:** el servidor solo envía a los servicios de notificaciones reales de Google, Mozilla, Apple y Microsoft (un usuario no puede usarlo para atacar direcciones internas), cada envío va cifrado y firmado, y los dispositivos que ya no existen se borran solos. Máximo 10 dispositivos por persona.
 - **No incluido:** las notificaciones nativas de las apps de Android/iPhone (Capacitor, Fase 11) usarán Firebase en vez de esto.
 - Probado con un servicio de notificaciones falso que descifra y verifica cada envío, y la parte del celular (`client/public/sw.js`) en un entorno simulado. **No se probó con un celular real ni con los servidores de Google/Apple**: eso lo confirmas tú al activarlas.
+
+## Fase 8B: chat y teléfonos ocultos
+
+- **Chat del viaje** entre pasajero y conductor, con respuestas rápidas ("Ya salgo", "Estoy afuera"…). Abre al aceptarse el viaje, sigue 30 minutos después de terminar (para avisar de un objeto olvidado) y se cierra con el viaje cancelado. Máximo 500 caracteres y 20 mensajes por minuto. Si la otra persona tiene la app cerrada recibe una notificación.
+- **Los teléfonos ya no se comparten** entre pasajero y conductor (antes viajaban en el aviso de "viaje nuevo" a todos los conductores cercanos). Se coordina por el chat. Si algún día quieres volver a mostrarlos: `SHOW_PARTNER_PHONES=true`.
+- **Privacidad:** los mensajes se borran a los 90 días (`CHAT_RETENTION_DAYS`), al eliminar la cuenta se borran los de esa persona, y el personal solo puede leer el chat de un viaje con una emergencia (o un reporte); cada lectura queda en el Registro.
+- **No incluido:** llamadas con número enmascarado. Requiere un servicio de voz (p. ej. Twilio Voice); lo decidimos cuando lo quieras.
+
+## Fase 8C: llegada, precio y ofertas
+
+- **Tiempo de llegada:** el pasajero ve "tu conductor llega en ~N min" (y, en viaje, cuánto falta al destino); el conductor ve cuánto falta, la ruta hacia el pasajero en el mapa y botones para abrir **Waze** o **Google Maps** hacia la recogida o el destino. Se recalcula cada 20 s (`ETA_EVERY_MS`) con el servicio de rutas (si falla, se estima).
+- **Subir el precio:** mientras nadie acepta, el pasajero puede subir su oferta (+L5 o +L10); los conductores cercanos ven el precio nuevo. Solo hacia arriba y con una espera corta entre subidas (`RAISE_COOLDOWN_MS`).
+- **Ofertas que vencen:** cada oferta de un conductor vale 90 segundos (`OFFER_TTL_SECONDS`) con cuenta regresiva en pantalla; si vence, ambos lo saben y el conductor puede volver a ofertar. Renovar la oferta reinicia el reloj.
+
+## Pruebas (cambio importante)
+
+`npm test` ahora crea y usa **su propia base de datos** (`<tu base>_test`, nueva en cada ejecución), así no se mezcla con tus datos de desarrollo ni con otro servidor que comparta la base. `ONLY=phase8c npm test` corre solo una suite.

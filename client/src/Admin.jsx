@@ -36,6 +36,7 @@ export default function Admin({ token, onGate }) {
   const [detailId, setDetailId] = useState(null);
   const [docsUser, setDocsUser] = useState(null);
   const [temp, setTemp] = useState(null);
+  const [chatView, setChatView] = useState(null); // { rideId, messages } del chat de una emergencia
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState('all');
   const [staffForm, setStaffForm] = useState({ name: '', phone: '', role: 'support' });
@@ -112,6 +113,14 @@ export default function Admin({ token, onGate }) {
     }
   }
 
+  async function openChat(rideId) {
+    try {
+      setChatView({ rideId, ...(await call(`rides/${rideId}/chat`)) });
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
   async function createStaff(e) {
     e.preventDefault();
     try {
@@ -176,6 +185,7 @@ export default function Admin({ token, onGate }) {
             {a.lat != null && (
               <a className="primary sm" target="_blank" rel="noreferrer" href={`https://www.openstreetmap.org/?mlat=${a.lat}&mlon=${a.lng}#map=17/${a.lat}/${a.lng}`}>Ver ubicación</a>
             )}
+            <button className="sm" onClick={() => openChat(a.ride_id)}>💬 Ver chat del viaje</button>
             <button className="sm" onClick={() => act(`alerts/${a.id}/resolve`, {}, '¿Marcar esta emergencia como atendida?')}>Atendida</button>
           </div>
         </div>
@@ -333,6 +343,27 @@ export default function Admin({ token, onGate }) {
           onApprove={async () => { await act(`users/${docsUser.id}/status`, { status: 'active' }); setDocsUser(null); }}
           onChanged={load}
         />
+      )}
+      {chatView && (
+        <div className="overlay top">
+          <div className="overlay-head">
+            <b>Chat del viaje #{chatView.rideId}</b>
+            <button className="link" onClick={() => setChatView(null)}>Cerrar ✕</button>
+          </div>
+          <div className="overlay-body">
+            <p className="muted small">Se muestra solo porque el viaje tiene una emergencia. Esta consulta queda anotada en el Registro.</p>
+            {chatView.messages.length === 0 && <p className="muted">No escribieron mensajes.</p>}
+            <div className="chat-list">
+              {chatView.messages.map((m) => (
+                <div key={m.id} className={`bubble ${m.senderId === chatView.driverId ? 'mine' : 'theirs'}`}>
+                  <b className="small">{m.sender}</b>
+                  <span>{m.text}</span>
+                  <small>{when(m.at)}</small>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
       {temp && <TempPassword who={temp.who} password={temp.password} onClose={() => setTemp(null)} />}
     </div>

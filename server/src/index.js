@@ -20,6 +20,8 @@ import { createOtp, consumeOtp, OtpError } from './otp.js';
 import { sendSms, smsConfigured } from './sms.js';
 import { sanitizeJpeg } from './jpeg.js';
 import { encryptBuffer, decryptBuffer, isEncrypted, keyIsDerived, encryptText, decryptText } from './secure.js';
+import { TERMS_VERSION } from './legal.js';
+import { chatOpen, chatAllowed, purgeOldMessages, CHAT_MAX } from './chat.js';
 import { sendPush, validEndpoint, pushEnabled, publicKey as vapidPublicKey } from './push.js';
 import { generateSecret, verifyTotp, otpauthUrl, generateBackupCodes, hashBackup } from './totp.js';
 import { encryptLegacyDocuments } from './docs.js';
@@ -43,6 +45,12 @@ if (JWT_SECRET === 'dev-secret' || JWT_SECRET.startsWith('cambia-esto')) {
   console.warn('⚠ JWT_SECRET de desarrollo: cámbialo antes de publicar la app');
 }
 const NEARBY_KM = 5;
+// Una oferta de un conductor vale este tiempo: así el pasajero no acepta una oferta vieja de alguien que ya se fue
+const OFFER_TTL_SECONDS = Number(process.env.OFFER_TTL_SECONDS || 90);
+const RAISE_COOLDOWN_MS = Number(process.env.RAISE_COOLDOWN_MS || 8000); // entre una subida de precio y la siguiente
+const ETA_EVERY_MS = Number(process.env.ETA_EVERY_MS || 20000); // cada cuánto se recalcula el tiempo de llegada
+const SHOW_PARTNER_PHONES = process.env.SHOW_PARTNER_PHONES === 'true';
+const CHAT_RETENTION_DAYS = Number(process.env.CHAT_RETENTION_DAYS || 90);
 const isProd = process.env.NODE_ENV === 'production';
 // Sin Twilio y fuera de producción, el código se devuelve en la respuesta para poder probar sin SMS reales
 // SMS_DEV_ECHO=true lo habilita también en producción mientras no haya Twilio (solo para pruebas del equipo: cualquiera vería su código)
@@ -91,7 +99,6 @@ const SOS_PHONES = (process.env.SOS_ALERT_PHONES || '').split(',').map((p) => no
 const SOS_REMINDER_MIN = Number(process.env.SOS_REMINDER_MINUTES || 3); // mientras nadie la atienda, se repite el aviso
 const SOS_MAX_NOTICES = 4; // el aviso inicial y hasta 3 recordatorios
 const PUBLIC_URL = process.env.PUBLIC_URL || process.env.CLIENT_ORIGIN || '';
-const TERMS_VERSION = '1.1'; // súbela cuando cambien los términos o la política de privacidad
 
 // En desarrollo se acepta cualquier puerto de localhost (Vite cambia de puerto si el 5173 está ocupado)
 const allowOrigin = (origin, cb) => cb(null, !origin || origin === ORIGIN || /^http:\/\/localhost:\d+$/.test(origin));
@@ -385,12 +392,14 @@ app.get('/api/me/export', authUser, async (req, res) => {
   const [received] = await pool.query('SELECT ride_id, stars, comment, created_at FROM ratings WHERE ratee_id = ? ORDER BY id', [id]);
   const [alerts] = await pool.query('SELECT ride_id, lat, lng, status, created_at FROM alerts WHERE user_id = ? ORDER BY id', [id]);
   const [docs] = await pool.query('SELECT type, status, note, created_at FROM documents WHERE user_id = ?', [id]);
+  const [msgs] = await pool.query('SELECT ride_id, text, created_at FROM messages WHERE sender_id = ? ORDER BY id', [id]);
   res.set('Content-Disposition', 'attachment; filename="mis-datos-jalon.json"');
   res.json({
     generadoEl: new Date().toISOString(),
     cuenta: { nombre: u.name, telefono: u.phone, rol: u.role, estado: u.status, vehiculo: u.vehicle, placa: u.plate, registradoEl: u.created_at, aceptoTerminosEl: u.terms_accepted_at, versionTerminos: u.terms_version },
     viajes: rides, calificacionesQueDi: given, calificacionesQueRecibi: received, alertasDeEmergencia: alerts,
     documentos: docs.map((d) => ({ tipo: d.type, estado: d.status, nota: d.note, subidoEl: d.created_at })),
+    mensajesQueEnvie: msgs.map((m) => ({ viaje: m.ride_id, texto: m.text, enviadoEl: m.created_at })),
   });
 });
 
@@ -653,12 +662,12 @@ async function audit(actor, action, { target = null, details = null } = {}) {
 }
 
 // Igual que audit(), pero no repite la misma anotación si ya existe una reciente (abrir un documento carga 3 imágenes)
-async function auditOnce(actor, action, target, minutes = 10) {
+async function auditOnce(actor, action, target, minutes = 10, details = null) {
   const [r] = await pool.query(
     'SELECT 1 FROM audit_log WHERE actor_id = ? AND action = ? AND target_user_id = ? AND created_at > NOW() - INTERVAL ? MINUTE LIMIT 1',
     [actor.id, action, target, minutes]
   );
-  if (!r.length) await audit(actor, action, { target });
+  if (!r.length) await audit(actor, action, { target, details });
 }
 
 // Contraseña temporal legible (sin letras que se confunden: 0/O, 1/l/I)
@@ -817,6 +826,7 @@ async function anonymizeUser(t) {
   await pool.query('DELETE FROM documents WHERE user_id = ?', [t.id]);
   await pool.query('DELETE FROM otp_codes WHERE phone = ?', [t.phone]);
   await pool.query('UPDATE ratings SET comment = NULL WHERE rater_id = ?', [t.id]);
+  await pool.query("UPDATE messages SET text = '[mensaje eliminado]' WHERE sender_id = ?", [t.id]);
   await pool.query('UPDATE rides SET origin_text = NULL, dest_text = NULL, share_token = NULL WHERE passenger_id = ? OR driver_id = ?', [t.id, t.id]);
   await pool.query(
     `UPDATE users SET name = 'Cuenta eliminada', phone = ?, password_hash = ?, vehicle = NULL, plate = NULL, status = 'blocked',
@@ -936,6 +946,18 @@ app.post('/api/admin/documents/:id/reject', staffOnly('docs'), async (req, res) 
   res.json({ ok: true });
 });
 
+// Chat de un viaje con una emergencia, para entender qué pasó. Solo viajes con alerta; cada consulta queda anotada.
+app.get('/api/admin/rides/:id/chat', staffOnly('alerts'), async (req, res) => {
+  const id = Number(req.params.id);
+  const [[ride]] = await pool.query('SELECT id, passenger_id, driver_id FROM rides WHERE id = ?', [id]);
+  if (!ride) return res.status(404).json({ error: 'Viaje no encontrado' });
+  const [[has]] = await pool.query('SELECT COUNT(*) AS n FROM alerts WHERE ride_id = ?', [id]);
+  if (!has.n) return res.status(403).json({ error: 'El chat solo se puede ver en viajes con una emergencia' });
+  await auditOnce(req.staff, 'chat.view', ride.passenger_id, 10, { ride: id });
+  const [rows] = await pool.query('SELECT m.id, m.sender_id AS senderId, u.name AS sender, m.text, m.created_at AS at FROM messages m JOIN users u ON u.id = m.sender_id WHERE m.ride_id = ? ORDER BY m.id', [id]);
+  res.json({ passengerId: ride.passenger_id, driverId: ride.driver_id, messages: rows });
+});
+
 // Alertas de emergencia (botón SOS) con los datos de quienes viajan
 app.get('/api/admin/alerts', staffOnly('alerts'), async (_req, res) => {
   const [rows] = await pool.query(
@@ -1006,7 +1028,8 @@ async function ratingsOf(ids) {
 
 async function rideView(ride) {
   const ids = [ride.passenger_id, ride.driver_id].filter(Boolean);
-  const [users] = await pool.query('SELECT id,name,phone,vehicle,plate FROM users WHERE id IN (?)', [ids]);
+  // El teléfono de la otra persona NO se entrega (se coordina por el chat). SHOW_PARTNER_PHONES=true lo vuelve a mostrar.
+  const [users] = await pool.query(`SELECT id,name,vehicle,plate${SHOW_PARTNER_PHONES ? ',phone' : ''} FROM users WHERE id IN (?)`, [ids]);
   const ratings = await ratingsOf(ids);
   const byId = Object.fromEntries(users.map((u) => [u.id, { ...u, rating: ratings.get(u.id) || { avg: null, count: 0 } }]));
   const { route_json, share_token, ...rest } = ride;
@@ -1050,6 +1073,36 @@ function releaseDriver(driverId) {
   if (d.disconnected) drivers.delete(driverId);
   else d.available = true;
 }
+
+// Tiempo estimado de llegada: del conductor al pasajero (viaje aceptado) o al destino (viaje en curso).
+// Se recalcula como máximo cada ETA_EVERY_MS por viaje para no saturar el servicio de rutas.
+const etaAt = new Map(); // "viaje:fase" -> última vez
+async function sendEta(ride, from) {
+  const phase = ride.status === 'accepted' ? 'pickup' : ride.status === 'started' ? 'dropoff' : null;
+  if (!phase) return;
+  const key = `${ride.id}:${phase}`;
+  if (Date.now() - (etaAt.get(key) || 0) < ETA_EVERY_MS) return;
+  etaAt.set(key, Date.now());
+  if (etaAt.size > 500) etaAt.delete(etaAt.keys().next().value);
+  const to = phase === 'pickup' ? { lat: ride.origin_lat, lng: ride.origin_lng } : { lat: ride.dest_lat, lng: ride.dest_lng };
+  const route = await getRoute(from, to);
+  const eta = { rideId: ride.id, phase, minutes: Math.max(1, Math.ceil(route.durationMin)), km: Math.round(route.distanceKm * 10) / 10, estimated: route.estimated };
+  io.to(room(ride.passenger_id)).emit('ride:eta', eta);
+  io.to(room(ride.driver_id)).emit('ride:eta', { ...eta, coords: route.coords }); // el conductor además recibe el camino para verlo en el mapa
+}
+
+// Las ofertas que vencen se avisan a las dos partes (y quedan como "vencidas")
+async function expireOffers() {
+  const [rows] = await pool.query(
+    `SELECT o.id, o.ride_id, o.driver_id, r.passenger_id FROM offers o JOIN rides r ON r.id = o.ride_id
+     WHERE o.status = 'pending' AND o.expires_at < NOW()`
+  );
+  for (const o of rows) {
+    await pool.query("UPDATE offers SET status = 'expired' WHERE id = ? AND status = 'pending'", [o.id]);
+    io.to(room(o.passenger_id)).to(room(o.driver_id)).emit('offer:expired', { offerId: o.id, rideId: o.ride_id });
+  }
+}
+setInterval(() => expireOffers().catch(reportError), Number(process.env.OFFER_SWEEP_MS || 5000)).unref();
 
 // Cancela un viaje activo (by: passenger | driver | admin | system) y avisa a las dos partes
 async function cancelRide(rideId, by) {
@@ -1127,7 +1180,9 @@ io.on('connection', async (socket) => {
       const d = drivers.get(user.id);
       if (d) { d.lat = lat; d.lng = lng; }
       const ride = await activeRideFor(user);
-      if (ride) io.to(room(ride.passenger_id)).emit('ride:driver_location', { lat, lng });
+      if (!ride) return;
+      io.to(room(ride.passenger_id)).emit('ride:driver_location', { lat, lng });
+      sendEta(ride, { lat, lng }).catch(reportError); // sin esperar: el aviso de ubicación no depende de la ruta
     });
 
     on('offer:make', async ({ rideId, price }) => {
@@ -1141,17 +1196,17 @@ io.on('connection', async (socket) => {
       let offerId;
       if (prev[0]) {
         offerId = prev[0].id;
-        await pool.query('UPDATE offers SET price = ? WHERE id = ?', [price, offerId]);
+        await pool.query('UPDATE offers SET price = ?, expires_at = NOW() + INTERVAL ? SECOND WHERE id = ?', [price, OFFER_TTL_SECONDS, offerId]);
       } else {
-        const [r] = await pool.query('INSERT INTO offers (ride_id, driver_id, price) VALUES (?,?,?)', [rideId, user.id, price]);
+        const [r] = await pool.query('INSERT INTO offers (ride_id, driver_id, price, expires_at) VALUES (?,?,?, NOW() + INTERVAL ? SECOND)', [rideId, user.id, price, OFFER_TTL_SECONDS]);
         offerId = r.insertId;
       }
       io.to(room(ride.passenger_id)).emit('offer:new', {
-        id: offerId, rideId, price,
+        id: offerId, rideId, price, ttl: OFFER_TTL_SECONDS, // segundos que vale la oferta
         driver: { id: user.id, name: user.name, vehicle: user.vehicle, plate: user.plate, rating: (await ratingsOf([user.id])).get(user.id) || { avg: null, count: 0 } },
         distanceToPickupKm: d.lat != null ? distanceKm(d.lat, d.lng, ride.origin_lat, ride.origin_lng) : null,
       });
-      socket.emit('offer:sent', { rideId, price });
+      socket.emit('offer:sent', { rideId, price, ttl: OFFER_TTL_SECONDS });
       push(ride.passenger_id, { title: 'Nueva oferta para tu viaje', body: `${user.name} ofrece L ${Math.round(price)}`, tag: `offer-${rideId}`, url: '/' });
       });
     });
@@ -1218,9 +1273,10 @@ io.on('connection', async (socket) => {
     });
 
     on('offer:accept', async ({ offerId }) => {
-      const [rows] = await pool.query('SELECT * FROM offers WHERE id = ? AND status = "pending"', [offerId]);
+      const [rows] = await pool.query('SELECT *, (expires_at IS NOT NULL AND expires_at < NOW()) AS expired FROM offers WHERE id = ? AND status = "pending"', [offerId]);
       const offer = rows[0];
-      if (!offer) return;
+      if (!offer) return socket.emit('offer:invalid', { offerId }); // ya venció, la retiraron o no existe: la pantalla debe quitarla
+      if (offer.expired) return socket.emit('offer:invalid', { offerId: offer.id }); // venció antes de que la aceptaran
       const ride = await getRide(offer.ride_id);
       const d = drivers.get(offer.driver_id);
       if (!ride || ride.passenger_id !== user.id || ride.status !== 'requested') return;
@@ -1239,12 +1295,76 @@ io.on('connection', async (socket) => {
       push(offer.driver_id, { title: '¡Te aceptaron el viaje!', body: `${user.name} · L ${Math.round(offer.price)}`, tag: `ride-${ride.id}`, url: '/' });
     });
 
+    // Mientras nadie acepta, el pasajero puede subir su oferta: los conductores cercanos ven el precio nuevo
+    const lastRaise = new Map();
+    on('ride:raise', async (data, ack) => {
+      const price = Number(data?.price);
+      const ride = await getRide(Number(data?.rideId));
+      if (!ride || ride.passenger_id !== user.id || ride.status !== 'requested') return ack?.({ error: 'Ese viaje ya no está buscando conductor' });
+      if (!isPrice(price)) return ack?.({ error: `El precio debe estar entre L 1 y L ${MAX_PRICE}` });
+      if (price <= Number(ride.offered_price)) return ack?.({ error: 'El precio nuevo debe ser mayor al actual' });
+      if (Date.now() - (lastRaise.get(ride.id) || 0) < RAISE_COOLDOWN_MS) return ack?.({ error: 'Espera unos segundos antes de volver a subir el precio' });
+      lastRaise.set(ride.id, Date.now());
+      await pool.query('UPDATE rides SET offered_price = ? WHERE id = ? AND status = "requested"', [price, ride.id]);
+      const view = await rideView(await getRide(ride.id));
+      openRides.set(ride.id, view);
+      for (const d of drivers.values()) {
+        if (!d.available || distanceKm(d.lat, d.lng, ride.origin_lat, ride.origin_lng) > NEARBY_KM) continue;
+        if (!d.disconnected) io.to(room(d.id)).emit('ride:new', view); // el cliente reemplaza la solicitud por la del precio nuevo
+        else push(d.id, { title: 'El pasajero subió su oferta', body: `${ride.dest_text ? `A ${ride.dest_text}` : 'Viaje cercano'} · L ${Math.round(price)}`, tag: `ride-${ride.id}`, url: '/' });
+      }
+      socket.emit('ride:state', view);
+      ack?.({ ok: true, price });
+    });
+
     on('ride:cancel', async ({ rideId }) => {
       const ride = await getRide(rideId);
       if (!ride || ride.passenger_id !== user.id || !['requested', 'accepted', 'arrived'].includes(ride.status)) return;
       await cancelRide(rideId, 'passenger');
     });
   }
+
+  // ----- Chat del viaje -----
+  const rideForChat = async (rideId) => {
+    const [rows] = await pool.query('SELECT *, (updated_at > NOW() - INTERVAL 30 MINUTE) AS recent FROM rides WHERE id = ?', [Number(rideId)]);
+    const ride = rows[0];
+    return ride && [ride.passenger_id, ride.driver_id].includes(user.id) ? ride : null; // solo quienes participan
+  };
+
+  on('chat:send', async (data, ack) => {
+    const ride = await rideForChat(data?.rideId);
+    if (!ride) return ack?.({ error: 'Viaje no encontrado' });
+    if (!chatOpen(ride)) return ack?.({ error: 'El chat de este viaje ya está cerrado' });
+    const text = typeof data.text === 'string' ? data.text.trim() : '';
+    if (!text) return ack?.({ error: 'Escribe un mensaje' });
+    if (text.length > CHAT_MAX) return ack?.({ error: `Máximo ${CHAT_MAX} caracteres` });
+    if (!chatAllowed(user.id)) return ack?.({ error: 'Estás enviando demasiados mensajes. Espera un momento.' });
+    const [r] = await pool.query('INSERT INTO messages (ride_id, sender_id, text) VALUES (?,?,?)', [ride.id, user.id, text]);
+    const message = { id: r.insertId, rideId: ride.id, senderId: user.id, text, at: new Date().toISOString() };
+    const other = user.id === ride.passenger_id ? ride.driver_id : ride.passenger_id;
+    io.to(room(user.id)).to(room(other)).emit('chat:message', message);
+    push(other, { title: user.name, body: text.length > 100 ? `${text.slice(0, 97)}…` : text, tag: `chat-${ride.id}`, url: '/' });
+    ack?.({ ok: true, message });
+  });
+
+  // Mensajes anteriores del viaje (al abrir el chat o reconectarse) y cuántos no ha leído esta persona
+  on('chat:history', async (data, ack) => {
+    const ride = await rideForChat(data?.rideId);
+    if (!ride) return ack?.({ error: 'Viaje no encontrado' });
+    const [rows] = await pool.query(
+      'SELECT id, sender_id AS senderId, text, created_at AS at, (read_at IS NOT NULL) AS isRead FROM messages WHERE ride_id = ? ORDER BY id DESC LIMIT 200', [ride.id]
+    );
+    const messages = rows.reverse().map((m) => ({ id: m.id, rideId: ride.id, senderId: m.senderId, text: m.text, at: m.at, read: !!m.isRead }));
+    ack?.({ ok: true, messages, unread: messages.filter((m) => m.senderId !== user.id && !m.read).length, open: chatOpen(ride) });
+  });
+
+  on('chat:read', async (data) => {
+    const ride = await rideForChat(data?.rideId);
+    if (!ride) return;
+    await pool.query('UPDATE messages SET read_at = NOW() WHERE ride_id = ? AND sender_id <> ? AND read_at IS NULL', [ride.id, user.id]);
+    const other = user.id === ride.passenger_id ? ride.driver_id : ride.passenger_id;
+    if (other) io.to(room(other)).emit('chat:read', { rideId: ride.id, by: user.id });
+  });
 
   // Botón de emergencia: registra la alerta para el administrador junto con la ubicación
   on('ride:sos', async (pos, ack) => {
@@ -1278,6 +1398,11 @@ io.on('connection', async (socket) => {
   const active = await activeRideFor(user);
   if (active) socket.emit('ride:state', await rideView(active));
 });
+
+// Los mensajes del chat no se guardan para siempre (CHAT_RETENTION_DAYS, 90 por defecto)
+const purgeChat = () => purgeOldMessages(pool, CHAT_RETENTION_DAYS).then((n) => n && console.log(`Se borraron ${n} mensajes antiguos del chat`)).catch(reportError);
+purgeChat();
+setInterval(purgeChat, 6 * 3600 * 1000).unref();
 
 // Un conductor que cerró la app solo se conserva 30 minutos (después su ubicación ya no es confiable)
 setInterval(() => {

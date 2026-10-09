@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
-import { icons, useGeo, distanceKm, lempiras, minutes, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
-import { FitTo, PushToggle, Rate, SafetyBar, Stars } from './components.jsx';
+import { icons, useGeo, distanceKm, lempiras, minutes, useChat, useNow, wazeUrl, mapsUrl, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
+import { Chat, FitTo, PushToggle, Rate, SafetyBar, Stars } from './components.jsx';
 import DriverDocs from './DriverDocs.jsx';
 
 function Recenter({ pos }) {
@@ -24,13 +24,18 @@ const STATUS = {
   cancelled: 'El viaje fue cancelado',
 };
 
-export default function Driver({ socket, token, status }) {
+const QUICK = ['Ya llegué', 'Estoy afuera', 'Voy en camino', 'Llego en 5 minutos', 'No te encuentro'];
+
+export default function Driver({ socket, token, status, userId }) {
   const { pos, setPos, denied } = useGeo();
   const [online, setOnline] = useState(false);
   const [requests, setRequests] = useState([]);
-  const [sent, setSent] = useState({}); // rideId -> precio ofertado
+  const [sent, setSent] = useState({}); // rideId -> { price, until } de la oferta hecha (vale unos segundos)
+  const [eta, setEta] = useState(null); // tiempo y camino hacia el pasajero (o al destino)
+  const now = useNow();
   const [counter, setCounter] = useState({}); // rideId -> contraoferta
   const [ride, setRide] = useState(null);
+  const chat = useChat(socket, ride, userId);
   const [notApproved, setNotApproved] = useState(false);
   const posRef = useRef(pos);
   posRef.current = pos;
@@ -39,10 +44,13 @@ export default function Driver({ socket, token, status }) {
     socket.on('rides:open', setRequests);
     socket.on('ride:new', (r) => setRequests((cur) => [...cur.filter((x) => x.id !== r.id), r]));
     socket.on('ride:closed', ({ rideId }) => setRequests((cur) => cur.filter((x) => x.id !== rideId)));
-    socket.on('offer:sent', ({ rideId, price }) => setSent((cur) => ({ ...cur, [rideId]: price })));
+    socket.on('offer:sent', ({ rideId, price, ttl }) => setSent((cur) => ({ ...cur, [rideId]: { price, until: Date.now() + (ttl || 90) * 1000 } })));
+    // Si la oferta venció sin respuesta, puede volver a ofertar
+    socket.on('offer:expired', ({ rideId }) => setSent((cur) => { const { [rideId]: _gone, ...rest } = cur; return rest; }));
+    socket.on('ride:eta', setEta);
     socket.on('ride:state', setRide);
     socket.on('driver:denied', () => { setNotApproved(true); setOnline(false); });
-    return () => ['rides:open', 'ride:new', 'ride:closed', 'offer:sent', 'ride:state', 'driver:denied'].forEach((e) => socket.off(e));
+    return () => ['rides:open', 'ride:new', 'ride:closed', 'offer:sent', 'offer:expired', 'ride:eta', 'ride:state', 'driver:denied'].forEach((e) => socket.off(e));
   }, [socket]);
 
   // Al reconectar, volver a ponerse en línea
@@ -97,6 +105,7 @@ export default function Driver({ socket, token, status }) {
             {active && <Marker position={[ride.origin_lat, ride.origin_lng]} icon={icons.me} />}
             {active && <Marker position={[ride.dest_lat, ride.dest_lng]} icon={icons.dest} />}
             {active && ride.route && <Polyline positions={ride.route} pathOptions={{ color: '#0a7d4f', weight: 5, opacity: 0.85 }} />}
+            {active && ride.status === 'accepted' && eta?.rideId === ride.id && eta.coords && <Polyline positions={eta.coords} pathOptions={{ color: '#2563eb', weight: 5, dashArray: '8 8' }} />}
             {active && <FitTo points={ride.route?.length > 1 ? ride.route : [[ride.origin_lat, ride.origin_lng], [ride.dest_lat, ride.dest_lng]]} />}
           </MapContainer>
         )}
@@ -116,6 +125,10 @@ export default function Driver({ socket, token, status }) {
                 <button className="primary sm" onClick={() => setRide(null)}>OK</button>
               </div>
             )}
+            {ride?.status === 'completed' && ride.passenger && chat.chatable && !chat.closed && (
+              <button onClick={chat.open ? chat.closeChat : chat.openChat}>💬 Chat con el pasajero{chat.unread ? ` (${chat.unread})` : ''}</button>
+            )}
+            {ride?.status === 'completed' && chat.open && <Chat chat={chat} meId={userId} quick={['Encontré tu objeto, ¿dónde nos vemos?']} />}
             {ride?.status === 'completed' && ride.passenger && (
               <Rate token={token} rideId={ride.id} who={ride.passenger.name} />
             )}
@@ -146,8 +159,8 @@ export default function Driver({ socket, token, status }) {
                       </div>
                       <div className="muted">Recogida a {away.toFixed(1)} km · viaje de {r.distance_km.toFixed(1)} km{r.duration_min ? ` (${minutes(r.duration_min)})` : ''}</div>
                       {r.dest_text && <div className="muted">Destino: {r.dest_text}</div>}
-                      {sent[r.id] ? (
-                        <div className="pulse">Ofertaste {lempiras(sent[r.id])}. Esperando respuesta…</div>
+                      {sent[r.id] && sent[r.id].until > now ? (
+                        <div className="pulse">Ofertaste {lempiras(sent[r.id].price)}. Esperando respuesta… ({Math.max(0, Math.ceil((sent[r.id].until - now) / 1000))} s)</div>
                       ) : (
                         <div className="row">
                           <button className="primary sm" onClick={() => offer(r, r.offered_price)}>Aceptar {lempiras(r.offered_price)}</button>
@@ -179,8 +192,24 @@ export default function Driver({ socket, token, status }) {
                 <b>{ride.passenger?.name}</b> <Stars rating={ride.passenger?.rating} />
                 <div className="muted">{ride.dest_text ? `${ride.dest_text} · ` : ''}{ride.distance_km.toFixed(1)} km · efectivo</div>
               </div>
-              <a className="primary sm" href={`tel:${ride.passenger?.phone}`}>Llamar</a>
+              <div className="row">
+                {ride.passenger?.phone && <a className="sm" href={`tel:${ride.passenger.phone}`}>Llamar</a>}
+                <button className="primary sm" onClick={chat.open ? chat.closeChat : chat.openChat}>💬 Chat{chat.unread ? ` (${chat.unread})` : ''}</button>
+              </div>
             </div>
+            {chat.open && <Chat chat={chat} meId={userId} quick={QUICK} />}
+            {eta && eta.rideId === ride.id && ['accepted', 'started'].includes(ride.status) && (
+              <p className="eta">{ride.status === 'started' ? '🏁 Al destino' : '📍 Al pasajero'}: <b>~{eta.minutes} min</b> <span className="muted">({eta.km} km)</span></p>
+            )}
+            {ride.status !== 'completed' && (() => {
+              const target = ride.status === 'started' ? { lat: ride.dest_lat, lng: ride.dest_lng } : { lat: ride.origin_lat, lng: ride.origin_lng };
+              return (
+                <div className="row nav">
+                  <a className="sm" target="_blank" rel="noreferrer" href={wazeUrl(target)}>🧭 Waze</a>
+                  <a className="sm" target="_blank" rel="noreferrer" href={mapsUrl(target)}>🗺 Google Maps</a>
+                </div>
+              );
+            })()}
             <SafetyBar token={token} rideId={ride.id} socket={socket} getPos={() => pos} />
             {ride.status !== 'started' && (
               <button className="danger" onClick={() => window.confirm('¿Cancelar este viaje?') && socket.emit('ride:driver_cancel', { rideId: ride.id })}>

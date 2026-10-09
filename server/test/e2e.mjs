@@ -148,17 +148,45 @@ try {
   check('muestra distancia, tiempo y precio sugerido', await see(pass, 'sugerido', 20000));
   check('muestra el botón para pedir', await see(pass, 'Pedir Jalón por'));
   await shot(pass, '1-pasajero-ruta');
+  const basePrice = Number(await pass.$eval('.price input', (el) => el.value));
   await click(pass, 'Pedir Jalón por');
+  // El pasajero sube su oferta mientras nadie acepta: el conductor ve el precio nuevo
+  await click(pass, '+ L5');
+  check('al subir el precio, el conductor ve la solicitud con el precio nuevo', await see(driver, `Aceptar L ${basePrice + 5}`));
 
   check('conductor recibe la solicitud con el destino', await see(driver, 'Destino: Mall Multiplaza'));
   await shot(driver, '2-conductor-solicitud');
   await click(driver, 'Aceptar L');
   check('pasajero recibe la oferta con datos del conductor', await see(pass, 'Toyota Corolla blanco'));
+  check('la oferta muestra cuánto tiempo vale (cuenta regresiva)', await see(pass, 'vence en'));
   await shot(pass, '3-pasajero-oferta');
   await pass.evaluate(() => [...document.querySelectorAll('.offer button.primary')][0].click());
 
   check('conductor ve el viaje aceptado', await see(driver, 'Ve a recoger al pasajero'));
   check('pasajero ve que el conductor va en camino', await see(pass, 'Tu conductor va en camino'));
+  check('el pasajero ve en cuántos minutos llega su conductor', await see(pass, 'Tu conductor llega en', 25000));
+  check('el conductor ve cuánto falta para llegar al pasajero', await see(driver, 'Al pasajero', 25000));
+  const links = await driver.$$eval('.nav a', (as) => as.map((a) => a.href));
+  check('el conductor tiene botones para navegar con Waze y Google Maps hacia el pasajero', links.length === 2 && links[0].startsWith('https://waze.com/ul?ll=14.07') && links[1].startsWith('https://www.google.com/maps/dir/?api=1&destination=14.07'), `(${links.map((l) => l.slice(0, 40)).join(' | ')})`);
+  await shot(driver, '0m-conductor-eta');
+
+  // ---- Chat entre pasajero y conductor (sin teléfonos) ----
+  check('no hay teléfonos ni botones de llamada a la vista', (await pass.$$('a[href^="tel:"]')).length === 0 && (await driver.$$('a[href^="tel:"]')).length === 0);
+  await click(pass, 'Chat');
+  await pass.type('input[placeholder="Escribe un mensaje"]', 'Hola, ya salgo');
+  await click(pass, 'Enviar');
+  check('el conductor ve el aviso de mensaje nuevo en el botón del chat', await see(driver, 'Chat (1)'));
+  await click(driver, 'Chat (1)');
+  check('el conductor lee el mensaje', await see(driver, 'Hola, ya salgo'));
+  await click(driver, 'Estoy afuera'); // respuesta rápida
+  check('el pasajero recibe la respuesta rápida del conductor', await see(pass, 'Estoy afuera'));
+  await pass.type('input[placeholder="Escribe un mensaje"]', '<b>negrita</b><img src=x onerror=alert(1)>');
+  await click(pass, 'Enviar');
+  check('un mensaje con código se ve como texto, no se ejecuta', await see(driver, '<b>negrita</b>'));
+  check('y no creó elementos de verdad en la pantalla', (await driver.$$('.bubble b, .bubble img')).length === 0);
+  await shot(driver, '0k-chat-conductor');
+  await click(driver, 'Chat');
+  await click(pass, 'Chat');
 
   // Compartir viaje: se genera el enlace y se abre la página pública
   await click(pass, 'Compartir viaje');
@@ -198,6 +226,10 @@ try {
 
   // Admin: ve la emergencia (la página ya estaba abierta y se actualiza sola)
   check('admin ve la alerta de emergencia', await see(admin, 'EMERGENCIA', 20000));
+  await click(admin, 'Ver chat del viaje');
+  check('el personal lee el chat del viaje con la emergencia', await see(admin, 'Hola, ya salgo'));
+  await shot(admin, '0l-admin-chat');
+  await click(admin, 'Cerrar ✕');
   await shot(admin, '8-admin');
 
   // ---- Personal: el superadmin crea a alguien de soporte y esa persona debe cambiar la contraseña temporal ----

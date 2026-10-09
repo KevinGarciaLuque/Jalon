@@ -193,3 +193,50 @@ export function PushToggle({ token, why }) {
     </div>
   );
 }
+
+// Ventana del chat del viaje. React escapa el texto: aunque alguien escriba código, se ve como texto y no se ejecuta.
+export function Chat({ chat, meId, quick = [] }) {
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const end = useRef(null);
+  useEffect(() => { end.current?.scrollIntoView({ block: 'end' }); }, [chat.messages.length, chat.open]);
+
+  async function send(t) {
+    const body = (t ?? text).trim();
+    if (!body || busy) return;
+    setBusy(true);
+    const r = await chat.send(body);
+    if (r?.ok && t === undefined) setText('');
+    setBusy(false);
+  }
+  const time = (d) => new Date(d).toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit' });
+
+  return (
+    <div className="chat" data-testid="chat">
+      <div className="chat-list">
+        {chat.messages.length === 0 && <p className="muted small center">Escribe para coordinar la recogida. Los teléfonos no se comparten.</p>}
+        {chat.messages.map((m) => (
+          <div key={m.id} className={`bubble ${m.senderId === meId ? 'mine' : 'theirs'}`}>
+            <span>{m.text}</span>
+            <small>{time(m.at)}{m.senderId === meId && (m.read ? ' ✓✓' : ' ✓')}</small>
+          </div>
+        ))}
+        <div ref={end} />
+      </div>
+      {chat.closed ? (
+        <p className="muted small center">El chat de este viaje ya está cerrado.</p>
+      ) : (
+        <>
+          <div className="quick">
+            {quick.map((q) => <button key={q} type="button" className="sm" disabled={busy} onClick={() => send(q)}>{q}</button>)}
+          </div>
+          <form className="chat-input" onSubmit={(e) => { e.preventDefault(); send(); }}>
+            <input value={text} maxLength={500} placeholder="Escribe un mensaje" onChange={(e) => setText(e.target.value)} />
+            <button className="primary sm" disabled={busy || !text.trim()}>Enviar</button>
+          </form>
+        </>
+      )}
+      {chat.error && <div className="error small">{chat.error}</div>}
+    </div>
+  );
+}

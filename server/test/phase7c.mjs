@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import jwt from 'jsonwebtoken';
 import { pool } from '../src/db.js';
+import { TERMS_VERSION } from '../src/legal.js';
 import { API, http, registerUser, uploadDocs, createTestSuperadmin } from './helpers.mjs';
 
 const rnd = String(Math.floor(Math.random() * 1e6)).padStart(6, '0');
@@ -35,7 +36,7 @@ const res = await fetch(`${API}/api/me/export`, { headers: { Authorization: `Bea
 const raw = await res.text();
 const exp = JSON.parse(raw);
 check('se descarga como archivo JSON', res.status === 200 && /attachment/.test(res.headers.get('content-disposition') || ''));
-check('incluye mi cuenta con la aceptación de los términos', exp.cuenta.telefono === P.user.phone && exp.cuenta.nombre === 'P7C Pasajero' && !!exp.cuenta.aceptoTerminosEl && exp.cuenta.versionTerminos === '1.1');
+check('incluye mi cuenta con la aceptación de los términos', exp.cuenta.telefono === P.user.phone && exp.cuenta.nombre === 'P7C Pasajero' && !!exp.cuenta.aceptoTerminosEl && exp.cuenta.versionTerminos === TERMS_VERSION);
 check('incluye mis viajes con direcciones y la otra persona', exp.viajes.length === 1 && exp.viajes[0].origin_text === 'Mi casa en la Kennedy' && exp.viajes[0].mi_rol === 'pasajero' && exp.viajes[0].otra_persona === 'P7C Conductor');
 check('incluye las calificaciones que di y las que recibí', exp.calificacionesQueDi[0].comment.includes('Excelente') && exp.calificacionesQueRecibi[0].comment === 'Pasajero puntual');
 check('incluye mis alertas de emergencia', exp.alertasDeEmergencia.length === 1);
