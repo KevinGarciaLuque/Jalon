@@ -32,6 +32,8 @@ export default function Admin({ token, onGate }) {
   const [rides, setRides] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [audit, setAudit] = useState([]);
+  const [reports, setReports] = useState([]);
+  const [repStatus, setRepStatus] = useState('open');
   const [error, setError] = useState('');
   const [detailId, setDetailId] = useState(null);
   const [docsUser, setDocsUser] = useState(null);
@@ -64,13 +66,13 @@ export default function Admin({ token, onGate }) {
 
   const load = useCallback(async () => {
     try {
-      const [s, d, r, a] = await Promise.all([call('stats'), call('users'), call('rides'), call('alerts')]);
-      setStats(s); setDirectory(d); setRides(r); setAlerts(a); setError('');
+      const [s, d, r, a, rp] = await Promise.all([call('stats'), call('users'), call('rides'), call('alerts'), call(`reports?status=${repStatus}`)]);
+      setStats(s); setDirectory(d); setRides(r); setAlerts(a); setReports(rp); setError('');
       if (d.perms.includes('audit')) setAudit(await call('audit'));
     } catch (e) {
       setError(e.message);
     }
-  }, [call]);
+  }, [call, repStatus]);
 
   // Emergencia nueva mientras el panel está abierto: sonido, notificación del sistema y título parpadeando
   useEffect(() => {
@@ -121,6 +123,17 @@ export default function Admin({ token, onGate }) {
     }
   }
 
+  async function resolveReport(rp) {
+    const resolution = window.prompt(`¿Cómo se resolvió? La persona (${rp.reporter}) verá esta respuesta:`, '');
+    if (!resolution) return;
+    try {
+      await call(`reports/${rp.id}/resolve`, { resolution });
+      await load();
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
   async function createStaff(e) {
     e.preventDefault();
     try {
@@ -151,6 +164,7 @@ export default function Admin({ token, onGate }) {
   const tabs = [
     ['rides', 'Viajes'],
     ['users', 'Usuarios'],
+    ['reports', `Reportes${stats?.openReports ? ` (${stats.openReports})` : ''}`],
     ...(can('staff.manage') ? [['staff', 'Personal']] : []),
     ...(can('audit') ? [['audit', 'Registro']] : []),
   ];
@@ -273,6 +287,34 @@ export default function Admin({ token, onGate }) {
               <Stars rating={u.rating} />
               <span className={`pill ${u.status}`}>{u.deleted_at ? 'Eliminada' : STATUS_LABEL[u.status]}</span>
             </button>
+          ))}
+        </>
+      )}
+
+      {tab === 'reports' && (
+        <>
+          <div className="chips">
+            <button className={repStatus === 'open' ? 'on' : ''} onClick={() => setRepStatus('open')}>Abiertos</button>
+            <button className={repStatus === 'resolved' ? 'on' : ''} onClick={() => setRepStatus('resolved')}>Resueltos</button>
+          </div>
+          {reports.length === 0 && <p className="muted">No hay reportes {repStatus === 'open' ? 'abiertos' : 'resueltos'}.</p>}
+          {reports.map((rp) => (
+            <div className="req" key={rp.id}>
+              <div className="row between">
+                <b>{rp.type_label} · viaje #{rp.ride_id}</b>
+                <span className="muted small">{when(rp.created_at)}</span>
+              </div>
+              <div>{rp.text}</div>
+              <div className="muted small">
+                Reportó: <b>{rp.reporter}</b> ({rp.reporter_role === 'driver' ? 'conductor' : 'pasajero'}) <a href={`tel:${rp.reporter_phone}`}>{rp.reporter_phone}</a>
+                {rp.other && <> · La otra persona: {rp.other} <a href={`tel:${rp.other_phone}`}>{rp.other_phone}</a></>}
+              </div>
+              {rp.resolution && <div className="hint ok">Respuesta: {rp.resolution}</div>}
+              <div className="row wrap">
+                <button className="sm" onClick={() => openChat(rp.ride_id)}>💬 Ver chat del viaje</button>
+                {rp.status === 'open' && <button className="primary sm" onClick={() => resolveReport(rp)}>Marcar como resuelto</button>}
+              </div>
+            </div>
           ))}
         </>
       )}

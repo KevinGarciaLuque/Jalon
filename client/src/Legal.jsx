@@ -1,5 +1,5 @@
 // Términos de uso y política de privacidad. Si cambias el contenido, sube TERMS_VERSION en server/src/index.js.
-const VERSION = '1.2';
+const VERSION = '1.3';
 const UPDATED = '10 de octubre de 2026';
 const CONTACT = import.meta.env.VITE_CONTACT_EMAIL; // se define al compilar (variable en Railway)
 
@@ -108,6 +108,12 @@ function Privacy() {
           <b>Chat del viaje:</b> los mensajes que te escribes con el conductor o el pasajero. Los teléfonos no se comparten entre ustedes: se coordina por el
           chat. Los mensajes se borran automáticamente a los 90 días, y el personal solo los lee si el viaje tiene una emergencia (queda anotado quién los leyó).
         </li>
+        <li><b>Lugares guardados:</b> los destinos que decidas guardar (casa, trabajo…), con su nombre y ubicación. Puedes borrarlos cuando quieras.</li>
+        <li>
+          <b>Contactos de confianza:</b> el nombre y teléfono de hasta 3 personas que tú agregues. Cuando empieza un viaje les enviamos un SMS con el enlace para
+          seguirlo. Solo los agregas tú, y puedes quitarlos en cualquier momento.
+        </li>
+        <li><b>Reportes:</b> lo que nos cuentes sobre un viaje (un objeto olvidado, un cobro, un problema). Lo ve el personal de Jalón para atenderte.</li>
         <li><b>Notificaciones:</b> si las activas, guardamos un identificador de tu dispositivo para enviártelas (puedes desactivarlas en Cuenta).</li>
         <li><b>Técnicos:</b> tu dirección IP y registros del servidor, para seguridad y para limitar intentos de acceso abusivos.</li>
         <li>La sesión se guarda en tu navegador (almacenamiento local). No usamos cookies de publicidad ni rastreadores de terceros.</li>

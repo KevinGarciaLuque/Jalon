@@ -393,6 +393,9 @@ app.get('/api/me/export', authUser, async (req, res) => {
   const [alerts] = await pool.query('SELECT ride_id, lat, lng, status, created_at FROM alerts WHERE user_id = ? ORDER BY id', [id]);
   const [docs] = await pool.query('SELECT type, status, note, created_at FROM documents WHERE user_id = ?', [id]);
   const [msgs] = await pool.query('SELECT ride_id, text, created_at FROM messages WHERE sender_id = ? ORDER BY id', [id]);
+  const [favs] = await pool.query('SELECT label, text, lat, lng FROM favorite_places WHERE user_id = ? ORDER BY id', [id]);
+  const [contacts] = await pool.query('SELECT name, phone FROM trusted_contacts WHERE user_id = ? ORDER BY id', [id]);
+  const [reps] = await pool.query('SELECT ride_id, type, text, status, resolution, created_at FROM reports WHERE user_id = ? ORDER BY id', [id]);
   res.set('Content-Disposition', 'attachment; filename="mis-datos-jalon.json"');
   res.json({
     generadoEl: new Date().toISOString(),
@@ -400,6 +403,9 @@ app.get('/api/me/export', authUser, async (req, res) => {
     viajes: rides, calificacionesQueDi: given, calificacionesQueRecibi: received, alertasDeEmergencia: alerts,
     documentos: docs.map((d) => ({ tipo: d.type, estado: d.status, nota: d.note, subidoEl: d.created_at })),
     mensajesQueEnvie: msgs.map((m) => ({ viaje: m.ride_id, texto: m.text, enviadoEl: m.created_at })),
+    lugaresFavoritos: favs,
+    contactosDeConfianza: contacts,
+    reportes: reps.map((r) => ({ viaje: r.ride_id, tipo: r.type, texto: r.text, estado: r.status, respuesta: r.resolution, creadoEl: r.created_at })),
   });
 });
 
@@ -413,6 +419,117 @@ app.post('/api/me/delete', authUser, loginLimiter, async (req, res) => {
   await anonymizeUser(u);
   await audit(u, 'user.self_delete', { target: u.id, details: { role: u.role } });
   res.json({ ok: true });
+});
+
+// ---------- Lugares favoritos (casa, trabajo...) ----------
+app.get('/api/favorites', authUser, async (req, res) => {
+  const [rows] = await pool.query('SELECT id, label, text, lat, lng FROM favorite_places WHERE user_id = ? ORDER BY id', [req.user.id]);
+  res.json(rows);
+});
+
+app.post('/api/favorites', authUser, async (req, res) => {
+  const label = clean(req.body?.label)?.slice(0, 40);
+  const text = clean(req.body?.text);
+  const { lat, lng } = req.body || {};
+  if (!label || !text || !isPoint({ lat, lng })) return res.status(400).json({ error: 'Falta el nombre o el lugar' });
+  const [[mine]] = await pool.query('SELECT COUNT(*) AS n, SUM(label = ?) AS same FROM favorite_places WHERE user_id = ?', [label, req.user.id]);
+  if (mine.n >= 10 && !Number(mine.same)) return res.status(409).json({ error: 'Puedes guardar hasta 10 lugares. Borra alguno para agregar otro.' });
+  // Con el mismo nombre se actualiza (p. ej. cambiar "Casa" de lugar)
+  await pool.query(
+    'INSERT INTO favorite_places (user_id, label, text, lat, lng) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE text = VALUES(text), lat = VALUES(lat), lng = VALUES(lng)',
+    [req.user.id, label, text, lat, lng]
+  );
+  res.json({ ok: true });
+});
+
+app.delete('/api/favorites/:id', authUser, async (req, res) => {
+  await pool.query('DELETE FROM favorite_places WHERE id = ? AND user_id = ?', [Number(req.params.id), req.user.id]);
+  res.json({ ok: true });
+});
+
+// ---------- Contactos de confianza (reciben el enlace del viaje al empezar) ----------
+const passengerOnly = (req, res, next) => (req.user.role === 'passenger' ? next() : res.status(403).json({ error: 'Solo para pasajeros' }));
+
+app.get('/api/contacts', authUser, passengerOnly, async (req, res) => {
+  const [rows] = await pool.query('SELECT id, name, phone FROM trusted_contacts WHERE user_id = ? ORDER BY id', [req.user.id]);
+  res.json(rows);
+});
+
+app.post('/api/contacts', authUser, passengerOnly, async (req, res) => {
+  const name = clean(req.body?.name)?.slice(0, 60);
+  const phone = normalizePhone(req.body?.phone);
+  if (!name || !phone) return res.status(400).json({ error: 'Escribe un nombre y un teléfono válido (8 dígitos)' });
+  if (phone === req.user.phone) return res.status(400).json({ error: 'Ese es tu propio teléfono' });
+  const [[mine]] = await pool.query('SELECT COUNT(*) AS n FROM trusted_contacts WHERE user_id = ?', [req.user.id]);
+  if (mine.n >= 3) return res.status(409).json({ error: 'Puedes tener hasta 3 contactos de confianza' });
+  try {
+    const [r] = await pool.query('INSERT INTO trusted_contacts (user_id, name, phone) VALUES (?,?,?)', [req.user.id, name, phone]);
+    res.json({ ok: true, id: r.insertId });
+  } catch (e) {
+    if (e.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'Ese contacto ya está en tu lista' });
+    throw e;
+  }
+});
+
+app.delete('/api/contacts/:id', authUser, passengerOnly, async (req, res) => {
+  await pool.query('DELETE FROM trusted_contacts WHERE id = ? AND user_id = ?', [Number(req.params.id), req.user.id]);
+  res.json({ ok: true });
+});
+
+// Al empezar el viaje, cada contacto de confianza recibe un SMS con el enlace para seguirlo en vivo
+async function shareWithContacts(ride) {
+  const [contacts] = await pool.query('SELECT name, phone FROM trusted_contacts WHERE user_id = ?', [ride.passenger_id]);
+  if (!contacts.length) return;
+  let token = ride.share_token;
+  if (!token) {
+    token = crypto.randomBytes(16).toString('base64url');
+    await pool.query('UPDATE rides SET share_token = ? WHERE id = ?', [token, ride.id]);
+  }
+  const [[p]] = await pool.query('SELECT name FROM users WHERE id = ?', [ride.passenger_id]);
+  const link = `${PUBLIC_URL || 'http://localhost:5173'}/t/${token}`;
+  // Sin tildes ni emojis para que sea un solo SMS barato
+  const text = `Jalon: ${p.name.split(' ')[0].normalize('NFD').replace(/[\u0300-\u036f]/g, '')} inicio un viaje y te eligio como contacto de confianza. Sigue su viaje en vivo: ${link}`;
+  const results = await Promise.allSettled(contacts.map((c) => sendSms(toE164(c.phone), text)));
+  results.forEach((r, i) => r.status === 'rejected' && console.error(`Contacto de confianza: no se pudo avisar a ${contacts[i].phone}:`, r.reason?.message));
+}
+
+// ---------- Recibo del viaje ----------
+app.get('/api/rides/:id/receipt', authUser, async (req, res) => {
+  const ride = await getRide(Number(req.params.id));
+  if (!ride || ![ride.passenger_id, ride.driver_id].includes(req.user.id)) return res.status(404).json({ error: 'Viaje no encontrado' });
+  if (ride.status !== 'completed') return res.status(409).json({ error: 'Solo los viajes completados tienen recibo' });
+  const [[p]] = await pool.query('SELECT name FROM users WHERE id = ?', [ride.passenger_id]);
+  const [[d]] = await pool.query('SELECT name, vehicle, plate FROM users WHERE id = ?', [ride.driver_id]);
+  res.json({
+    number: `JAL-${String(ride.id).padStart(6, '0')}`,
+    date: ride.created_at, endedAt: ride.updated_at,
+    passenger: p.name, driver: d.name, vehicle: d.vehicle, plate: d.plate,
+    origin: ride.origin_text, dest: ride.dest_text,
+    distanceKm: ride.distance_km, durationMin: ride.duration_min,
+    price: Number(ride.final_price), payment: 'Efectivo',
+  });
+});
+
+// ---------- Reportes: un problema con un viaje, un cobro, un objeto olvidado ----------
+const REPORT_TYPES = { lost_item: 'Objeto olvidado', overcharge: 'Cobro indebido', behavior: 'Trato o conducta', safety: 'Seguridad', other: 'Otro problema' };
+
+app.post('/api/rides/:id/report', authUser, async (req, res) => {
+  const ride = await getRide(Number(req.params.id));
+  if (!ride || ![ride.passenger_id, ride.driver_id].includes(req.user.id) || !ride.driver_id) return res.status(404).json({ error: 'Viaje no encontrado' });
+  const type = req.body?.type;
+  const text = typeof req.body?.text === 'string' ? req.body.text.trim().slice(0, 1000) : '';
+  if (!REPORT_TYPES[type]) return res.status(400).json({ error: 'Elige el tipo de problema' });
+  if (text.length < 5) return res.status(400).json({ error: 'Cuéntanos qué pasó (al menos unas palabras)' });
+  const [[recent]] = await pool.query('SELECT COUNT(*) AS n FROM reports WHERE user_id = ? AND created_at > NOW() - INTERVAL 24 HOUR', [req.user.id]);
+  if (recent.n >= 5) return res.status(429).json({ error: 'Ya enviaste varios reportes hoy. El equipo los está revisando.' });
+  const [r] = await pool.query('INSERT INTO reports (ride_id, user_id, type, text) VALUES (?,?,?,?)', [ride.id, req.user.id, type, text]);
+  pushStaff({ title: 'Nuevo reporte', body: `${REPORT_TYPES[type]} · viaje #${ride.id}`, tag: `report-${r.insertId}`, url: '/' }, 'alerts');
+  res.json({ ok: true, id: r.insertId });
+});
+
+app.get('/api/reports/mine', authUser, async (req, res) => {
+  const [rows] = await pool.query('SELECT id, ride_id, type, text, status, resolution, created_at FROM reports WHERE user_id = ? ORDER BY id DESC LIMIT 50', [req.user.id]);
+  res.json(rows);
 });
 
 // ---------- Suscripción a notificaciones ----------
@@ -706,6 +823,7 @@ app.get('/api/admin/stats', staffOnly('view'), async (_req, res) => {
     pendingDrivers: Number(u.pending || 0),
     blockedUsers: Number(u.blocked || 0),
     openAlerts: (await pool.query("SELECT COUNT(*) AS n FROM alerts WHERE status = 'open'"))[0][0].n,
+    openReports: (await pool.query("SELECT COUNT(*) AS n FROM reports WHERE status = 'open'"))[0][0].n,
     sosPhones: SOS_PHONES.length, // cuántos teléfonos reciben las emergencias por SMS (0 = nadie)
     driversOnline: [...drivers.values()].length,
     driversFree: [...drivers.values()].filter((d) => d.available && !d.disconnected).length,
@@ -827,6 +945,9 @@ async function anonymizeUser(t) {
   await pool.query('DELETE FROM otp_codes WHERE phone = ?', [t.phone]);
   await pool.query('UPDATE ratings SET comment = NULL WHERE rater_id = ?', [t.id]);
   await pool.query("UPDATE messages SET text = '[mensaje eliminado]' WHERE sender_id = ?", [t.id]);
+  await pool.query('DELETE FROM favorite_places WHERE user_id = ?', [t.id]);
+  await pool.query('DELETE FROM trusted_contacts WHERE user_id = ?', [t.id]);
+  await pool.query("UPDATE reports SET text = '[reporte eliminado]' WHERE user_id = ?", [t.id]);
   await pool.query('UPDATE rides SET origin_text = NULL, dest_text = NULL, share_token = NULL WHERE passenger_id = ? OR driver_id = ?', [t.id, t.id]);
   await pool.query(
     `UPDATE users SET name = 'Cuenta eliminada', phone = ?, password_hash = ?, vehicle = NULL, plate = NULL, status = 'blocked',
@@ -951,11 +1072,37 @@ app.get('/api/admin/rides/:id/chat', staffOnly('alerts'), async (req, res) => {
   const id = Number(req.params.id);
   const [[ride]] = await pool.query('SELECT id, passenger_id, driver_id FROM rides WHERE id = ?', [id]);
   if (!ride) return res.status(404).json({ error: 'Viaje no encontrado' });
-  const [[has]] = await pool.query('SELECT COUNT(*) AS n FROM alerts WHERE ride_id = ?', [id]);
-  if (!has.n) return res.status(403).json({ error: 'El chat solo se puede ver en viajes con una emergencia' });
+  const [[has]] = await pool.query('SELECT (SELECT COUNT(*) FROM alerts WHERE ride_id = ?) + (SELECT COUNT(*) FROM reports WHERE ride_id = ?) AS n', [id, id]);
+  if (!has.n) return res.status(403).json({ error: 'El chat solo se puede ver en viajes con una emergencia o un reporte' });
   await auditOnce(req.staff, 'chat.view', ride.passenger_id, 10, { ride: id });
   const [rows] = await pool.query('SELECT m.id, m.sender_id AS senderId, u.name AS sender, m.text, m.created_at AS at FROM messages m JOIN users u ON u.id = m.sender_id WHERE m.ride_id = ? ORDER BY m.id', [id]);
   res.json({ passengerId: ride.passenger_id, driverId: ride.driver_id, messages: rows });
+});
+
+// Reportes de los usuarios, con los datos de las dos personas del viaje para poder contactarlas
+app.get('/api/admin/reports', staffOnly('alerts'), async (req, res) => {
+  const status = req.query.status === 'resolved' ? 'resolved' : 'open';
+  const [rows] = await pool.query(
+    `SELECT rp.id, rp.ride_id, rp.type, rp.text, rp.status, rp.resolution, rp.created_at, rp.resolved_at,
+            u.id AS reporter_id, u.name AS reporter, u.phone AS reporter_phone, u.role AS reporter_role,
+            o.id AS other_id, o.name AS other, o.phone AS other_phone, o.role AS other_role
+     FROM reports rp JOIN rides r ON r.id = rp.ride_id JOIN users u ON u.id = rp.user_id
+     LEFT JOIN users o ON o.id = IF(rp.user_id = r.passenger_id, r.driver_id, r.passenger_id)
+     WHERE rp.status = ? ORDER BY rp.id DESC LIMIT 200`, [status]
+  );
+  res.json(rows.map((r) => ({ ...r, type_label: REPORT_TYPES[r.type] })));
+});
+
+app.post('/api/admin/reports/:id/resolve', staffOnly('alerts'), async (req, res) => {
+  const resolution = typeof req.body?.resolution === 'string' ? req.body.resolution.trim().slice(0, 500) : '';
+  if (resolution.length < 3) return res.status(400).json({ error: 'Escribe cómo se resolvió (la persona lo verá)' });
+  const [[rep]] = await pool.query('SELECT id, user_id, status FROM reports WHERE id = ?', [Number(req.params.id)]);
+  if (!rep) return res.status(404).json({ error: 'Reporte no encontrado' });
+  if (rep.status === 'resolved') return res.status(409).json({ error: 'Ese reporte ya estaba resuelto' });
+  await pool.query("UPDATE reports SET status = 'resolved', resolution = ?, resolved_by = ?, resolved_at = NOW() WHERE id = ?", [resolution, req.staff.id, rep.id]);
+  await audit(req.staff, 'report.resolve', { target: rep.user_id, details: { report: rep.id } });
+  push(rep.user_id, { title: 'Tu reporte fue atendido', body: resolution.length > 100 ? `${resolution.slice(0, 97)}…` : resolution, tag: `report-${rep.id}`, url: '/' }, { always: true });
+  res.json({ ok: true });
 });
 
 // Alertas de emergencia (botón SOS) con los datos de quienes viajan
@@ -1226,6 +1373,7 @@ io.on('connection', async (socket) => {
       if (status === 'completed') releaseDriver(user.id);
       const view = await rideView(await getRide(rideId));
       io.to(room(ride.passenger_id)).to(room(user.id)).emit('ride:state', view);
+      if (status === 'started') shareWithContacts(ride).catch(reportError);
       if (status === 'arrived') push(ride.passenger_id, { title: 'Tu conductor llegó', body: `${user.name} te espera · ${user.vehicle || ''} ${user.plate || ''}`.trim(), tag: `ride-${rideId}`, url: '/' });
     });
   }

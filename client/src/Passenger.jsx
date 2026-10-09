@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, useMap, useMapEvents } from 'react-leaflet';
-import { icons, useGeo, apiGet, lempiras, minutes, useChat, useNow, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
+import { icons, useGeo, apiGet, apiPost, lempiras, minutes, useChat, useNow, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
+import ReportForm from './ReportForm.jsx';
 import { AddressSearch, Chat, FitTo, Rate, SafetyBar, Stars } from './components.jsx';
 
 function Recenter({ pos }) {
@@ -46,6 +47,8 @@ export default function Passenger({ socket, token, userId }) {
   const [ride, setRide] = useState(null);
   const [offers, setOffers] = useState([]);
   const [eta, setEta] = useState(null); // tiempo estimado de llegada del conductor
+  const [favs, setFavs] = useState([]); // lugares guardados
+  const [reporting, setReporting] = useState(false);
   const now = useNow();
   const [driverPos, setDriverPos] = useState(null);
   const [error, setError] = useState('');
@@ -56,6 +59,9 @@ export default function Passenger({ socket, token, userId }) {
   // Se redondea (~100 m) para no recalcular la ruta por pequeños saltos del GPS
   const fromKey = from && `${from.lat.toFixed(3)},${from.lng.toFixed(3)}`;
   const destKey = dest && `${dest.lat.toFixed(5)},${dest.lng.toFixed(5)}`;
+
+  const loadFavs = () => apiGet('favorites', token).then(setFavs).catch(() => {});
+  useEffect(() => { loadFavs(); }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     socket.on('drivers:nearby', setDrivers);
@@ -106,6 +112,19 @@ export default function Passenger({ socket, token, userId }) {
     apiGet(`reverse?lat=${p.lat}&lng=${p.lng}`, token)
       .then(({ text }) => text && setDest((cur) => (cur && cur.lat === p.lat && cur.lng === p.lng ? { ...cur, text } : cur)))
       .catch(() => {});
+  }
+
+  // Guarda el destino elegido con un nombre (Casa, Trabajo…) para tenerlo a un toque la próxima vez
+  async function saveFav() {
+    const suggestion = !favs.some((f) => f.label === 'Casa') ? 'Casa' : !favs.some((f) => f.label === 'Trabajo') ? 'Trabajo' : '';
+    const label = window.prompt('¿Cómo quieres llamar a este lugar?', suggestion);
+    if (!label?.trim()) return;
+    try {
+      await apiPost('favorites', token, { label, text: dest.text, lat: dest.lat, lng: dest.lng });
+      loadFavs();
+    } catch (e) {
+      setError(e.message);
+    }
   }
 
   function request() {
@@ -174,7 +193,15 @@ export default function Passenger({ socket, token, userId }) {
 
             <AddressSearch icon="🟢" token={token} near={pos} placeholder="¿Dónde te recogemos?" value={origin ? origin.text : 'Mi ubicación'} onPick={setOrigin} />
             {origin && <button className="link left" onClick={() => setOrigin(null)}>📍 Usar mi ubicación</button>}
+            {favs.length > 0 && !dest && (
+              <div className="quick">
+                {favs.map((f) => <button key={f.id} className="sm" onClick={() => pickDest({ lat: f.lat, lng: f.lng, text: f.text })}>⭐ {f.label}</button>)}
+              </div>
+            )}
             <AddressSearch icon="🏁" token={token} near={from} placeholder="¿A dónde vas? (o toca el mapa)" value={dest?.text || ''} onPick={pickDest} />
+            {dest && !favs.some((f) => Math.abs(f.lat - dest.lat) < 1e-4 && Math.abs(f.lng - dest.lng) < 1e-4) && (
+              <button className="link left" onClick={saveFav}>⭐ Guardar este lugar</button>
+            )}
 
             {dest && !preview && !previewError && <div className="pulse">Calculando ruta…</div>}
             {previewError && <div className="error">{previewError}</div>}
@@ -279,7 +306,9 @@ export default function Passenger({ socket, token, userId }) {
                 {chat.open && <Chat chat={chat} meId={userId} quick={['Creo que dejé algo en tu carro']} />}
               </>
             )}
+            {ride.driver && <button onClick={() => setReporting(true)}>⚠ Reportar un problema con este viaje</button>}
             <button className="primary" onClick={newTrip}>Nuevo viaje</button>
+            {reporting && <ReportForm rideId={ride.id} token={token} onClose={() => setReporting(false)} />}
           </>
         )}
       </div>

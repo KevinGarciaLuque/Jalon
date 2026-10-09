@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
 import { icons, useGeo, distanceKm, lempiras, minutes, useChat, useNow, wazeUrl, mapsUrl, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
 import { Chat, FitTo, PushToggle, Rate, SafetyBar, Stars } from './components.jsx';
+import ReportForm from './ReportForm.jsx';
 import DriverDocs from './DriverDocs.jsx';
 
 function Recenter({ pos }) {
@@ -36,6 +37,7 @@ export default function Driver({ socket, token, status, userId }) {
   const [counter, setCounter] = useState({}); // rideId -> contraoferta
   const [ride, setRide] = useState(null);
   const chat = useChat(socket, ride, userId);
+  const [reporting, setReporting] = useState(false);
   const [notApproved, setNotApproved] = useState(false);
   const posRef = useRef(pos);
   posRef.current = pos;
@@ -128,6 +130,8 @@ export default function Driver({ socket, token, status, userId }) {
             {ride?.status === 'completed' && ride.passenger && chat.chatable && !chat.closed && (
               <button onClick={chat.open ? chat.closeChat : chat.openChat}>💬 Chat con el pasajero{chat.unread ? ` (${chat.unread})` : ''}</button>
             )}
+            {ride?.status === 'completed' && <button onClick={() => setReporting(true)}>⚠ Reportar un problema con este viaje</button>}
+            {reporting && ride && <ReportForm rideId={ride.id} token={token} onClose={() => setReporting(false)} />}
             {ride?.status === 'completed' && chat.open && <Chat chat={chat} meId={userId} quick={['Encontré tu objeto, ¿dónde nos vemos?']} />}
             {ride?.status === 'completed' && ride.passenger && (
               <Rate token={token} rideId={ride.id} who={ride.passenger.name} />

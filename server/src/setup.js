@@ -249,5 +249,48 @@ await conn.query(`
 await conn.query("ALTER TABLE offers MODIFY status ENUM('pending','accepted','rejected','expired') NOT NULL DEFAULT 'pending'");
 await addColumn('offers', 'expires_at', 'TIMESTAMP NULL');
 
+// Fase 8D: lugares favoritos, contactos de confianza y reportes
+await conn.query(`
+  CREATE TABLE IF NOT EXISTS favorite_places (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    label VARCHAR(40) NOT NULL,
+    text VARCHAR(200) NOT NULL,
+    lat DOUBLE NOT NULL,
+    lng DOUBLE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY one_label (user_id, label),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )
+`);
+await conn.query(`
+  CREATE TABLE IF NOT EXISTS trusted_contacts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    name VARCHAR(60) NOT NULL,
+    phone VARCHAR(20) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY one_phone (user_id, phone),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )
+`);
+await conn.query(`
+  CREATE TABLE IF NOT EXISTS reports (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    ride_id INT NOT NULL,
+    user_id INT NOT NULL,
+    type ENUM('lost_item','overcharge','behavior','safety','other') NOT NULL,
+    text VARCHAR(1000) NOT NULL,
+    status ENUM('open','resolved') NOT NULL DEFAULT 'open',
+    resolution VARCHAR(500) NULL,
+    resolved_by INT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    resolved_at TIMESTAMP NULL,
+    KEY by_status (status),
+    FOREIGN KEY (ride_id) REFERENCES rides(id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )
+`);
+
 console.log(`Base de datos "${DB_NAME}" lista.`);
 await conn.end();

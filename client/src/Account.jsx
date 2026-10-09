@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { apiGet, apiPost, useInstall } from './lib.js';
 import { PushToggle } from './components.jsx';
+import { SavedPlaces, TrustedContacts } from './PersonalLists.jsx';
 
 const ROLE = { passenger: 'Pasajero', driver: 'Conductor', admin: 'Administrador', superadmin: 'Superadministrador', support: 'Soporte' };
 const STAFF = ['superadmin', 'admin', 'support'];
@@ -138,6 +139,13 @@ export default function Account({ user, token, onToken, onClose, onLogout, force
               <b>Notificaciones</b>
               <PushToggle token={token} why={isStaff ? 'Recibe en tu celular las emergencias y las solicitudes de conductores.' : user.role === 'driver' ? 'Entérate de viajes cercanos y de que te aceptaron, aunque tengas la app cerrada.' : 'Entérate de las ofertas y de la llegada de tu conductor, aunque tengas la app cerrada.'} />
             </div>
+
+            {user.role === 'passenger' && (
+              <>
+                <TrustedContacts token={token} />
+                <SavedPlaces token={token} />
+              </>
+            )}
 
             <div className="req">
               <b>Seguridad de tu sesión</b>

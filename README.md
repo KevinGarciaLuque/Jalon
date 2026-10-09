@@ -161,3 +161,12 @@ Llegan aunque la app esté cerrada (Android/Chrome, escritorio, y en iPhone **so
 ## Pruebas (cambio importante)
 
 `npm test` ahora crea y usa **su propia base de datos** (`<tu base>_test`, nueva en cada ejecución), así no se mezcla con tus datos de desarrollo ni con otro servidor que comparta la base. `ONLY=phase8c npm test` corre solo una suite.
+
+## Fase 8D: lugares, contactos, recibos y reportes
+
+- **Lugares favoritos:** al elegir un destino aparece «⭐ Guardar este lugar» (Casa, Trabajo…); la próxima vez salen como atajos arriba del buscador. Hasta 10; se gestionan en Cuenta.
+- **Contactos de confianza (pasajeros):** hasta 3 personas (nombre y teléfono) que reciben un SMS con el enlace para seguir el viaje en vivo en cuanto empieza. Se administran en Cuenta. El SMS sale sin tildes para que sea uno solo y barato; **necesita Twilio configurado** (sin él solo queda en el registro de desarrollo).
+- **Recibos:** en el Historial, cada viaje completado tiene «🧾 Recibo» con número (JAL-000123), fecha, personas, vehículo, recorrido, total y forma de pago; se puede imprimir o guardar como PDF. **No es una factura fiscal.**
+- **Reportes:** pasajeros y conductores pueden reportar un problema de un viaje (objeto olvidado, cobro indebido, trato, seguridad, otro) desde el Historial o al terminar. El personal los ve en la pestaña **Reportes** con los teléfonos de las dos personas, puede leer el chat de ese viaje, y al resolver escribe una respuesta que la persona ve en «Mis reportes» (y por notificación). Máximo 5 reportes por persona al día.
+- **Datos y privacidad:** todo se incluye al descargar tus datos y se borra o anonimiza al eliminar la cuenta. Política de privacidad v1.3.
+- **Pendiente (decisión tuya):** viajes programados y paradas múltiples, que requieren su propio diseño.

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { apiGet, lempiras } from './lib.js';
 import { Stars } from './components.jsx';
+import Receipt from './Receipt.jsx';
+import ReportForm, { REPORT_LABEL } from './ReportForm.jsx';
 
 const STATUS = {
   requested: 'Solicitado', accepted: 'Aceptado', arrived: 'Llegó', started: 'En curso',
@@ -12,10 +14,14 @@ const dateText = (d) => new Date(d).toLocaleString('es-HN', { dateStyle: 'medium
 export default function History({ token, role, onClose }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
+  const [receipt, setReceipt] = useState(null);
+  const [report, setReport] = useState(null);
+  const [reports, setReports] = useState([]);
 
   useEffect(() => {
     apiGet('rides/mine', token).then(setData).catch((e) => setError(e.message));
-  }, [token]);
+    apiGet('reports/mine', token).then(setReports).catch(() => {});
+  }, [token, report]);
 
   const other = role === 'driver' ? 'Pasajero' : 'Conductor';
   const total = data?.rides.filter((r) => r.status === 'completed').reduce((sum, r) => sum + Number(r.final_price || 0), 0) || 0;
@@ -54,11 +60,32 @@ export default function History({ token, role, onClose }) {
                     {r.their_stars ? ` · Te calificaron: ${'★'.repeat(r.their_stars)}` : ''}
                   </div>
                 )}
+                {['completed', 'cancelled'].includes(r.status) && r.other_name && (
+                  <div className="row wrap">
+                    {r.status === 'completed' && <button className="sm" onClick={() => setReceipt(r.id)}>🧾 Recibo</button>}
+                    <button className="sm" onClick={() => setReport(r.id)}>⚠ Reportar un problema</button>
+                  </div>
+                )}
               </div>
             ))}
+            {reports.length > 0 && (
+              <>
+                <b>Mis reportes</b>
+                {reports.map((x) => (
+                  <div className="req" key={x.id}>
+                    <div className="row between"><b>{REPORT_LABEL[x.type]}</b><span className={`pill ${x.status === 'open' ? 'pending' : 'active'}`}>{x.status === 'open' ? 'En revisión' : 'Atendido'}</span></div>
+                    <div className="muted small">Viaje #{x.ride_id} · {dateText(x.created_at)}</div>
+                    <div>{x.text}</div>
+                    {x.resolution && <div className="hint ok">Respuesta: {x.resolution}</div>}
+                  </div>
+                ))}
+              </>
+            )}
           </>
         )}
       </div>
+      {receipt && <Receipt rideId={receipt} token={token} onClose={() => setReceipt(null)} />}
+      {report && <ReportForm rideId={report} token={token} onClose={() => setReport(null)} />}
     </div>
   );
 }

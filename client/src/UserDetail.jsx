@@ -18,7 +18,8 @@ export const ACTION_LABEL = {
   'user.delete': 'Eliminó la cuenta',
   'doc.reject': 'Rechazó un documento',
   'doc.view': 'Abrió los documentos',
-  'chat.view': 'Leyó el chat de un viaje con emergencia',
+  'chat.view': 'Leyó el chat de un viaje con emergencia o reporte',
+  'report.resolve': 'Resolvió un reporte',
   'user.self_delete': 'Eliminó su propia cuenta',
   '2fa.enable': 'Activó la verificación en dos pasos',
   '2fa.reset': 'Restableció la verificación en dos pasos',
@@ -38,6 +39,7 @@ export function detailText(action, d) {
   if (action === 'user.edit') return (d.changed || []).map((k) => FIELD[k] || k).join(', ');
   if (action === 'doc.reject') return `${DOC[d.type] || d.type}${d.note ? `: ${d.note}` : ''}`;
   if (action === 'ride.cancel' || action === 'chat.view') return `viaje #${d.ride}`;
+  if (action === 'report.resolve') return `reporte #${d.report}`;
   if (action === 'alert.resolve') return `alerta #${d.alert}`;
   if (action === 'user.delete') return ROLE_LABEL[d.role] || '';
   return '';

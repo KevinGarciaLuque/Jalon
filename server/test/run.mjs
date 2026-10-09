@@ -51,7 +51,7 @@ if (!external) {
 }
 
 let failed = false;
-for (const t of (process.env.ONLY || 'sw-unit,flow,phase3,phase4,phase5b,phase6,phase7,phase7b,phase7c,phase8a,phase8b,phase8c,race,expiry').split(',')) {
+for (const t of (process.env.ONLY || 'sw-unit,flow,phase3,phase4,phase5b,phase6,phase7,phase7b,phase7c,phase8a,phase8b,phase8c,phase8d,race,expiry').split(',')) {
   const r = spawnSync(process.execPath, [`test/${t}.mjs`], { stdio: 'inherit', env });
   if (r.status !== 0) failed = true;
 }

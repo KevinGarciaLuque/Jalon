@@ -41,7 +41,7 @@ async function openAs(session, geo, name) {
   });
   page.on('pageerror', (e) => errors.push(`[${name}] ${e.message}`));
   page.on('console', (m) => m.type() === 'error' && !/favicon|ERR_/.test(m.text()) && errors.push(`[${name}] ${m.text()}`));
-  page.on('dialog', (d) => d.accept()); // confirmaciones de "¿Cancelar?" etc.
+  page.on('dialog', (d) => d.accept(page.promptText || '')); // confirmaciones y cuadros de texto; page.promptText = lo que se escribe
   await page.goto(CLIENT, { waitUntil: 'domcontentloaded' });
   if (session) {
     await page.evaluate((s) => localStorage.setItem('jalon', JSON.stringify(s)), session);
@@ -103,6 +103,10 @@ try {
   // ---- Cambiar la contraseña desde Mi cuenta ----
   await click(pass, 'Cuenta');
   check('se abre Mi cuenta', await see(pass, 'Mi cuenta'));
+  await pass.type('input[placeholder^="Nombre (ej."]', 'Mamá');
+  await pass.type('input[placeholder="Teléfono (8 dígitos)"]', `71${rnd.slice(0, 6)}`);
+  await click(pass, 'Agregar');
+  check('se agrega un contacto de confianza a quien llegará el enlace del viaje', await see(pass, `71${rnd.slice(0, 6)}`));
   check('Mi cuenta ofrece descargar los datos y eliminar la cuenta', (await see(pass, 'Descargar mis datos')) && (await see(pass, 'Eliminar mi cuenta')));
   check('y cerrar la sesión en los demás dispositivos', await see(pass, 'Cerrar sesión en los demás dispositivos'));
   await pass.type('input[placeholder="Contraseña actual"]', 'secreto1');
@@ -148,6 +152,10 @@ try {
   check('muestra distancia, tiempo y precio sugerido', await see(pass, 'sugerido', 20000));
   check('muestra el botón para pedir', await see(pass, 'Pedir Jalón por'));
   await shot(pass, '1-pasajero-ruta');
+  pass.promptText = 'Trabajo';
+  await click(pass, 'Guardar este lugar');
+  check('el destino queda guardado como "Trabajo"', await pass.waitForFunction(() => ![...document.querySelectorAll('button')].some((b) => b.textContent.includes('Guardar este lugar')), { timeout: 10000 }).then(() => true, () => false));
+  pass.promptText = '';
   const basePrice = Number(await pass.$eval('.price input', (el) => el.value));
   await click(pass, 'Pedir Jalón por');
   // El pasajero sube su oferta mientras nadie acepta: el conductor ve el precio nuevo
@@ -217,12 +225,27 @@ try {
   await click(pass, 'Enviar calificación');
   check('calificación enviada', await see(pass, '¡Gracias por tu calificación!'));
   check('conductor puede calificar al pasajero', await see(driver, '¿Cómo estuvo E2E Pasajero?'));
+  // El pasajero reporta un objeto olvidado
+  await click(pass, 'Reportar un problema con este viaje');
+  await pass.select('select[aria-label="Tipo de problema"]', 'lost_item');
+  await pass.type('textarea', 'Dejé mi celular negro en el asiento de atrás');
+  await click(pass, 'Enviar reporte');
+  check('el pasajero envía el reporte', await see(pass, 'Recibimos tu reporte'));
+  await click(pass, 'Listo');
+  await click(pass, 'Nuevo viaje');
+  check('el lugar guardado aparece como atajo en el viaje siguiente', await see(pass, '⭐ Trabajo'));
+  await click(pass, '⭐ Trabajo');
+  check('al tocarlo se llena el destino y se calcula la ruta', await see(pass, 'sugerido', 20000));
   await shot(driver, '6-conductor-termino');
 
   // Historial
   await click(pass, 'Historial');
   check('historial muestra el viaje con la calificación', await see(pass, 'Mall Multiplaza') && (await see(pass, 'Tu calificación: ★★★★★')));
   await shot(pass, '7-historial');
+  await click(pass, 'Recibo');
+  check('el recibo muestra número, conductor y total', (await see(pass, 'Comprobante de viaje')) && (await see(pass, 'JAL-')) && (await see(pass, 'E2E Driver')));
+  await shot(pass, '7b-recibo');
+  await pass.click('.overlay.top .overlay-head .link'); // cierra el recibo (no el historial)
 
   // Admin: ve la emergencia (la página ya estaba abierta y se actualiza sola)
   check('admin ve la alerta de emergencia', await see(admin, 'EMERGENCIA', 20000));
@@ -272,7 +295,7 @@ try {
   await staffPage.waitForSelector('.admin', { timeout: 15000 });
   check('después de activarla entra al panel', true);
   const tabs = await staffPage.$$eval('.seg button', (bs) => bs.map((b) => b.textContent));
-  check('soporte solo ve Viajes y Usuarios (sin Personal ni Registro)', tabs.join(',') === 'Viajes,Usuarios', `(${tabs})`);
+  check('soporte ve Viajes, Usuarios y Reportes, pero no Personal ni Registro', tabs[0] === 'Viajes' && tabs[1] === 'Usuarios' && tabs.some((t) => t.startsWith('Reportes')) && !tabs.some((t) => /Personal|Registro/.test(t)), `(${tabs})`);
   await click(staffPage, 'Usuarios');
   await staffPage.waitForSelector('.ucard.click', { timeout: 15000 });
   await staffPage.click('.ucard.click');
@@ -308,6 +331,18 @@ try {
   await click(admin, 'Registro');
   check('el registro muestra que el superadmin creó la cuenta', await see(admin, 'Creó una cuenta del personal'));
   await shot(admin, '0g-registro');
+
+  // ---- Reportes: el personal responde y la persona lo ve en su historial ----
+  await click(admin, 'Reportes');
+  check('el personal ve el reporte con el tipo y el texto', (await see(admin, 'Objeto olvidado')) && (await see(admin, 'Dejé mi celular negro')));
+  await shot(admin, '0n-admin-reportes');
+  admin.promptText = 'Ya hablamos con el conductor, te devolverá el celular hoy';
+  await click(admin, 'Marcar como resuelto');
+  check('al resolverlo sale de la lista de abiertos', await admin.waitForFunction(() => !document.body.innerText.includes('Dejé mi celular negro'), { timeout: 15000 }).then(() => true, () => false));
+  admin.promptText = '';
+  await click(pass, 'Cerrar ✕');
+  await click(pass, 'Historial');
+  check('la persona ve la respuesta del personal en "Mis reportes"', (await see(pass, 'Mis reportes')) && (await see(pass, 'te devolverá el celular hoy')));
 
   // ---- Recuperar contraseña por pantalla ----
   await click(pass, 'Cerrar ✕');

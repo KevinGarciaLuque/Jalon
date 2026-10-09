@@ -182,3 +182,19 @@ input.code::placeholder { letter-spacing: 0; font-size: 15px; font-weight: 400; 
 .raise { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
 .nav { flex-wrap: wrap; }
 .nav a { border: 1px solid var(--line); border-radius: 10px; color: var(--text); text-decoration: none; padding: 8px 12px; font-weight: 600; background: var(--card); }
+
+/* ---- Fase 8D ---- */
+textarea { width: 100%; font: inherit; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--text); resize: vertical; }
+.receipt { background: #fff; color: #111; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 8px; }
+.receipt h2 { margin: 0; text-align: center; color: #0a7d4f; font-size: 28px; }
+.receipt dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 8px 0; }
+.receipt dt { color: #666; }
+.receipt dd { margin: 0; text-align: right; font-weight: 600; }
+.receipt .total { display: flex; justify-content: space-between; align-items: center; border-top: 2px dashed #bbb; padding-top: 10px; font-size: 20px; }
+@media print {
+  body * { visibility: hidden; }
+  .receipt, .receipt * { visibility: visible; }
+  .receipt { position: absolute; inset: 0; border-radius: 0; box-shadow: none; }
+  .no-print { display: none !important; }
+}
+.req a:not(.primary):not(.sm), .overlay-body a:not(.primary):not(.sm) { color: var(--brand); }
