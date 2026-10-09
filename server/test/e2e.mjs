@@ -169,6 +169,10 @@ try {
   check('al subir el precio, el conductor ve la solicitud con el precio nuevo', await see(driver, `Aceptar L ${basePrice + 5}`));
 
   check('conductor recibe la solicitud con el destino', await see(driver, 'Destino: Mall Multiplaza'));
+  check('y la dirección donde debe recogerlo', await see(driver, 'Recoger en:'));
+  await click(driver, 'Ver ruta en el mapa');
+  check('al pedirlo, el mapa muestra la ruta de la solicitud y su destino', (await see(driver, 'Ocultar ruta')) && !!(await driver.waitForSelector('path[stroke="#f59e0b"]', { timeout: 8000 }).catch(() => null)) && (await driver.$$('.leaflet-marker-icon')).length >= 3);
+  await shot(driver, '0s-solicitud-ruta');
   await shot(driver, '2-conductor-solicitud');
   await click(driver, 'Aceptar L');
   check('pasajero recibe la oferta con datos del conductor', await see(pass, 'Toyota Corolla blanco'));

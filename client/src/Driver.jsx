@@ -41,6 +41,7 @@ export default function Driver({ socket, token, status, userId }) {
   const [reporting, setReporting] = useState(false);
   const [wallet, setWallet] = useState(null); // saldo, datos para transferir y movimientos (solo si la comisión está activa)
   const [showWallet, setShowWallet] = useState(false);
+  const [previewId, setPreviewId] = useState(null); // solicitud que el conductor está mirando en el mapa (origen, destino y ruta)
   const [notApproved, setNotApproved] = useState(false);
   const posRef = useRef(pos);
   posRef.current = pos;
@@ -97,6 +98,7 @@ export default function Driver({ socket, token, status, userId }) {
   }
 
   const active = ride && ['accepted', 'arrived', 'started'].includes(ride.status);
+  const preview = requests.find((q) => q.id === previewId) || null;
   // Si recarga la página con un viaje activo, queda como "en línea"
   useEffect(() => { if (active) setOnline(true); }, [active]);
 
@@ -115,7 +117,16 @@ export default function Driver({ socket, token, status, userId }) {
               draggable={denied}
               eventHandlers={{ dragend: (e) => setPos({ lat: e.target.getLatLng().lat, lng: e.target.getLatLng().lng }) }}
             />
-            {!active && online && requests.map((r) => <Marker key={r.id} position={[r.origin_lat, r.origin_lng]} icon={icons.me} />)}
+            {!active && online && requests.map((r) => (
+              <Marker key={r.id} position={[r.origin_lat, r.origin_lng]} icon={icons.me} eventHandlers={{ click: () => setPreviewId(r.id) }} />
+            ))}
+            {!active && online && preview && (
+              <>
+                <Marker position={[preview.dest_lat, preview.dest_lng]} icon={icons.dest} />
+                {preview.route?.length > 1 && <Polyline positions={preview.route} pathOptions={{ color: '#f59e0b', weight: 5, opacity: 0.9 }} />}
+                <FitTo points={preview.route?.length > 1 ? preview.route : [[preview.origin_lat, preview.origin_lng], [preview.dest_lat, preview.dest_lng]]} />
+              </>
+            )}
             {active && <Marker position={[ride.origin_lat, ride.origin_lng]} icon={icons.me} />}
             {active && <Marker position={[ride.dest_lat, ride.dest_lng]} icon={icons.dest} />}
             {active && ride.route && <Polyline positions={ride.route} pathOptions={{ color: '#0a7d4f', weight: 5, opacity: 0.85 }} />}
@@ -179,13 +190,17 @@ export default function Driver({ socket, token, status, userId }) {
                   const away = pos ? distanceKm(pos, { lat: r.origin_lat, lng: r.origin_lng }) : 0;
                   const c = counter[r.id] ?? String(Math.round(r.offered_price));
                   return (
-                    <div className="req" key={r.id}>
+                    <div className={`req ${r.id === previewId ? 'picked' : ''}`} key={r.id}>
                       <div className="row between">
                         <span><b>{r.passenger?.name}</b> <Stars rating={r.passenger?.rating} /></span>
                         <span className="tag">{lempiras(r.offered_price)}</span>
                       </div>
                       <div className="muted">Recogida a {away.toFixed(1)} km · viaje de {r.distance_km.toFixed(1)} km{r.duration_min ? ` (${minutes(r.duration_min)})` : ''}</div>
-                      {r.dest_text && <div className="muted">Destino: {r.dest_text}</div>}
+                      <div className="muted">Recoger en: {r.origin_text || 'el punto marcado en el mapa'}</div>
+                      <div className="muted">Destino: {r.dest_text || 'el punto marcado en el mapa'}</div>
+                      <button className="sm" onClick={() => setPreviewId(r.id === previewId ? null : r.id)}>
+                        {r.id === previewId ? 'Ocultar ruta' : '🗺 Ver ruta en el mapa'}
+                      </button>
                       {sent[r.id] && sent[r.id].until > now ? (
                         <div className="pulse">Ofertaste {lempiras(sent[r.id].price)}. Esperando respuesta… ({Math.max(0, Math.ceil((sent[r.id].until - now) / 1000))} s)</div>
                       ) : (

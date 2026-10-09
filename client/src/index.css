@@ -286,3 +286,4 @@ header span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-spa
   .monmap { height: 520px; }
   .monside { max-height: 520px; }
 }
+.req.picked { border-color: #f59e0b; box-shadow: 0 0 0 2px rgba(245, 158, 11, .25); }
