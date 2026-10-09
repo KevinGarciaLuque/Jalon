@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
 import { icons, useGeo, distanceKm, lempiras, minutes, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
-import { FitTo, Rate, SafetyBar, Stars } from './components.jsx';
+import { FitTo, PushToggle, Rate, SafetyBar, Stars } from './components.jsx';
 import DriverDocs from './DriverDocs.jsx';
 
 function Recenter({ pos }) {
@@ -126,6 +126,7 @@ export default function Driver({ socket, token, status }) {
                 <DriverDocs token={token} socket={socket} />
               </>
             )}
+            {!online && status !== 'pending' && <PushToggle token={token} why="Activa las notificaciones para recibir viajes cercanos y avisos aunque cierres la app." />}
             <button className={online ? 'danger' : 'primary'} onClick={toggle} disabled={!pos || status === 'pending'}>
               {online ? 'Desconectarme' : 'Ponerme disponible'}
             </button>

@@ -212,5 +212,22 @@ if (process.env.RESET_2FA_FOR) {
   console.warn(r.affectedRows ? `⚠ Verificación en dos pasos restablecida para ${ph}. Quita RESET_2FA_FOR.` : '⚠ RESET_2FA_FOR: no hay personal con ese teléfono');
 }
 
+// Fase 8A: dispositivos que reciben notificaciones push
+await conn.query(`
+  CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    endpoint VARCHAR(600) NOT NULL,
+    endpoint_hash CHAR(64) NOT NULL,
+    p256dh VARCHAR(200) NOT NULL,
+    auth VARCHAR(100) NOT NULL,
+    user_agent VARCHAR(200) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY one_endpoint (endpoint_hash),
+    KEY by_user (user_id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )
+`);
+
 console.log(`Base de datos "${DB_NAME}" lista.`);
 await conn.end();

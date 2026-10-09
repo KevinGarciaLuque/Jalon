@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMap } from 'react-leaflet';
-import { apiGet, apiPost } from './lib.js';
+import { apiGet, apiPost, pushState, enablePush, disablePush } from './lib.js';
 
 // ⭐ 4.8 (12)
 export function Stars({ rating }) {
@@ -152,6 +152,44 @@ export function SafetyBar({ token, rideId, socket, getPos }) {
           Alerta enviada a soporte. Si estás en peligro, llama al <a href="tel:911"><b>911</b></a> ahora.
         </div>
       )}
+    </div>
+  );
+}
+
+// Botón para activar o desactivar las notificaciones en este dispositivo
+export function PushToggle({ token, why }) {
+  const [state, setState] = useState(null);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { pushState().then(setState).catch(() => setState('unsupported')); }, []);
+
+  async function toggle() {
+    setBusy(true);
+    setError('');
+    try {
+      if (state === 'on') await disablePush(token); else await enablePush(token);
+      setState(await pushState());
+    } catch (e) {
+      setError(e.message);
+      setState(await pushState().catch(() => 'off'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (state === null) return null;
+  if (state === 'unsupported') return <p className="muted small">Las notificaciones funcionan en la app instalada o en el sitio publicado (en iPhone, primero agrégala a la pantalla de inicio).</p>;
+  return (
+    <div className="push">
+      {why && state !== 'on' && <p className="muted small">{why}</p>}
+      {state === 'denied' ? (
+        <div className="error small">Bloqueaste las notificaciones de este sitio. Actívalas en la configuración del navegador.</div>
+      ) : (
+        <button className={state === 'on' ? '' : 'primary'} disabled={busy} onClick={toggle}>
+          {state === 'on' ? '🔔 Notificaciones activadas (tocar para desactivar)' : '🔔 Activar notificaciones'}
+        </button>
+      )}
+      {error && <div className="error small">{error}</div>}
     </div>
   );
 }

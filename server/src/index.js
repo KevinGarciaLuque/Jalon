@@ -20,6 +20,7 @@ import { createOtp, consumeOtp, OtpError } from './otp.js';
 import { sendSms, smsConfigured } from './sms.js';
 import { sanitizeJpeg } from './jpeg.js';
 import { encryptBuffer, decryptBuffer, isEncrypted, keyIsDerived, encryptText, decryptText } from './secure.js';
+import { sendPush, validEndpoint, pushEnabled, publicKey as vapidPublicKey } from './push.js';
 import { generateSecret, verifyTotp, otpauthUrl, generateBackupCodes, hashBackup } from './totp.js';
 import { encryptLegacyDocuments } from './docs.js';
 
@@ -63,6 +64,28 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 // En Railway el disco se borra en cada despliegue: monta un Volume y apunta UPLOADS_DIR a él (ej. /data/uploads)
 const UPLOADS = process.env.UPLOADS_DIR || path.join(HERE, '..', 'uploads');
 const DOC_TYPES = ['photo', 'license', 'registration'];
+// ---------- Notificaciones push ----------
+const hasLiveSocket = async (userId) => (await io.in(room(userId)).fetchSockets()).length > 0;
+
+// Avisa a todos los dispositivos de una persona. Por defecto solo si no tiene la app abierta (si la tiene, ya se enteró por el socket).
+async function notifyUser(userId, payload, { always = false } = {}) {
+  if (!pushEnabled || (!always && (await hasLiveSocket(userId)))) return;
+  const [subs] = await pool.query('SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = ?', [userId]);
+  await Promise.all(subs.map(async (s) => {
+    // 404/410: el dispositivo ya no existe (desinstalaron la app o quitaron el permiso): se borra la suscripción
+    if ((await sendPush(s, payload)) === 'gone') await pool.query('DELETE FROM push_subscriptions WHERE id = ?', [s.id]);
+  }));
+}
+// Al personal siempre se le avisa (no usa sockets); solo a quienes tienen el permiso indicado
+async function notifyStaff(payload, perm = 'alerts') {
+  if (!pushEnabled) return;
+  const [rows] = await pool.query("SELECT DISTINCT u.id, u.role FROM push_subscriptions p JOIN users u ON u.id = p.user_id WHERE u.role IN ('superadmin','admin','support') AND u.status = 'active'");
+  await Promise.all(rows.filter((u) => PERMS[u.role]?.includes(perm)).map((u) => notifyUser(u.id, payload, { always: true })));
+}
+const push = (userId, payload, opts) => notifyUser(userId, payload, opts).catch(reportError); // sin esperar: nunca retrasa la respuesta
+const pushStaff = (payload, perm) => notifyStaff(payload, perm).catch(reportError);
+const hasPushSub = async (userId) => pushEnabled && (await pool.query('SELECT 1 FROM push_subscriptions WHERE user_id = ? LIMIT 1', [userId]))[0].length > 0;
+
 // Teléfonos del equipo que reciben un SMS cuando alguien pulsa el botón de emergencia (separados por coma)
 const SOS_PHONES = (process.env.SOS_ALERT_PHONES || '').split(',').map((p) => normalizePhone(p)).filter(Boolean);
 const SOS_REMINDER_MIN = Number(process.env.SOS_REMINDER_MINUTES || 3); // mientras nadie la atienda, se repite el aviso
@@ -383,6 +406,31 @@ app.post('/api/me/delete', authUser, loginLimiter, async (req, res) => {
   res.json({ ok: true });
 });
 
+// ---------- Suscripción a notificaciones ----------
+app.get('/api/push/key', authUser, (_req, res) => res.json({ key: vapidPublicKey })); // null = el servidor no tiene notificaciones configuradas
+
+app.post('/api/push/subscribe', authUser, async (req, res) => {
+  const { endpoint, keys } = req.body?.subscription || {};
+  const ok = (v) => typeof v === 'string' && /^[A-Za-z0-9_-]{16,200}$/.test(v);
+  if (!validEndpoint(endpoint, { allowLocal: !isProd }) || !ok(keys?.p256dh) || !ok(keys?.auth)) return res.status(400).json({ error: 'Suscripción inválida' });
+  const hash = crypto.createHash('sha256').update(endpoint).digest('hex');
+  await pool.query(
+    `INSERT INTO push_subscriptions (user_id, endpoint, endpoint_hash, p256dh, auth, user_agent) VALUES (?,?,?,?,?,?)
+     ON DUPLICATE KEY UPDATE user_id = VALUES(user_id), p256dh = VALUES(p256dh), auth = VALUES(auth), user_agent = VALUES(user_agent)`,
+    [req.user.id, endpoint, hash, keys.p256dh, keys.auth, String(req.headers['user-agent'] || '').slice(0, 200)]
+  );
+  // Como máximo 10 dispositivos por persona: se quitan los más antiguos
+  await pool.query('DELETE FROM push_subscriptions WHERE user_id = ? AND id NOT IN (SELECT id FROM (SELECT id FROM push_subscriptions WHERE user_id = ? ORDER BY id DESC LIMIT 10) t)', [req.user.id, req.user.id]);
+  res.json({ ok: true });
+});
+
+app.post('/api/push/unsubscribe', authUser, async (req, res) => {
+  const endpoint = req.body?.endpoint;
+  if (typeof endpoint !== 'string') return res.status(400).json({ error: 'Suscripción inválida' });
+  await pool.query('DELETE FROM push_subscriptions WHERE endpoint_hash = ? AND user_id = ?', [crypto.createHash('sha256').update(endpoint).digest('hex'), req.user.id]);
+  res.json({ ok: true });
+});
+
 // Cerrar la sesión en todos los dispositivos (por si perdiste el celular o la dejaste abierta en otro): invalida todos los tokens y devuelve uno nuevo
 app.post('/api/logout-all', authUser, async (req, res) => {
   await pool.query('UPDATE users SET token_version = token_version + 1 WHERE id = ?', [req.user.id]);
@@ -553,6 +601,7 @@ app.put('/api/driver/documents/:type', authUser, driverOnly, photoJson, async (r
   await fs.mkdir(UPLOADS, { recursive: true });
   const file = `${req.user.id}-${type}-${crypto.randomBytes(8).toString('hex')}.enc`;
   await fs.writeFile(path.join(UPLOADS, file), encryptBuffer(cleaned));
+  const [[before]] = await pool.query("SELECT COUNT(*) AS n FROM documents WHERE user_id = ? AND status = 'uploaded'", [req.user.id]);
   const [old] = await pool.query('SELECT file FROM documents WHERE user_id = ? AND type = ?', [req.user.id, type]);
   await pool.query(
     `INSERT INTO documents (user_id, type, file) VALUES (?,?,?)
@@ -560,6 +609,9 @@ app.put('/api/driver/documents/:type', authUser, driverOnly, photoJson, async (r
     [req.user.id, type, file]
   );
   if (old[0]) await fs.rm(path.join(UPLOADS, old[0].file), { force: true });
+  const [[after]] = await pool.query("SELECT COUNT(*) AS n FROM documents WHERE user_id = ? AND status = 'uploaded'", [req.user.id]);
+  if (before.n < DOC_TYPES.length && after.n === DOC_TYPES.length)
+    pushStaff({ title: 'Nueva solicitud de conductor', body: `${req.user.name} subió sus documentos`, tag: `docs-${req.user.id}`, url: '/' }, 'users.manage');
   res.json({ ok: true });
 });
 
@@ -647,7 +699,7 @@ app.get('/api/admin/stats', staffOnly('view'), async (_req, res) => {
     openAlerts: (await pool.query("SELECT COUNT(*) AS n FROM alerts WHERE status = 'open'"))[0][0].n,
     sosPhones: SOS_PHONES.length, // cuántos teléfonos reciben las emergencias por SMS (0 = nadie)
     driversOnline: [...drivers.values()].length,
-    driversFree: [...drivers.values()].filter((d) => d.available).length,
+    driversFree: [...drivers.values()].filter((d) => d.available && !d.disconnected).length,
     rides: { total: r.total, completed: Number(r.completed || 0), cancelled: Number(r.cancelled || 0), active: Number(r.active || 0) },
     revenue: Number(r.revenue),
   });
@@ -972,7 +1024,7 @@ const MAX_NEARBY = 25;
 function nearbyDrivers(lat, lng) {
   const near = [];
   for (const d of drivers.values()) {
-    if (!d.available || d.lat == null) continue;
+    if (!d.available || d.disconnected || d.lat == null) continue; // los que solo se alcanzan por notificación no se muestran en el mapa
     const km = distanceKm(lat, lng, d.lat, d.lng);
     if (km <= NEARBY_KM) near.push({ km, d });
   }
@@ -1008,6 +1060,9 @@ async function cancelRide(rideId, by) {
   if (ride.driver_id) releaseDriver(ride.driver_id);
   const view = await rideView(await getRide(rideId));
   io.to(room(ride.passenger_id)).to(room(ride.driver_id || 0)).emit('ride:state', view);
+  const cancelled = { title: 'Viaje cancelado', body: by === 'system' ? 'Nadie tomó tu solicitud a tiempo.' : 'El viaje fue cancelado.', tag: `ride-${rideId}`, url: '/' };
+  if (by !== 'passenger') push(ride.passenger_id, cancelled);
+  if (by !== 'driver' && ride.driver_id) push(ride.driver_id, cancelled);
   return view;
 }
 
@@ -1048,10 +1103,6 @@ io.on('connection', async (socket) => {
   if (user.role === 'driver') socket.join('drivers');
   socket.emit('account:status', { status: user.status });
   console.log(`+ ${user.role} ${user.name}`);
-
-  // Restaurar viaje activo si el usuario recarga la página
-  const active = await activeRideFor(user);
-  if (active) socket.emit('ride:state', await rideView(active));
 
   // ----- Conductor -----
   if (user.role === 'driver') {
@@ -1101,6 +1152,7 @@ io.on('connection', async (socket) => {
         distanceToPickupKm: d.lat != null ? distanceKm(d.lat, d.lng, ride.origin_lat, ride.origin_lng) : null,
       });
       socket.emit('offer:sent', { rideId, price });
+      push(ride.passenger_id, { title: 'Nueva oferta para tu viaje', body: `${user.name} ofrece L ${Math.round(price)}`, tag: `offer-${rideId}`, url: '/' });
       });
     });
 
@@ -1119,6 +1171,7 @@ io.on('connection', async (socket) => {
       if (status === 'completed') releaseDriver(user.id);
       const view = await rideView(await getRide(rideId));
       io.to(room(ride.passenger_id)).to(room(user.id)).emit('ride:state', view);
+      if (status === 'arrived') push(ride.passenger_id, { title: 'Tu conductor llegó', body: `${user.name} te espera · ${user.vehicle || ''} ${user.plate || ''}`.trim(), tag: `ride-${rideId}`, url: '/' });
     });
   }
 
@@ -1152,8 +1205,9 @@ io.on('connection', async (socket) => {
         openRides.set(ride.id, ride);
         // Avisar a conductores libres cercanos
         for (const d of drivers.values()) {
-          if (d.available && distanceKm(d.lat, d.lng, origin.lat, origin.lng) <= NEARBY_KM)
-            io.to(room(d.id)).emit('ride:new', ride);
+          if (!d.available || distanceKm(d.lat, d.lng, origin.lat, origin.lng) > NEARBY_KM) continue;
+          if (!d.disconnected) io.to(room(d.id)).emit('ride:new', ride);
+          else push(d.id, { title: 'Nuevo viaje cerca de ti', body: `${ride.dest_text ? `A ${ride.dest_text}` : 'Viaje disponible'} · L ${Math.round(ride.offered_price)}`, tag: `ride-${ride.id}`, url: '/' });
         }
         socket.emit('ride:state', ride);
         ack?.({ ok: true });
@@ -1170,7 +1224,7 @@ io.on('connection', async (socket) => {
       const ride = await getRide(offer.ride_id);
       const d = drivers.get(offer.driver_id);
       if (!ride || ride.passenger_id !== user.id || ride.status !== 'requested') return;
-      if (!d?.available) {
+      if (!d?.available || d.disconnected) {
         await pool.query('UPDATE offers SET status = "rejected" WHERE id = ?', [offer.id]);
         return socket.emit('offer:invalid', { offerId: offer.id });
       }
@@ -1182,6 +1236,7 @@ io.on('connection', async (socket) => {
 
       const view = await rideView(await getRide(ride.id));
       io.to(room(user.id)).to(room(offer.driver_id)).emit('ride:state', view);
+      push(offer.driver_id, { title: '¡Te aceptaron el viaje!', body: `${user.name} · L ${Math.round(offer.price)}`, tag: `ride-${ride.id}`, url: '/' });
     });
 
     on('ride:cancel', async ({ rideId }) => {
@@ -1201,6 +1256,7 @@ io.on('connection', async (socket) => {
     console.warn(`🆘 SOS de ${user.name} (viaje ${ride.id})`);
     ack?.({ ok: true });
     notifySos(r.insertId, false).catch((e) => console.error('SOS:', e)); // el SMS no debe retrasar la respuesta al usuario
+    pushStaff({ title: '🆘 EMERGENCIA', body: `${user.name} pidió ayuda (viaje ${ride.id})`, tag: `sos-${r.insertId}`, url: '/', requireInteraction: true }, 'alerts');
   });
 
   socket.on('disconnect', async () => {
@@ -1208,12 +1264,25 @@ io.on('connection', async (socket) => {
     if ((await io.in(room(user.id)).fetchSockets()).length) return;
     if (user.role === 'driver') {
       const d = drivers.get(user.id);
-      if (d?.available) drivers.delete(user.id);
-      else if (d) d.disconnected = true; // con viaje activo: se quita del mapa cuando termine
+      if (d?.available) {
+        // Con notificaciones activadas se le sigue avisando de viajes cercanos aunque cierre la app (hasta 30 min sin volver)
+        if (await hasPushSub(user.id)) { d.disconnected = true; d.lastSeen = Date.now(); } else drivers.delete(user.id);
+      } else if (d) d.disconnected = true; // con viaje activo: se quita del mapa cuando termine
     }
     if (user.role === 'passenger') passengers.delete(user.id);
   });
+
+  // Restaurar el viaje activo si la persona recarga la página o se reconecta.
+  // Va AL FINAL a propósito: todos los eventos ya están registrados antes de cualquier consulta a la base de datos. Si fuera al inicio,
+  // un mensaje que el celular manda justo al reconectarse (p. ej. "estoy disponible") llegaría antes de que el servidor lo escuche y se perdería.
+  const active = await activeRideFor(user);
+  if (active) socket.emit('ride:state', await rideView(active));
 });
+
+// Un conductor que cerró la app solo se conserva 30 minutos (después su ubicación ya no es confiable)
+setInterval(() => {
+  for (const [id, d] of drivers) if (d.disconnected && d.available && Date.now() - (d.lastSeen || 0) > 30 * 60 * 1000) drivers.delete(id);
+}, 60000).unref();
 
 // Cada 3 s se envían a cada pasajero los conductores libres cercanos
 setInterval(() => {

@@ -104,3 +104,39 @@ export function useInstall() {
     prompt: async () => { if (evt) { evt.prompt(); await evt.userChoice.catch(() => {}); setEvt(null); } },
   };
 }
+
+// ---- Notificaciones push ----
+// Solo existen en la versión publicada (el service worker no corre en el servidor de desarrollo)
+export const pushSupported = () =>
+  import.meta.env.PROD && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+
+const keyToBytes = (b64) => {
+  const raw = atob((b64 + '='.repeat((4 - (b64.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from(raw, (c) => c.charCodeAt(0));
+};
+
+// 'unsupported' | 'denied' | 'on' | 'off'
+export async function pushState() {
+  if (!pushSupported()) return 'unsupported';
+  if (Notification.permission === 'denied') return 'denied';
+  const reg = await navigator.serviceWorker.ready;
+  return (await reg.pushManager.getSubscription()) ? 'on' : 'off';
+}
+
+export async function enablePush(token) {
+  const permission = await Notification.requestPermission();
+  if (permission !== 'granted') throw new Error('Permiso denegado. Actívalo en la configuración de tu navegador para este sitio.');
+  const { key } = await apiGet('push/key', token);
+  if (!key) throw new Error('Las notificaciones todavía no están configuradas en el servidor.');
+  const reg = await navigator.serviceWorker.ready;
+  const sub = (await reg.pushManager.getSubscription()) || (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyToBytes(key) }));
+  await apiPost('push/subscribe', token, { subscription: sub.toJSON() });
+}
+
+export async function disablePush(token) {
+  const reg = await navigator.serviceWorker.ready;
+  const sub = await reg.pushManager.getSubscription();
+  if (!sub) return;
+  await apiPost('push/unsubscribe', token, { endpoint: sub.endpoint }).catch(() => {});
+  await sub.unsubscribe();
+}

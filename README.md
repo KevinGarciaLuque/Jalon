@@ -134,3 +134,13 @@ Esto mide el servidor y la base de datos, no redes móviles ni la distancia a Ra
 **Pruebas de seguridad.** `npm test` incluye ataques simulados: tokens falsos (sin firma, otra llave, vencidos), inyección SQL, escalada de rol al registrarse y al editar, que un pasajero no pueda aceptar, cancelar ni ofertar sobre viajes ajenos, las 17 rutas del panel sin sesión y con la sesión de un pasajero, y documentos alterados en disco. El CI también revisa las dependencias (`npm audit`).
 
 **Lo que NO está hecho:** la sesión se guarda en el almacenamiento local del navegador (no en cookies protegidas); con la política de seguridad estricta del sitio el riesgo es bajo, pero es la mejora pendiente más grande. Tampoco hay una auditoría externa de seguridad: antes de un lanzamiento grande conviene encargar una.
+
+## Fase 8A: notificaciones al celular
+
+Llegan aunque la app esté cerrada (Android/Chrome, escritorio, y en iPhone **solo con la app agregada a la pantalla de inicio**, iOS 16.4 o más).
+- **Qué avisa:** al conductor, un viaje nuevo cerca o que lo aceptaron; al pasajero, una oferta, que su conductor llegó o que cancelaron; al personal, las emergencias 🆘 y cuando un conductor completa sus documentos. Si la persona tiene la app abierta no se manda (ya lo ve en pantalla).
+- **Conductores:** quien activa las notificaciones y cierra la app sigue recibiendo viajes cercanos hasta 30 minutos (no aparece en el mapa de los pasajeros, que solo ven a los conectados).
+- **Cómo activarlas en el servidor:** `npm run vapid` genera dos llaves; ponlas en `VAPID_PUBLIC_KEY` y `VAPID_PRIVATE_KEY` (en `.env` y en Railway). Si cambias la llave privada, cada persona debe volver a activar sus notificaciones. Cada persona las activa en **Cuenta → Notificaciones** (los conductores también en la pantalla principal y el personal en el panel).
+- **Seguridad:** el servidor solo envía a los servicios de notificaciones reales de Google, Mozilla, Apple y Microsoft (un usuario no puede usarlo para atacar direcciones internas), cada envío va cifrado y firmado, y los dispositivos que ya no existen se borran solos. Máximo 10 dispositivos por persona.
+- **No incluido:** las notificaciones nativas de las apps de Android/iPhone (Capacitor, Fase 11) usarán Firebase en vez de esto.
+- Probado con un servicio de notificaciones falso que descifra y verifica cada envío, y la parte del celular (`client/public/sw.js`) en un entorno simulado. **No se probó con un celular real ni con los servidores de Google/Apple**: eso lo confirmas tú al activarlas.

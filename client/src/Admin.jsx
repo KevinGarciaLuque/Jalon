@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { API, lempiras } from './lib.js';
-import { Stars } from './components.jsx';
+import { PushToggle, Stars } from './components.jsx';
 import DocsModal from './DocsModal.jsx';
 import UserDetail, { TempPassword, ROLE_LABEL, STATUS_LABEL, ACTION_LABEL, detailText, isStaffRole } from './UserDetail.jsx';
 
@@ -156,6 +156,7 @@ export default function Admin({ token, onGate }) {
       {!alertsOn && (
         <button className="sm left" onClick={enableAlerts}>🔔 Activar avisos sonoros de emergencia</button>
       )}
+      <PushToggle token={token} why="Recibe las emergencias y las solicitudes de conductores en este dispositivo, aunque no tengas el panel abierto." />
 
       {alerts.map((a) => (
         <div className="sos-alert" key={a.id}>

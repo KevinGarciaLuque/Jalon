@@ -2,11 +2,14 @@
 // Levanta su propio servidor (puerto TEST_PORT, 4500 por defecto) para no depender de uno ya corriendo ni de su modo de vigilancia de archivos.
 // Si defines API_URL, usa ese servidor y no levanta ninguno.
 import { spawn, spawnSync } from 'child_process';
+import { generateKeys } from '../src/push.js';
 
 const external = !!process.env.API_URL;
 const port = process.env.TEST_PORT || '4500';
 const apiUrl = process.env.API_URL || `http://localhost:${port}`;
-const env = { ...process.env, API_URL: apiUrl, SOS_ALERT_PHONES: process.env.SOS_ALERT_PHONES || '99990001,99990002' };
+// Llaves de notificaciones solo para estas pruebas (si no hay unas definidas)
+const vapid = process.env.VAPID_PUBLIC_KEY ? {} : (({ publicKey, privateKey }) => ({ VAPID_PUBLIC_KEY: publicKey, VAPID_PRIVATE_KEY: privateKey }))(generateKeys());
+const env = { RACE_ROUNDS: '10', ...process.env, ...vapid, API_URL: apiUrl, SOS_ALERT_PHONES: process.env.SOS_ALERT_PHONES || '99990001,99990002' };
 
 let server = null;
 if (!external) {
@@ -29,7 +32,7 @@ if (!external) {
 }
 
 let failed = false;
-for (const t of ['flow', 'phase3', 'phase4', 'phase5b', 'phase6', 'phase7', 'phase7b', 'phase7c', 'expiry']) {
+for (const t of ['sw-unit', 'flow', 'phase3', 'phase4', 'phase5b', 'phase6', 'phase7', 'phase7b', 'phase7c', 'phase8a', 'race', 'expiry']) {
   const r = spawnSync(process.execPath, [`test/${t}.mjs`], { stdio: 'inherit', env });
   if (r.status !== 0) failed = true;
 }

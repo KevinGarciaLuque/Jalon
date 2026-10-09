@@ -161,3 +161,4 @@ select { font: inherit; padding: 10px 12px; border: 1px solid var(--line); borde
 .backup code { font-size: 18px; letter-spacing: 1px; text-align: center; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); }
 .overlay-body input.code, .req input.code { text-align: center; font-size: 26px; letter-spacing: 6px; font-weight: 700; }
 input.code::placeholder { letter-spacing: 0; font-size: 15px; font-weight: 400; }
+.push { display: flex; flex-direction: column; gap: 6px; }
