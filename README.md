@@ -206,3 +206,8 @@ Pestaña **Mapa en vivo** del panel. Muestra a los conductores conectados en un 
 **Privacidad:** la ubicación solo se ve mientras el conductor está conectado o en viaje; no se guarda un historial de recorridos. Los términos y la política (v1.6) lo informan a los conductores.
 
 **Lo que no mide todavía:** horas conectado por día (solo cuánto lleva conectado ahora), el recorrido real del viaje (el mapa dibuja la línea recta entre origen y destino) ni métricas por fecha del negocio completo: eso sigue pendiente.
+
+## Contraseñas del personal y salidas de emergencia
+
+- **Restablecer contraseñas:** en la ficha de cualquier usuario, el botón «🔑 Restablecer contraseña» genera una contraseña temporal que se muestra **una sola vez**; la persona debe cambiarla al entrar y sus sesiones se cierran. El superadmin lo puede hacer con administradores, soporte, conductores y pasajeros; un administrador, solo con conductores y pasajeros. Queda en el Registro.
+- **Si el superadmin olvida la suya:** en Railway define `RESET_PASSWORD_FOR=<su teléfono>` y `RESET_PASSWORD_TO=<contraseña nueva>`, reinicia el servicio, entra, y **borra las dos variables**. Solo funciona con cuentas del personal. (Para perder el teléfono del autenticador existe `RESET_2FA_FOR`.)

@@ -219,6 +219,17 @@ if (process.env.RESET_2FA_FOR) {
   console.warn(r.affectedRows ? `⚠ Verificación en dos pasos restablecida para ${ph}. Quita RESET_2FA_FOR.` : '⚠ RESET_2FA_FOR: no hay personal con ese teléfono');
 }
 
+// Salida de emergencia 2: poner una contraseña conocida a una cuenta del personal (por ejemplo el superadmin que la olvidó).
+// Define RESET_PASSWORD_FOR=<teléfono> y RESET_PASSWORD_TO=<contraseña> en Railway, reinicia, entra. Después QUITA las dos variables.
+if (process.env.RESET_PASSWORD_FOR && process.env.RESET_PASSWORD_TO) {
+  const ph = normalizePhone(process.env.RESET_PASSWORD_FOR) ?? process.env.RESET_PASSWORD_FOR.trim();
+  const [r] = await conn.query(
+    `UPDATE users SET password_hash = ?, must_change_password = 0, two_fa_failures = 0, two_fa_locked_until = NULL, token_version = token_version + 1
+     WHERE phone = ? AND role IN ('superadmin','admin','support')`, [await bcrypt.hash(process.env.RESET_PASSWORD_TO, 10), ph]
+  );
+  console.warn(r.affectedRows ? `⚠ Contraseña restablecida para ${ph}. Quita RESET_PASSWORD_FOR y RESET_PASSWORD_TO.` : '⚠ RESET_PASSWORD_FOR: no hay personal con ese teléfono');
+}
+
 // Fase 8A: dispositivos que reciben notificaciones push
 await conn.query(`
   CREATE TABLE IF NOT EXISTS push_subscriptions (

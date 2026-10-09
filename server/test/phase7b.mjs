@@ -108,6 +108,13 @@ const run = spawnSync(process.execPath, ['src/setup.js'], { cwd: process.cwd(), 
 const [[emerg]] = await pool.query('SELECT totp_enabled, totp_secret, backup_codes FROM users WHERE id = ?', [S.id]);
 check('RESET_2FA_FOR restablece la verificación al arrancar (salida de emergencia)', emerg.totp_enabled === 0 && !emerg.totp_secret && !emerg.backup_codes && /restablecida/.test(run.stderr + run.stdout));
 
+// Salida de emergencia 2: contraseña nueva por variable de entorno
+const run2 = spawnSync(process.execPath, ['src/setup.js'], { cwd: process.cwd(), env: { ...process.env, RESET_PASSWORD_FOR: ph1, RESET_PASSWORD_TO: 'Clave-de-rescate-9' }, encoding: 'utf8' });
+check('RESET_PASSWORD_FOR pone la contraseña indicada al arrancar', /Contraseña restablecida/.test(run2.stderr + run2.stdout) && !!(await http('POST', 'login', null, { phone: ph1, password: 'Clave-de-rescate-9' })).token);
+check('y la contraseña anterior deja de servir', !(await http('POST', 'login', null, { phone: ph1, password: S.password })).token);
+const run3 = spawnSync(process.execPath, ['src/setup.js'], { cwd: process.cwd(), env: { ...process.env, RESET_PASSWORD_FOR: pass.user.phone, RESET_PASSWORD_TO: 'Clave-de-rescate-9' }, encoding: 'utf8' });
+check('no sirve para pasajeros ni conductores', /no hay personal/.test(run3.stderr + run3.stdout) && !(await http('POST', 'login', null, { phone: pass.user.phone, password: 'Clave-de-rescate-9' })).token);
+
 // ---------------- Registro de actividad ----------------
 const audit = await http('GET', 'admin/audit', SA);
 const acts = new Set(audit.map((a) => a.action));
