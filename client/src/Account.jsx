@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { apiGet, apiPost, useInstall } from './lib.js';
-import { PushToggle } from './components.jsx';
+import { PushToggle, PasswordInput } from './components.jsx';
 import { SavedPlaces, TrustedContacts } from './PersonalLists.jsx';
 
 const ROLE = { passenger: 'Pasajero', driver: 'Conductor', admin: 'Administrador', superadmin: 'Superadministrador', support: 'Soporte' };
@@ -111,9 +111,9 @@ export default function Account({ user, token, onToken, onClose, onLogout, force
 
         <form className="req" onSubmit={changePassword}>
           <b>Cambiar contraseña</b>
-          <input type="password" autoComplete="current-password" placeholder="Contraseña actual" value={f.current} onChange={set('current')} required />
-          <input type="password" autoComplete="new-password" placeholder="Contraseña nueva" value={f.next} onChange={set('next')} required />
-          <input type="password" autoComplete="new-password" placeholder="Repite la contraseña nueva" value={f.again} onChange={set('again')} required />
+          <PasswordInput autoComplete="current-password" placeholder="Contraseña actual" value={f.current} onChange={set('current')} required />
+          <PasswordInput autoComplete="new-password" placeholder="Contraseña nueva" value={f.next} onChange={set('next')} required />
+          <PasswordInput autoComplete="new-password" placeholder="Repite la contraseña nueva" value={f.again} onChange={set('again')} required />
           <p className="muted small">Mínimo {min} caracteres, no solo números ni algo muy común, y sin tu teléfono.</p>
           {msg.text && <div className={msg.ok ? 'hint ok' : 'error'}>{msg.text}</div>}
           <button className="primary" disabled={busy}>{busy ? 'Un momento…' : 'Cambiar contraseña'}</button>

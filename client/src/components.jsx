@@ -2,6 +2,19 @@ import { useEffect, useRef, useState } from 'react';
 import { useMap } from 'react-leaflet';
 import { apiGet, apiPost, pushState, enablePush, disablePush } from './lib.js';
 
+// Campo de contraseña con botón para verla u ocultarla
+export function PasswordInput(props) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="pw">
+      <input {...props} type={show ? 'text' : 'password'} autoCapitalize="off" autoCorrect="off" spellCheck={false} />
+      <button type="button" className="pw-eye" onClick={() => setShow(!show)} aria-label={show ? 'Ocultar contraseña' : 'Ver contraseña'} aria-pressed={show} title={show ? 'Ocultar contraseña' : 'Ver contraseña'}>
+        {show ? '🙈' : '👁'}
+      </button>
+    </div>
+  );
+}
+
 // ⭐ 4.8 (12)
 export function Stars({ rating }) {
   if (!rating || !rating.count) return <span className="muted">Nuevo</span>;

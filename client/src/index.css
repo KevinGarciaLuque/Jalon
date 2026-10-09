@@ -287,3 +287,9 @@ header span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-spa
   .monside { max-height: 520px; }
 }
 .req.picked { border-color: #f59e0b; box-shadow: 0 0 0 2px rgba(245, 158, 11, .25); }
+
+/* Campo de contraseña con ojo para verla */
+.pw { position: relative; }
+.pw input { padding-right: 52px; }
+.pw-eye { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); border: none; background: none; padding: 8px 10px; font-size: 20px; line-height: 1; opacity: .75; }
+.pw-eye:hover, .pw-eye:focus-visible { opacity: 1; }

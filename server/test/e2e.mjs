@@ -77,6 +77,12 @@ try {
   await pass.type('input[placeholder^="Teléfono"]', passPhone);
   await pass.type('input[placeholder="Correo electrónico"]', `e2e${passPhone}@prueba.jalon.test`);
   await pass.type('input[placeholder="Contraseña"]', 'secreto1');
+  check('la contraseña se oculta por defecto', (await pass.$eval('input[placeholder="Contraseña"]', (el) => el.type)) === 'password');
+  await pass.click('.pw-eye');
+  check('con el ojo se puede ver lo que se escribió', (await pass.$eval('input[placeholder="Contraseña"]', (el) => el.type + ':' + el.value)) === 'text:secreto1');
+  await shot(pass, '0u-ver-contrasena');
+  await pass.click('.pw-eye');
+  check('y se vuelve a ocultar', (await pass.$eval('input[placeholder="Contraseña"]', (el) => el.type)) === 'password');
   await click(pass, 'Enviar código a mi correo');
   check('sin aceptar los términos no se puede continuar', await see(pass, 'Debes aceptar los Términos'));
   await pass.click('.check.terms input');

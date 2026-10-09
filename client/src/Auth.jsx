@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, useInstall } from './lib.js';
+import { PasswordInput } from './components.jsx';
 
 const RESEND_SECONDS = 60;
 const friendly = (e) => (e.message === 'Failed to fetch' ? 'No se pudo conectar con el servidor' : e.message);
@@ -132,9 +133,8 @@ export default function Auth({ onAuth, notice }) {
             {mode === 'register' && (
               <input placeholder="Correo electrónico" type="email" inputMode="email" autoComplete="email" maxLength={160} value={f.email} onChange={set('email')} required />
             )}
-            <input
+            <PasswordInput
               placeholder={mode === 'forgot' ? 'Nueva contraseña' : 'Contraseña'}
-              type="password"
               autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
               value={f.password}
               onChange={set('password')}
