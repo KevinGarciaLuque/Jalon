@@ -11,7 +11,11 @@ export const FIXTURE = fs.readFileSync(new URL('./fixtures/doc.jpg', import.meta
 export const JPG = `data:image/jpeg;base64,${FIXTURE.toString('base64')}`;
 
 // Llama a la API y devuelve { status, ...json } (si la respuesta es una lista, el arreglo con .status)
+// Registro y envío de código exigen correo: las pruebas que no lo mencionan reciben uno derivado del teléfono (si el cuerpo trae `email`, aunque sea vacío, se respeta)
+const withEmail = (path, body) => (['register', 'otp/send'].includes(path) && body && body.phone && !('email' in body) ? { ...body, email: `${String(body.phone).replace(/\D/g, "")}@prueba.jalon.test` } : body);
+
 export async function http(method, path, token, body) {
+  body = withEmail(path, body);
   const r = await fetch(`${API}/api/${path}`, {
     method,
     headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },

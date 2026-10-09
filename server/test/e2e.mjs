@@ -75,12 +75,13 @@ try {
   await click(pass, '¿No tienes cuenta? Regístrate');
   await pass.type('input[placeholder="Nombre"]', 'E2E Pasajero');
   await pass.type('input[placeholder^="Teléfono"]', passPhone);
+  await pass.type('input[placeholder="Correo electrónico"]', `e2e${passPhone}@prueba.jalon.test`);
   await pass.type('input[placeholder="Contraseña"]', 'secreto1');
-  await click(pass, 'Enviar código por SMS');
+  await click(pass, 'Enviar código a mi correo');
   check('sin aceptar los términos no se puede continuar', await see(pass, 'Debes aceptar los Términos'));
   await pass.click('.check.terms input');
-  await click(pass, 'Enviar código por SMS');
-  check('la pantalla pide el código del SMS', await see(pass, 'Te enviamos un código por SMS'));
+  await click(pass, 'Enviar código a mi correo');
+  check('la pantalla pide el código enviado al correo', await see(pass, 'Te enviamos un código de 6 dígitos'));
   check('en desarrollo se muestra el código de prueba', await see(pass, 'Modo desarrollo'));
   await shot(pass, '0-codigo-sms');
   await click(pass, 'Verificar y crear cuenta');
@@ -382,8 +383,8 @@ try {
   await click(pass, '¿Olvidaste tu contraseña?');
   await pass.type('input[placeholder^="Teléfono"]', passPhone);
   await pass.type('input[placeholder="Nueva contraseña"]', 'clave-nueva-9');
-  await click(pass, 'Enviar código por SMS');
-  check('recuperación: pide el código', await see(pass, 'Te enviamos un código por SMS'));
+  await click(pass, 'Enviar código a mi correo');
+  check('recuperación: pide el código', await see(pass, 'enviamos un código al correo registrado'));
   await click(pass, 'Cambiar contraseña');
   check('recuperación: contraseña actualizada', await see(pass, 'Contraseña actualizada'));
   // El teléfono se conserva en el formulario tras cambiar la contraseña; solo falta escribir la nueva

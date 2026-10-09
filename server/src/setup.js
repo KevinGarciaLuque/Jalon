@@ -68,6 +68,11 @@ async function addColumn(table, column, definition) {
   if (!rows.length) await conn.query(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`);
 }
 // pending: conductor esperando aprobación | active | blocked
+await addColumn('users', 'email', 'VARCHAR(160) NULL');
+{
+  const [idx] = await conn.query("SHOW INDEX FROM users WHERE Key_name = 'uniq_email'");
+  if (!idx.length) await conn.query('ALTER TABLE users ADD UNIQUE KEY uniq_email (email)');
+}
 await addColumn('users', 'status', "ENUM('pending','active','blocked') NOT NULL DEFAULT 'active'");
 await addColumn('rides', 'cancelled_by', "ENUM('passenger','driver','admin','system') NULL");
 
@@ -130,6 +135,7 @@ await conn.query(`
     KEY by_phone (phone, purpose)
   )
 `);
+await addColumn('otp_codes', 'email', 'VARCHAR(160) NULL');
 
 await conn.query(`
   CREATE TABLE IF NOT EXISTS documents (

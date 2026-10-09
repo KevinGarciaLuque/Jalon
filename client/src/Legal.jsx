@@ -1,5 +1,5 @@
 // Términos de uso y política de privacidad. Si cambias el contenido, sube TERMS_VERSION en server/src/index.js.
-const VERSION = '1.4';
+const VERSION = '1.5';
 const UPDATED = '10 de octubre de 2026';
 const CONTACT = import.meta.env.VITE_CONTACT_EMAIL; // se define al compilar (variable en Railway)
 
@@ -20,7 +20,7 @@ function Terms() {
       <h2>2. Tu cuenta</h2>
       <ul>
         <li>Debes ser mayor de 18 años y dar datos verdaderos.</li>
-        <li>Tu cuenta es personal: usa tu propio teléfono y no compartas tu contraseña ni el código que te enviamos por SMS.</li>
+        <li>Tu cuenta es personal: usa tu propio teléfono y no compartas tu contraseña ni el código que te enviamos por correo o SMS.</li>
         <li>Eres responsable de lo que ocurra con tu cuenta. Si crees que alguien la usa, cambia tu contraseña en la sección Cuenta.</li>
       </ul>
 
@@ -102,7 +102,7 @@ function Privacy() {
 
       <h2>1. Qué datos recopilamos</h2>
       <ul>
-        <li><b>Cuenta:</b> tu nombre, tu teléfono y tu rol (pasajero o conductor). La contraseña se guarda cifrada; nadie, ni nosotros, puede verla.</li>
+        <li><b>Cuenta:</b> tu nombre, tu teléfono, tu correo electrónico y tu rol (pasajero o conductor). La contraseña se guarda cifrada; nadie, ni nosotros, puede verla.</li>
         <li><b>Conductores:</b> foto, licencia de conducir, matrícula, vehículo y placa.</li>
         <li>
           <b>Ubicación:</b> el GPS de tu dispositivo, solo mientras la aplicación está abierta. En el pasajero, para buscar conductores cerca y durante el
@@ -128,7 +128,7 @@ function Privacy() {
       <h2>2. Para qué los usamos</h2>
       <ul>
         <li>Prestar el servicio: encontrar conductores, gestionar viajes y mostrar el mapa.</li>
-        <li>Verificar tu teléfono con un código por SMS y revisar a los conductores antes de aprobarlos.</li>
+        <li>Verificar tu correo con un código (y tu teléfono por SMS cuando ese canal esté activo) y revisar a los conductores antes de aprobarlos.</li>
         <li>Seguridad: prevenir fraudes, atender emergencias y resolver reclamos.</li>
         <li>Mejorar la aplicación y cumplir obligaciones legales.</li>
       </ul>
@@ -145,7 +145,7 @@ function Privacy() {
         </li>
         <li><b>Administradores de Jalón:</b> pueden ver cuentas, viajes y documentos para operar el servicio, verificar conductores y atender emergencias.</li>
         <li>
-          <b>Proveedores que nos ayudan a operar:</b> el alojamiento del servicio (Railway); el envío de SMS (Twilio, que recibe tu teléfono y el código); y
+          <b>Proveedores que nos ayudan a operar:</b> el alojamiento del servicio (Railway); el envío de correos (nuestro proveedor de correo, que recibe tu correo y el código) y de SMS (Twilio, que recibe tu teléfono y el código); y
           los mapas y la búsqueda de direcciones y rutas (OpenStreetMap, Photon y OSRM, que reciben el texto que buscas y coordenadas).
         </li>
         <li>No vendemos tus datos.</li>
@@ -164,7 +164,7 @@ function Privacy() {
       <ul>
         <li><b>Descargar tus datos:</b> un archivo con tu cuenta, tus viajes, tus calificaciones y tus alertas de emergencia.</li>
         <li>
-          <b>Eliminar tu cuenta:</b> se borran tu nombre, teléfono, vehículo, documentos y comentarios. Tus viajes se conservan sin direcciones, únicamente
+          <b>Eliminar tu cuenta:</b> se borran tu nombre, teléfono, correo, vehículo, documentos y comentarios. Tus viajes se conservan sin direcciones, únicamente
           para estadísticas y para atender reclamos. No se puede eliminar con un viaje en curso.
         </li>
         <li><b>Cambiar tu contraseña</b> y <b>cerrar tu sesión en todos los dispositivos</b>.</li>

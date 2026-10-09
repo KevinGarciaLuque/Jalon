@@ -18,6 +18,7 @@ import { searchPlaces, reversePlace, getRoute } from './maps.js';
 import { normalizePhone, toE164 } from './phone.js';
 import { createOtp, consumeOtp, OtpError } from './otp.js';
 import { sendSms, smsConfigured } from './sms.js';
+import { sendMail, mailConfigured, normalizeEmail, domainAcceptsMail } from './mail.js';
 import { sanitizeJpeg } from './jpeg.js';
 import { encryptBuffer, decryptBuffer, isEncrypted, keyIsDerived, encryptText, decryptText } from './secure.js';
 import { TERMS_VERSION } from './legal.js';
@@ -55,9 +56,12 @@ const CHAT_RETENTION_DAYS = Number(process.env.CHAT_RETENTION_DAYS || 90);
 const isProd = process.env.NODE_ENV === 'production';
 // Sin Twilio y fuera de producción, el código se devuelve en la respuesta para poder probar sin SMS reales
 // SMS_DEV_ECHO=true lo habilita también en producción mientras no haya Twilio (solo para pruebas del equipo: cualquiera vería su código)
-const echoCode = !smsConfigured && (!isProd || process.env.SMS_DEV_ECHO === 'true');
-if (isProd && echoCode) console.warn('⚠ SMS_DEV_ECHO activo: los códigos de verificación se muestran en pantalla. Desactívalo al configurar Twilio.');
-if (isProd && !smsConfigured && !echoCode) console.warn('⚠ Twilio no está configurado: nadie podrá registrarse por SMS.');
+// Los códigos se envían por los canales de OTP_CHANNELS (por defecto solo correo; 'email,sms' usa los dos)
+const OTP_CHANNELS = (process.env.OTP_CHANNELS || 'email').split(',').map((c) => c.trim()).filter((c) => c === 'email' || c === 'sms');
+const channelReady = (OTP_CHANNELS.includes('email') && mailConfigured) || (OTP_CHANNELS.includes('sms') && smsConfigured);
+const echoCode = !channelReady && (!isProd || process.env.SMS_DEV_ECHO === 'true');
+if (isProd && echoCode) console.warn('⚠ SMS_DEV_ECHO activo: los códigos de verificación se muestran en pantalla (cualquiera podría registrarse). Quítalo al configurar el correo (SMTP_*).');
+if (isProd && !channelReady && !echoCode) console.warn(`⚠ Ningún canal de verificación está configurado (OTP_CHANNELS=${OTP_CHANNELS.join(',')}): nadie podrá registrarse. Define SMTP_* o TWILIO_*.`);
 // Baldosas del mapa: OpenStreetMap por defecto. Para producción conviene un proveedor propio o de pago (VITE_TILE_URL), porque
 // los servidores públicos de OSM no están pensados para apps con muchos usuarios y bloquean a quien no cumple su política.
 const TILE_URL = process.env.VITE_TILE_URL || 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
@@ -168,7 +172,7 @@ function checkPassword(password, { phone = '', role = 'passenger' } = {}) {
   if (digits.length === 8 && password.includes(digits)) return 'La contraseña no puede contener tu teléfono';
   return null;
 }
-const publicUser = (u) => ({ id: u.id, name: u.name, phone: u.phone, role: u.role, status: u.status, vehicle: u.vehicle, plate: u.plate, mustChangePassword: !!u.must_change_password,
+const publicUser = (u) => ({ id: u.id, name: u.name, phone: u.phone, email: u.email || null, role: u.role, status: u.status, vehicle: u.vehicle, plate: u.plate, mustChangePassword: !!u.must_change_password,
   // El personal debe tener la verificación en dos pasos activa para usar el panel
   mustEnrollTwoFactor: isStaff(u.role) && !u.totp_enabled, twoFactorEnabled: !!u.totp_enabled });
 
@@ -176,6 +180,7 @@ const publicUser = (u) => ({ id: u.id, name: u.name, phone: u.phone, role: u.rol
 app.post('/api/register', registerLimiter, async (req, res) => {
   try {
     const { name, phone, password, role, vehicle, plate, code, acceptTerms } = req.body || {};
+    const email = normalizeEmail(req.body?.email);
     if ([name, phone, password].some((v) => typeof v !== 'string' || !v.trim()) || !['passenger', 'driver'].includes(role))
       return res.status(400).json({ error: 'Datos incompletos' });
     if ([vehicle, plate].some((v) => v != null && typeof v !== 'string'))
@@ -184,25 +189,26 @@ app.post('/api/register', registerLimiter, async (req, res) => {
       return res.status(400).json({ error: 'El conductor debe indicar vehículo y placa' });
     const phoneN = normalizePhone(phone);
     if (!phoneN) return res.status(400).json({ error: 'Teléfono inválido (8 dígitos de Honduras)' });
+    if (!email) return res.status(400).json({ error: 'Escribe un correo electrónico válido' });
     const weak = checkPassword(password, { phone: phoneN, role });
     if (weak) return res.status(400).json({ error: weak });
     if (name.length > 100 || (vehicle || '').length > 100 || (plate || '').length > 20)
       return res.status(400).json({ error: 'Algún dato es demasiado largo' });
     if (acceptTerms !== true) return res.status(400).json({ error: 'Debes aceptar los Términos y la Política de Privacidad' });
-    // El teléfono debe verificarse con el código enviado por SMS (se consume al final de las validaciones)
-    if (!(await consumeOtp(phoneN, 'register', code))) return res.status(400).json({ error: 'Código incorrecto o vencido' });
+    // El código se envió al correo (o al SMS) y solo vale para ese correo; se consume al final de las validaciones
+    if (!(await consumeOtp(phoneN, 'register', code, email))) return res.status(400).json({ error: 'Código incorrecto o vencido' });
 
     const hash = await bcrypt.hash(password, 10);
     // Los conductores quedan pendientes hasta que un administrador los apruebe
     const status = role === 'driver' ? 'pending' : 'active';
     const [r] = await pool.query(
-      'INSERT INTO users (name, phone, password_hash, role, status, vehicle, plate, terms_accepted_at, terms_version) VALUES (?,?,?,?,?,?,?,NOW(),?)',
-      [name.trim(), phoneN, hash, role, status, vehicle?.trim() || null, plate?.trim() || null, TERMS_VERSION]
+      'INSERT INTO users (name, phone, email, password_hash, role, status, vehicle, plate, terms_accepted_at, terms_version) VALUES (?,?,?,?,?,?,?,?,NOW(),?)',
+      [name.trim(), phoneN, email, hash, role, status, vehicle?.trim() || null, plate?.trim() || null, TERMS_VERSION]
     );
-    const user = { id: r.insertId, name: name.trim(), phone: phoneN, role, status, vehicle, plate };
+    const user = { id: r.insertId, name: name.trim(), phone: phoneN, email, role, status, vehicle, plate };
     res.json({ token: sign(user), user: publicUser(user) });
   } catch (e) {
-    if (e.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'Ese teléfono ya está registrado' });
+    if (e.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: /email/.test(e.message) ? 'Ese correo ya está registrado' : 'Ese teléfono ya está registrado' });
     console.error(e);
     res.status(500).json({ error: 'Error del servidor' });
   }
@@ -229,26 +235,32 @@ app.post('/api/login', loginLimiter, async (req, res) => {
   }
 });
 
-async function sendCode(phone, purpose) {
-  const code = await createOtp(phone, purpose);
-  try {
-    await sendSms(toE164(phone), `Jalón: tu código es ${code}. Vence en 10 minutos. No lo compartas con nadie.`);
-  } catch (e) {
-    console.error('SMS:', e.message);
-    throw new OtpError('No se pudo enviar el SMS. Intenta de nuevo en un momento.', 502);
-  }
+// Envía el código por los canales activos. El correo va a `email`; el SMS al teléfono. Con al menos un envío logrado alcanza.
+async function sendCode(phone, purpose, email) {
+  const code = await createOtp(phone, purpose, email);
+  const text = `Jalón: tu código es ${code}. Vence en 10 minutos. No lo compartas con nadie.`;
+  const jobs = [];
+  if (OTP_CHANNELS.includes('email') && email) jobs.push(sendMail(email, `Tu código de Jalón: ${code}`, `${text}\n\nSi no lo pediste tú, ignora este mensaje.`));
+  if (OTP_CHANNELS.includes('sms')) jobs.push(sendSms(toE164(phone), text));
+  const results = await Promise.allSettled(jobs);
+  results.filter((r) => r.status === 'rejected').forEach((r) => console.error('Código de verificación:', r.reason?.message));
+  if (!results.some((r) => r.status === 'fulfilled')) throw new OtpError('No se pudo enviar el código. Intenta de nuevo en un momento.', 502);
   return code;
 }
 const sendError = (res, e) => (e instanceof OtpError ? res.status(e.status).json({ error: e.message }) : Promise.reject(e));
 
-// Paso 1 del registro: enviar el código al teléfono
+// Paso 1 del registro: enviar el código al correo (y al SMS si ese canal está activo)
 app.post('/api/otp/send', otpLimiter, async (req, res) => {
   const phone = normalizePhone(req.body?.phone);
   if (!phone) return res.status(400).json({ error: 'Teléfono inválido (8 dígitos de Honduras)' });
-  const [rows] = await pool.query('SELECT id FROM users WHERE phone = ?', [phone]);
-  if (rows[0]) return res.status(409).json({ error: 'Ese teléfono ya está registrado' });
+  const email = normalizeEmail(req.body?.email);
+  if (!email) return res.status(400).json({ error: 'Escribe un correo electrónico válido' });
+  if (!(await domainAcceptsMail(email))) return res.status(400).json({ error: 'Ese correo no parece existir. Revisa cómo lo escribiste.' });
+  const [rows] = await pool.query('SELECT phone, email FROM users WHERE phone = ? OR email = ?', [phone, email]);
+  if (rows.some((r) => r.phone === phone)) return res.status(409).json({ error: 'Ese teléfono ya está registrado' });
+  if (rows.length) return res.status(409).json({ error: 'Ese correo ya está registrado' });
   try {
-    const code = await sendCode(phone, 'register');
+    const code = await sendCode(phone, 'register', email);
     res.json({ ok: true, ...(echoCode ? { devCode: code } : {}) });
   } catch (e) {
     sendError(res, e);
@@ -260,11 +272,12 @@ app.post('/api/password/forgot', otpLimiter, async (req, res) => {
   const phone = normalizePhone(req.body?.phone);
   if (!phone) return res.status(400).json({ error: 'Teléfono inválido (8 dígitos de Honduras)' });
   // Las cuentas de administrador no se recuperan por SMS
-  const [rows] = await pool.query("SELECT id FROM users WHERE phone = ? AND role IN ('passenger','driver') AND status <> 'blocked' AND deleted_at IS NULL", [phone]);
+  const [rows] = await pool.query("SELECT id, email FROM users WHERE phone = ? AND role IN ('passenger','driver') AND status <> 'blocked' AND deleted_at IS NULL", [phone]);
   let code = null;
-  if (rows[0]) {
+  // El código va al correo registrado en la cuenta (o al SMS si ese canal está activo); una cuenta sin correo y sin SMS no puede recuperarse sola
+  if (rows[0] && (rows[0].email || OTP_CHANNELS.includes('sms'))) {
     try {
-      code = await sendCode(phone, 'reset');
+      code = await sendCode(phone, 'reset', rows[0].email);
     } catch (e) {
       return sendError(res, e);
     }
@@ -402,7 +415,7 @@ app.get('/api/me/export', authUser, async (req, res) => {
   res.set('Content-Disposition', 'attachment; filename="mis-datos-jalon.json"');
   res.json({
     generadoEl: new Date().toISOString(),
-    cuenta: { nombre: u.name, telefono: u.phone, rol: u.role, estado: u.status, vehiculo: u.vehicle, placa: u.plate, registradoEl: u.created_at, aceptoTerminosEl: u.terms_accepted_at, versionTerminos: u.terms_version },
+    cuenta: { nombre: u.name, telefono: u.phone, correo: u.email, rol: u.role, estado: u.status, vehiculo: u.vehicle, placa: u.plate, registradoEl: u.created_at, aceptoTerminosEl: u.terms_accepted_at, versionTerminos: u.terms_version },
     viajes: rides, calificacionesQueDi: given, calificacionesQueRecibi: received, alertasDeEmergencia: alerts,
     documentos: docs.map((d) => ({ tipo: d.type, estado: d.status, nota: d.note, subidoEl: d.created_at })),
     mensajesQueEnvie: msgs.map((m) => ({ viaje: m.ride_id, texto: m.text, enviadoEl: m.created_at })),
@@ -957,7 +970,7 @@ app.get('/api/admin/rides', staffOnly('view'), async (_req, res) => {
 app.get('/api/admin/users/:id', staffOnly('view'), async (req, res) => {
   const id = Number(req.params.id);
   const [[u]] = await pool.query(
-    `SELECT id, name, phone, role, status, vehicle, plate, created_at, terms_accepted_at, terms_version, must_change_password, deleted_at, totp_enabled
+    `SELECT id, name, phone, email, role, status, vehicle, plate, created_at, terms_accepted_at, terms_version, must_change_password, deleted_at, totp_enabled
      FROM users WHERE id = ?`, [id]
   );
   if (!u) return res.status(404).json({ error: 'Usuario no existe' });
@@ -1061,7 +1074,7 @@ async function anonymizeUser(t) {
   await pool.query("UPDATE reports SET text = '[reporte eliminado]' WHERE user_id = ?", [t.id]);
   await pool.query('UPDATE rides SET origin_text = NULL, dest_text = NULL, share_token = NULL WHERE passenger_id = ? OR driver_id = ?', [t.id, t.id]);
   await pool.query(
-    `UPDATE users SET name = 'Cuenta eliminada', phone = ?, password_hash = ?, vehicle = NULL, plate = NULL, status = 'blocked',
+    `UPDATE users SET name = 'Cuenta eliminada', phone = ?, email = NULL, password_hash = ?, vehicle = NULL, plate = NULL, status = 'blocked',
             must_change_password = 0, totp_enabled = 0, totp_secret = NULL, backup_codes = NULL, totp_last_step = NULL,
             deleted_at = NOW(), token_version = token_version + 1 WHERE id = ?`,
     [`del-${t.id}`, await bcrypt.hash(tempPassword() + tempPassword(), 10), t.id]

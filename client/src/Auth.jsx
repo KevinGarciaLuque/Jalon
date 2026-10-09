@@ -6,9 +6,9 @@ const friendly = (e) => (e.message === 'Failed to fetch' ? 'No se pudo conectar 
 
 export default function Auth({ onAuth, notice }) {
   const [mode, setMode] = useState('login'); // login | register | forgot
-  const [step, setStep] = useState(1); // 1: datos · 2: código recibido por SMS
+  const [step, setStep] = useState(1); // 1: datos · 2: código recibido por correo
   const [role, setRole] = useState('passenger');
-  const [f, setF] = useState({ name: '', phone: '', password: '', vehicle: '', plate: '', code: '' });
+  const [f, setF] = useState({ name: '', phone: '', email: '', password: '', vehicle: '', plate: '', code: '' });
   const [error, setError] = useState('');
   const [info, setInfo] = useState(notice || '');
   const [devCode, setDevCode] = useState('');
@@ -34,15 +34,15 @@ export default function Auth({ onAuth, notice }) {
     setF({ ...f, code: '', password: '' });
   }
 
-  // Envía el código por SMS (registro o recuperación)
+  // Envía el código por correo (registro o recuperación)
   async function sendCode() {
     const path = mode === 'register' ? 'otp/send' : 'password/forgot';
-    const res = await api(path, { phone: f.phone });
+    const res = await api(path, mode === 'register' ? { phone: f.phone, email: f.email } : { phone: f.phone });
     setDevCode(res.devCode || '');
     setF((cur) => ({ ...cur, code: res.devCode || '' }));
     setWait(RESEND_SECONDS);
     setStep(2);
-    setInfo(`Te enviamos un código por SMS al ${f.phone}.`);
+    setInfo(mode === 'register' ? `Te enviamos un código de 6 dígitos a ${f.email.trim()}. Revisa también la carpeta de spam.` : 'Si ese teléfono tiene una cuenta, enviamos un código al correo registrado. Revisa también la carpeta de spam.');
   }
 
   async function submit(e) {
@@ -88,7 +88,7 @@ export default function Auth({ onAuth, notice }) {
   const title = challenge ? 'Verificación en dos pasos' : { login: 'Entrar', register: 'Crear cuenta', forgot: 'Recuperar contraseña' }[mode];
   const button =
     challenge ? 'Verificar' : mode === 'login' ? 'Entrar'
-    : step === 1 ? 'Enviar código por SMS'
+    : step === 1 ? 'Enviar código a mi correo'
     : mode === 'register' ? 'Verificar y crear cuenta'
     : 'Cambiar contraseña';
 
@@ -129,6 +129,9 @@ export default function Auth({ onAuth, notice }) {
         {step === 1 && !challenge && (
           <>
             <input placeholder="Teléfono (8 dígitos)" inputMode="tel" autoComplete="tel" value={f.phone} onChange={set('phone')} required />
+            {mode === 'register' && (
+              <input placeholder="Correo electrónico" type="email" inputMode="email" autoComplete="email" maxLength={160} value={f.email} onChange={set('email')} required />
+            )}
             <input
               placeholder={mode === 'forgot' ? 'Nueva contraseña' : 'Contraseña'}
               type="password"
@@ -151,7 +154,7 @@ export default function Auth({ onAuth, notice }) {
         {step === 2 && (
           <>
             {info && <div className="hint ok">{info}</div>}
-            {devCode && <div className="hint">Modo desarrollo (sin SMS real): tu código es <b>{devCode}</b></div>}
+            {devCode && <div className="hint">Modo desarrollo (sin correo real): tu código es <b>{devCode}</b></div>}
             <input
               className="code"
               placeholder="Código de 6 dígitos"
@@ -164,7 +167,7 @@ export default function Auth({ onAuth, notice }) {
               autoFocus
             />
             <div className="row between">
-              <button type="button" className="link" onClick={() => { setStep(1); setInfo(''); setDevCode(''); }}>← Cambiar teléfono</button>
+              <button type="button" className="link" onClick={() => { setStep(1); setInfo(''); setDevCode(''); }}>← Cambiar datos</button>
               <button type="button" className="link" disabled={wait > 0 || busy} onClick={resend}>
                 {wait > 0 ? `Reenviar en ${wait} s` : 'Reenviar código'}
               </button>

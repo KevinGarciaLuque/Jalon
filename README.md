@@ -28,6 +28,15 @@ La búsqueda de direcciones usa Photon y las rutas usan OSRM, ambos públicos y 
 Antes de publicar con muchos usuarios, apunta `PHOTON_URL` y `OSRM_URL` (en `server/.env`) a un servidor propio o de pago.
 Si OSRM no responde, el servidor estima la ruta (línea recta x 1.3) para no bloquear los viajes.
 
+## Código de verificación por correo (SMTP) y por SMS
+
+El registro pide un **correo válido** y envía ahí el código de 6 dígitos; la recuperación de contraseña lo manda al correo de la cuenta. Un correo solo puede usarse en una cuenta, y el código solo sirve para el correo al que se envió. En producción se revisa además que el dominio del correo exista (evita errores como «gmial.com»).
+
+- **Correo (activo por defecto):** `OTP_CHANNELS=email` y las variables `SMTP_HOST`, `SMTP_PORT` (587), `SMTP_USER`, `SMTP_PASS` y `SMTP_FROM`. Sirve Gmail (contraseña de aplicación, puerto 587), Brevo, Resend o Zoho.
+- **SMS (para cuando contrates Twilio):** cambia a `OTP_CHANNELS=email,sms` y define `TWILIO_*`; el código llegará por los dos medios.
+- **Importante:** quita `SMS_DEV_ECHO` en Railway al configurar el correo; con esa variable el código se muestra en pantalla y cualquiera podría registrarse.
+- Las cuentas creadas antes de esta versión no tienen correo: no pueden recuperar la contraseña solas hasta que haya SMS; el superadmin puede restablecérsela desde el panel.
+
 ## SMS con Twilio
 
 El registro y la recuperación de contraseña envían un código de 6 dígitos por SMS.
