@@ -212,3 +212,49 @@ textarea { width: 100%; font: inherit; padding: 12px 14px; border: 1px solid var
 label.upload { display: block; text-align: center; padding: 12px; }
 .settings label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
 .settings .check { flex-direction: row; align-items: flex-start; }
+
+/* ---- Adaptable: teléfono, tablet y escritorio ---- */
+html, body { overflow-x: hidden; }
+body { -webkit-text-size-adjust: 100%; }
+img, video, canvas, svg { max-width: 100%; }
+.hint, .error, .req, .ucard, .offer, .sos-alert, .muted { overflow-wrap: anywhere; }
+.admin > *, .overlay-body > *, .sheet > * { min-width: 0; }
+.admin { overflow-x: hidden; width: 100%; max-width: 1200px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+.seg.tabs { flex-wrap: wrap; }
+.seg.tabs button { flex: 1 1 auto; padding: 10px 12px; white-space: nowrap; }
+header { flex-wrap: wrap; row-gap: 4px; }
+header span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sheet { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+.tablewrap { max-width: 100%; -webkit-overflow-scrolling: touch; }
+.row.between { flex-wrap: wrap; }
+.stats { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+.offer { flex-wrap: wrap; }
+.doc { flex-wrap: wrap; }
+.qr { max-width: 100%; height: auto; aspect-ratio: 1; }
+.temp, .secret { font-size: clamp(18px, 6vw, 28px); }
+.backup code { font-size: clamp(14px, 4.5vw, 18px); }
+@media (max-width: 380px) {
+  .auth { padding: 24px 12px; }
+  .auth h1 { font-size: 36px; }
+  .card { padding: 16px; }
+  .price input { font-size: 22px; }
+  .balance b { font-size: 28px; }
+  .grow { min-width: 140px; }
+}
+@media (min-width: 600px) {
+  .overlay-body, .legal { padding-left: 24px; padding-right: 24px; }
+  .docgrid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+}
+@media (min-width: 700px) {
+  .screen { flex-direction: row; }
+  .sheet { width: 380px; max-height: none; border-radius: 0; box-shadow: none; border-left: 1px solid var(--line); }
+  .seg.tabs button { flex: 0 1 auto; }
+}
+@media (min-width: 1100px) {
+  .sheet { width: 440px; }
+  .stats { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+}
+@media (max-height: 480px) and (orientation: landscape) {
+  .screen { flex-direction: row; }
+  .sheet { width: 340px; max-height: none; border-radius: 0; }
+}

@@ -256,7 +256,7 @@ export default function Admin({ token, onGate }) {
         </div>
       )}
 
-      <div className="seg">
+      <div className="seg tabs">
         {tabs.map(([key, label]) => (
           <button key={key} className={tab === key ? 'on' : ''} onClick={() => setTab(key)}>{label}</button>
         ))}

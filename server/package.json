@@ -11,6 +11,7 @@
     "dev": "node --watch src/index.js",
     "test": "node test/run.mjs",
     "test:e2e": "node test/e2e.mjs",
+    "test:responsive": "node test/responsive.mjs",
     "test:tiles": "node test/tiles.mjs",
     "test:load": "node test/load.mjs"
   },
