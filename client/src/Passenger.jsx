@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, useMap, useMapEvents } from 'react-leaflet';
-import { icons, useGeo, apiGet, lempiras, minutes } from './lib.js';
+import { icons, useGeo, apiGet, lempiras, minutes, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
 import { AddressSearch, FitTo, Rate, SafetyBar, Stars } from './components.jsx';
 
 function Recenter({ pos }) {
@@ -127,7 +127,7 @@ export default function Passenger({ socket, token }) {
       <div className="map">
         {pos && (
           <MapContainer center={[pos.lat, pos.lng]} zoom={15} style={{ height: '100%' }}>
-            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap" />
+            <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
             <Recenter pos={pos} />
             <FitTo points={fitPoints} />
             <Picker onPick={pickDest} enabled={!active} />

@@ -9,8 +9,8 @@ const password = process.argv[3] || crypto.randomBytes(9).toString('base64url');
 const hash = await bcrypt.hash(password, 10);
 
 await pool.query(
-  `INSERT INTO users (name, phone, password_hash, role) VALUES ('Super Admin', ?, ?, 'admin')
-   ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash), role = 'admin'`,
+  `INSERT INTO users (name, phone, password_hash, role) VALUES ('Super Admin', ?, ?, 'superadmin')
+   ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash), role = 'superadmin'`,
   [phone, hash]
 );
 

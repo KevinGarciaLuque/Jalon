@@ -40,7 +40,7 @@ async function openAs(session, geo, name) {
     navigator.clipboard.writeText = async (t) => { window.__copied = t; };
   });
   page.on('pageerror', (e) => errors.push(`[${name}] ${e.message}`));
-  page.on('console', (m) => m.type() === 'error' && !/favicon|tile\.openstreetmap|ERR_/.test(m.text()) && errors.push(`[${name}] ${m.text()}`));
+  page.on('console', (m) => m.type() === 'error' && !/favicon|ERR_/.test(m.text()) && errors.push(`[${name}] ${m.text()}`));
   page.on('dialog', (d) => d.accept()); // confirmaciones de "¿Cancelar?" etc.
   await page.goto(CLIENT, { waitUntil: 'domcontentloaded' });
   if (session) {
@@ -61,8 +61,8 @@ try {
   const driver = await openAs(D, { latitude: 14.073, longitude: -87.1925 }, 'conductor');
   const pass = await openAs(null, { latitude: 14.0723, longitude: -87.1921 }, 'pasajero');
   // Sesión de admin firmada con el JWT_SECRET del .env (así no hay contraseñas escritas en el código)
-  const [[adm]] = await pool.query("SELECT id, name, phone FROM users WHERE role = 'admin' LIMIT 1");
-  const adminLogin = { token: jwt.sign({ id: adm.id, role: 'admin' }, process.env.JWT_SECRET, { expiresIn: '10m' }), user: { ...adm, role: 'admin', status: 'active' } };
+  const [[adm]] = await pool.query("SELECT id, name, phone FROM users WHERE role = 'superadmin' LIMIT 1");
+  const adminLogin = { token: jwt.sign({ id: adm.id, role: 'superadmin' }, process.env.JWT_SECRET, { expiresIn: '10m' }), user: { ...adm, role: 'superadmin', status: 'active' } };
   const admin = await openAs(adminLogin, { latitude: 14.07, longitude: -87.19 }, 'admin');
   await admin.setViewport({ width: 1100, height: 800 });
 
@@ -122,14 +122,16 @@ try {
   await shot(driver, '0b-conductor-documentos');
   check('conductor ve el aviso de revisión', await see(driver, 'Listo: un administrador revisará'));
 
-  await click(admin, 'Usuarios');
-  await click(admin, 'Documentos (3/3)', 20000);
+  // La solicitud aparece arriba, sin buscarla en ninguna pestaña
+  check('el admin ve la solicitud del conductor en el panel de pendientes', await see(admin, 'Solicitudes de conductores por aprobar', 20000));
+  await shot(admin, '0b2-admin-pendientes');
+  await click(admin, 'Revisar documentos', 20000);
   check('admin ve las imágenes de los documentos', await admin.waitForSelector('.docimg', { timeout: 15000 }).then(() => true, () => false));
   await shot(admin, '0c-admin-documentos');
   await click(admin, 'Aprobar conductor');
   await driver.waitForFunction(() => [...document.querySelectorAll('button')].some((b) => b.textContent.includes('Ponerme disponible') && !b.disabled), { timeout: 15000 });
   check('al aprobarlo, el conductor ya puede ponerse disponible', true);
-  await click(admin, 'Viajes'); // vuelve a la pestaña de viajes para ver la alerta SOS más adelante
+  check('al aprobarlo, la solicitud sale del panel', await admin.waitForFunction(() => !document.body.innerText.includes('Solicitudes de conductores por aprobar'), { timeout: 15000 }).then(() => true, () => false));
 
   check('conductor ve su pantalla', await see(driver, 'Ponerme disponible'));
   await click(driver, 'Ponerme disponible');
@@ -195,6 +197,44 @@ try {
   // Admin: ve la emergencia (la página ya estaba abierta y se actualiza sola)
   check('admin ve la alerta de emergencia', await see(admin, 'EMERGENCIA', 20000));
   await shot(admin, '8-admin');
+
+  // ---- Personal: el superadmin crea a alguien de soporte y esa persona debe cambiar la contraseña temporal ----
+  const staffPhone = `7${rnd}`;
+  await click(admin, 'Personal');
+  await admin.type('input[placeholder="Nombre"]', 'P5B Soporte UI');
+  await admin.type('input[placeholder^="Teléfono"]', staffPhone);
+  await click(admin, 'Crear cuenta');
+  check('se muestra la contraseña temporal una sola vez', await see(admin, 'Solo se muestra ahora'));
+  const tempPass = await admin.$eval('.temp', (el) => el.textContent.trim());
+  check('la contraseña temporal tiene 10 caracteres', tempPass.length === 10);
+  await shot(admin, '0e-contrasena-temporal');
+  await click(admin, 'Listo, ya la anoté');
+
+  const staffPage = await openAs(null, { latitude: 14.07, longitude: -87.19 }, 'soporte');
+  await staffPage.type('input[placeholder^="Teléfono"]', staffPhone);
+  await staffPage.type('input[placeholder="Contraseña"]', tempPass);
+  await click(staffPage, 'Entrar');
+  check('el personal nuevo debe cambiar la contraseña antes de entrar', await see(staffPage, 'Cambia tu contraseña para continuar'));
+  await staffPage.type('input[placeholder="Contraseña actual"]', tempPass);
+  await staffPage.type('input[placeholder="Contraseña nueva"]', 'soporte-clave-9');
+  await staffPage.type('input[placeholder="Repite la contraseña nueva"]', 'soporte-clave-9');
+  await click(staffPage, 'Cambiar contraseña');
+  await staffPage.waitForSelector('.admin', { timeout: 15000 });
+  check('después de cambiarla entra al panel', true);
+  const tabs = await staffPage.$$eval('.seg button', (bs) => bs.map((b) => b.textContent));
+  check('soporte solo ve Viajes y Usuarios (sin Personal ni Registro)', tabs.join(',') === 'Viajes,Usuarios', `(${tabs})`);
+  await click(staffPage, 'Usuarios');
+  await staffPage.waitForSelector('.ucard.click', { timeout: 15000 });
+  await staffPage.click('.ucard.click');
+  check('soporte abre la ficha de un usuario', await see(staffPage, 'Últimos viajes'));
+  const supportActions = await staffPage.$$eval('.actions-bar button', (bs) => bs.map((b) => b.textContent)).catch(() => []);
+  check('soporte no ve botones para editar, aprobar ni bloquear', supportActions.length === 0, `(${supportActions})`);
+  await shot(staffPage, '0f-soporte-ficha');
+
+  // El superadmin ve el movimiento en el registro
+  await click(admin, 'Registro');
+  check('el registro muestra que el superadmin creó la cuenta', await see(admin, 'Creó una cuenta del personal'));
+  await shot(admin, '0g-registro');
 
   // ---- Recuperar contraseña por pantalla ----
   await click(pass, 'Cerrar ✕');

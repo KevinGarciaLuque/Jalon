@@ -7,6 +7,9 @@ import History from './History.jsx';
 import Account from './Account.jsx';
 import { connectSocket } from './lib.js';
 
+const STAFF = ['superadmin', 'admin', 'support'];
+const ROLE_NAME = { passenger: 'Pasajero', driver: 'Conductor', superadmin: 'Superadministrador', admin: 'Administrador', support: 'Soporte' };
+
 function loadSession() {
   try { return JSON.parse(localStorage.getItem('jalon')) || null; } catch { return null; }
 }
@@ -21,7 +24,8 @@ export default function App() {
   const [accountStatus, setAccountStatus] = useState(() => loadSession()?.user.status);
 
   useEffect(() => {
-    if (!session || session.user.role === 'admin') return;
+    // El personal no usa sockets; y con contraseña temporal pendiente tampoco se conecta nadie
+    if (!session || STAFF.includes(session.user.role) || session.user.mustChangePassword) return;
     const s = connectSocket(session.token);
     s.on('connect', () => setConnError(''));
     s.on('account:status', ({ status }) => {
@@ -47,7 +51,7 @@ export default function App() {
 
   // Al cambiar la contraseña el servidor entrega un token nuevo; se reemplaza para no cerrar esta sesión
   function updateToken(token) {
-    const next = { ...session, token };
+    const next = { ...session, token, user: { ...session.user, mustChangePassword: false } };
     localStorage.setItem('jalon', JSON.stringify(next));
     setSession(next);
   }
@@ -65,18 +69,19 @@ export default function App() {
     <div className="app">
       <header>
         <b>Jalón</b>
-        <span>{session.user.name} · {{ driver: 'Conductor', admin: 'Administrador' }[session.user.role] || 'Pasajero'}</span>
-        {session.user.role !== 'admin' && <button className="link" onClick={() => setShowHistory(true)}>Historial</button>}
+        <span>{session.user.name} · {ROLE_NAME[session.user.role]}</span>
+        {!STAFF.includes(session.user.role) && !session.user.mustChangePassword && <button className="link" onClick={() => setShowHistory(true)}>Historial</button>}
         <button className="link" onClick={() => setShowAccount(true)}>Cuenta</button>
         <button className="link" onClick={() => logout()}>Salir</button>
       </header>
       {connError && <div className="banner">{connError}</div>}
-      {session.user.role === 'admin' && <Admin token={session.token} />}
-      {socket && (session.user.role === 'driver'
+      {STAFF.includes(session.user.role) && !session.user.mustChangePassword && <Admin token={session.token} />}
+      {socket && !session.user.mustChangePassword && (session.user.role === 'driver'
         ? <Driver socket={socket} token={session.token} status={accountStatus} />
         : <Passenger socket={socket} token={session.token} />)}
-      {showAccount && (
+      {(showAccount || session.user.mustChangePassword) && (
         <Account
+          forced={!!session.user.mustChangePassword}
           user={session.user}
           token={session.token}
           onToken={updateToken}

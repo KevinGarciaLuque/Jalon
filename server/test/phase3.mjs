@@ -24,8 +24,8 @@ const call = async (method, path, token, body) => {
 const D = await registerUser({ name: 'P3 Driver', phone: `9${rnd}`, password: 'secreto1', role: 'driver', vehicle: 'Hilux', plate: 'HBB5678' });
 const P = await registerUser({ name: 'P3 Pasajero', phone: `8${rnd}`, password: 'secreto1', role: 'passenger' });
 await pool.query("UPDATE users SET status = 'active' WHERE id = ?", [D.user.id]);
-const [[adm]] = await pool.query("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
-const A = jwt.sign({ id: adm.id, role: 'admin' }, process.env.JWT_SECRET, { expiresIn: '5m' });
+const [[adm]] = await pool.query("SELECT id FROM users WHERE role = 'superadmin' LIMIT 1");
+const A = jwt.sign({ id: adm.id, role: 'superadmin' }, process.env.JWT_SECRET, { expiresIn: '5m' });
 
 const origin = { lat: 14.0723, lng: -87.1921, text: 'Colonia Kennedy' };
 const dest = { lat: 14.1, lng: -87.2, text: 'Destino' };
@@ -126,7 +126,7 @@ check('el viaje muestra calificación del conductor', second.requested.passenger
 const cancelled = until(ps, 'ride:state', (r) => r.status === 'cancelled');
 ps.emit('ride:cancel', { rideId: second.ride.id });
 await cancelled;
-const users = await call('GET', 'admin/users', A);
+const users = (await call('GET', 'admin/users', A)).users;
 check('el admin ve la calificación de cada usuario', users.find((u) => u.id === D.user.id)?.rating?.avg === 5);
 
 // SOS fuera de un viaje

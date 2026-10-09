@@ -134,3 +134,21 @@ label.upload input { display: none; }
 .check.terms { align-items: flex-start; font-size: 13px; }
 .check.terms input { margin-top: 3px; flex: none; }
 header { padding-top: max(10px, env(safe-area-inset-top)); }
+
+/* ---- Fase 5B ---- */
+.overlay.top { z-index: 4000; }
+.pending { display: flex; flex-direction: column; gap: 8px; border: 2px solid #f59e0b; background: rgba(245, 158, 11, .1); border-radius: 12px; padding: 12px; }
+.ucard { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; border: 1px solid var(--line); background: var(--card); border-radius: 12px; padding: 10px 12px; color: var(--text); width: 100%; font-weight: 400; }
+.ucard.click { cursor: pointer; text-align: left; }
+.ucard.click:hover { border-color: var(--brand); }
+.grow { flex: 1; min-width: 180px; }
+.left-text { text-align: left; }
+.row.wrap { flex-wrap: wrap; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chips button { padding: 6px 12px; font-size: 14px; border-radius: 999px; }
+.chips button.on { background: var(--brand); color: #fff; border-color: var(--brand); }
+.actions-bar { display: flex; flex-wrap: wrap; gap: 8px; }
+.actions-bar button, .actions-bar select { padding: 8px 12px; font-size: 14px; }
+select { font: inherit; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--text); }
+.temp { font-family: ui-monospace, Consolas, monospace; font-size: 28px; letter-spacing: 2px; text-align: center; padding: 16px; border: 2px dashed var(--brand); border-radius: 12px; user-select: all; word-break: break-all; }
+.pad { padding: 12px; }

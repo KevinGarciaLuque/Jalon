@@ -1,45 +1,56 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { API, lempiras } from './lib.js';
 import { Stars } from './components.jsx';
+import DocsModal from './DocsModal.jsx';
+import UserDetail, { TempPassword, ROLE_LABEL, STATUS_LABEL, ACTION_LABEL, detailText, isStaffRole } from './UserDetail.jsx';
 
 const RIDE_STATUS = {
   requested: 'Solicitado', accepted: 'Aceptado', arrived: 'Llegó', started: 'En curso',
   completed: 'Completado', cancelled: 'Cancelado',
 };
-const CANCELLED_BY = { passenger: 'pasajero', driver: 'conductor', admin: 'admin', system: 'sistema' };
-const USER_STATUS = { pending: 'Pendiente', active: 'Activo', blocked: 'Bloqueado' };
-const ROLE = { passenger: 'Pasajero', driver: 'Conductor', admin: 'Admin' };
-const DOC_LABEL = { photo: 'Foto del conductor', license: 'Licencia', registration: 'Matrícula' };
+const CANCELLED_BY = { passenger: 'pasajero', driver: 'conductor', admin: 'personal', system: 'sistema' };
 const isActive = (s) => ['requested', 'accepted', 'arrived', 'started'].includes(s);
+const when = (d) => new Date(d).toLocaleString('es-HN', { dateStyle: 'medium', timeStyle: 'short' });
 
 export default function Admin({ token }) {
   const [tab, setTab] = useState('rides');
   const [stats, setStats] = useState(null);
-  const [users, setUsers] = useState([]);
+  const [directory, setDirectory] = useState({ users: [], perms: [], me: { id: 0, role: '' } });
   const [rides, setRides] = useState([]);
   const [alerts, setAlerts] = useState([]);
-  const [onlyPending, setOnlyPending] = useState(false);
-  const [docsUser, setDocsUser] = useState(null);
+  const [audit, setAudit] = useState([]);
   const [error, setError] = useState('');
+  const [detailId, setDetailId] = useState(null);
+  const [docsUser, setDocsUser] = useState(null);
+  const [temp, setTemp] = useState(null);
+  const [q, setQ] = useState('');
+  const [filter, setFilter] = useState('all');
+  const [staffForm, setStaffForm] = useState({ name: '', phone: '', role: 'support' });
 
-  const call = useCallback(async (path, body) => {
+  const { users, perms, me } = directory;
+  const can = (p) => perms.includes(p);
+
+  const call = useCallback(async (path, body, method) => {
+    const verb = method || (body ? 'POST' : 'GET');
     const res = await fetch(`${API}/api/admin/${path}`, {
-      method: body ? 'POST' : 'GET',
+      method: verb,
       headers: { Authorization: `Bearer ${token}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
       body: body ? JSON.stringify(body) : undefined,
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || 'Error');
     return data;
   }, [token]);
 
-  const load = useCallback(
-    () =>
-      Promise.all([call('stats'), call('users'), call('rides'), call('alerts')])
-        .then(([s, u, r, a]) => { setStats(s); setUsers(u); setRides(r); setAlerts(a); setError(''); })
-        .catch((e) => setError(e.message)),
-    [call]
-  );
+  const load = useCallback(async () => {
+    try {
+      const [s, d, r, a] = await Promise.all([call('stats'), call('users'), call('rides'), call('alerts')]);
+      setStats(s); setDirectory(d); setRides(r); setAlerts(a); setError('');
+      if (d.perms.includes('audit')) setAudit(await call('audit'));
+    } catch (e) {
+      setError(e.message);
+    }
+  }, [call]);
 
   useEffect(() => {
     load();
@@ -57,11 +68,44 @@ export default function Admin({ token }) {
     }
   }
 
-  const shownUsers = onlyPending ? users.filter((u) => u.role === 'driver' && u.status === 'pending') : users;
+  async function createStaff(e) {
+    e.preventDefault();
+    try {
+      const r = await call('staff', staffForm);
+      setTemp({ who: staffForm.name, password: r.tempPassword });
+      setStaffForm({ name: '', phone: '', role: 'support' });
+      await load();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  const live = users.filter((u) => !u.deleted_at);
+  const pending = live.filter((u) => u.role === 'driver' && u.status === 'pending');
+  const staff = users.filter((u) => isStaffRole(u.role));
+  const shown = useMemo(() => {
+    const text = q.trim().toLowerCase();
+    return users.filter((u) => {
+      if (isStaffRole(u.role)) return false;
+      if (filter === 'passenger' && u.role !== 'passenger') return false;
+      if (filter === 'driver' && u.role !== 'driver') return false;
+      if (filter === 'blocked' && (u.status !== 'blocked' || u.deleted_at)) return false;
+      if (!text) return true;
+      return [u.name, u.phone, u.plate, u.vehicle].some((v) => (v || '').toLowerCase().includes(text));
+    });
+  }, [users, q, filter]);
+
+  const tabs = [
+    ['rides', 'Viajes'],
+    ['users', 'Usuarios'],
+    ...(can('staff.manage') ? [['staff', 'Personal']] : []),
+    ...(can('audit') ? [['audit', 'Registro']] : []),
+  ];
 
   return (
     <div className="admin">
       {error && <div className="error">{error}</div>}
+
       {alerts.map((a) => (
         <div className="sos-alert" key={a.id}>
           <div className="row between">
@@ -85,6 +129,28 @@ export default function Admin({ token }) {
         </div>
       ))}
 
+      {/* Solicitudes de conductores: siempre a la vista, sin buscarlas en una tabla */}
+      {can('users.manage') && pending.length > 0 && (
+        <section className="pending">
+          <b>🔔 Solicitudes de conductores por aprobar ({pending.length})</b>
+          {pending.map((u) => (
+            <div className="ucard" key={u.id}>
+              <div className="grow">
+                <b>{u.name}</b> <span className="muted">· {u.phone}</span>
+                <div className="muted">{u.vehicle} · {u.plate} · se registró el {when(u.created_at)}</div>
+                <div className={u.docs === 3 ? 'ok small' : 'muted small'}>
+                  {u.docs === 3 ? '✓ Subió los 3 documentos' : `Documentos: ${u.docs} de 3 (falta que los suba)`}
+                </div>
+              </div>
+              <div className="row wrap">
+                <button className="sm" onClick={() => setDocsUser(u)}>Revisar documentos</button>
+                <button className="primary sm" disabled={u.docs < 3} title={u.docs < 3 ? 'Faltan documentos' : ''} onClick={() => act(`users/${u.id}/status`, { status: 'active' })}>Aprobar</button>
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
+
       {stats && (
         <div className="stats">
           <div><b>{stats.driversFree}</b><span>Conductores libres</span></div>
@@ -99,21 +165,13 @@ export default function Admin({ token }) {
       )}
 
       <div className="seg">
-        <button className={tab === 'rides' ? 'on' : ''} onClick={() => setTab('rides')}>Viajes</button>
-        <button className={tab === 'users' ? 'on' : ''} onClick={() => setTab('users')}>
-          Usuarios{stats?.pendingDrivers ? ` (${stats.pendingDrivers} por aprobar)` : ''}
-        </button>
+        {tabs.map(([key, label]) => (
+          <button key={key} className={tab === key ? 'on' : ''} onClick={() => setTab(key)}>{label}</button>
+        ))}
       </div>
 
-      {tab === 'users' && (
-        <label className="check">
-          <input type="checkbox" checked={onlyPending} onChange={(e) => setOnlyPending(e.target.checked)} />
-          Solo conductores por aprobar
-        </label>
-      )}
-
-      <div className="tablewrap">
-        {tab === 'rides' ? (
+      {tab === 'rides' && (
+        <div className="tablewrap">
           <table>
             <thead><tr><th>#</th><th>Estado</th><th>Pasajero</th><th>Conductor</th><th>Km</th><th>Ofrecido</th><th>Final</th><th>Fecha</th><th></th></tr></thead>
             <tbody>
@@ -124,137 +182,107 @@ export default function Admin({ token }) {
                   <td>{r.passenger}</td><td>{r.driver || '—'}</td>
                   <td>{r.distance_km.toFixed(1)}</td><td>{lempiras(r.offered_price)}</td>
                   <td>{r.final_price ? lempiras(r.final_price) : '—'}</td>
-                  <td>{new Date(r.created_at).toLocaleString('es-HN')}</td>
-                  <td>
-                    {isActive(r.status) && (
-                      <button className="danger sm" onClick={() => act(`rides/${r.id}/cancel`, {}, `¿Cancelar el viaje #${r.id}?`)}>Cancelar</button>
-                    )}
-                  </td>
+                  <td>{when(r.created_at)}</td>
+                  <td>{isActive(r.status) && can('rides.cancel') && (
+                    <button className="danger sm" onClick={() => act(`rides/${r.id}/cancel`, {}, `¿Cancelar el viaje #${r.id}?`)}>Cancelar</button>
+                  )}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        ) : (
+        </div>
+      )}
+
+      {tab === 'users' && (
+        <>
+          <input placeholder="Buscar por nombre, teléfono o placa" value={q} onChange={(e) => setQ(e.target.value)} />
+          <div className="chips">
+            {[['all', 'Todos'], ['passenger', 'Pasajeros'], ['driver', 'Conductores'], ['blocked', 'Bloqueados']].map(([k, label]) => (
+              <button key={k} className={filter === k ? 'on' : ''} onClick={() => setFilter(k)}>{label}</button>
+            ))}
+          </div>
+          {shown.length === 0 && <p className="muted">No hay usuarios con ese filtro.</p>}
+          {shown.map((u) => (
+            <button className="ucard click" key={u.id} onClick={() => setDetailId(u.id)}>
+              <div className="grow left-text">
+                <b>{u.name}</b> <span className="muted">· {u.phone}</span> {u.online && '🟢'}
+                <div className="muted small">{ROLE_LABEL[u.role]}{u.vehicle ? ` · ${u.vehicle} ${u.plate}` : ''}</div>
+              </div>
+              <Stars rating={u.rating} />
+              <span className={`pill ${u.status}`}>{u.deleted_at ? 'Eliminada' : STATUS_LABEL[u.status]}</span>
+            </button>
+          ))}
+        </>
+      )}
+
+      {tab === 'staff' && (
+        <>
+          <form className="req" onSubmit={createStaff}>
+            <b>Agregar a una persona del personal</b>
+            <input placeholder="Nombre" value={staffForm.name} onChange={(e) => setStaffForm({ ...staffForm, name: e.target.value })} required />
+            <input placeholder="Teléfono (8 dígitos)" inputMode="tel" value={staffForm.phone} onChange={(e) => setStaffForm({ ...staffForm, phone: e.target.value })} required />
+            <select value={staffForm.role} onChange={(e) => setStaffForm({ ...staffForm, role: e.target.value })}>
+              <option value="support">Soporte: ve usuarios y viajes y atiende emergencias</option>
+              <option value="admin">Administrador: además aprueba, bloquea y revisa documentos</option>
+            </select>
+            <p className="muted small">Se genera una contraseña temporal que verás una sola vez; la persona la cambiará al entrar.</p>
+            <button className="primary">Crear cuenta</button>
+          </form>
+          {staff.filter((u) => !u.deleted_at).map((u) => (
+            <button className="ucard click" key={u.id} onClick={() => setDetailId(u.id)}>
+              <div className="grow left-text">
+                <b>{u.name}</b> <span className="muted">· {u.phone}</span>
+                <div className="muted small">{ROLE_LABEL[u.role]}{u.must_change_password ? ' · aún no cambia su contraseña temporal' : ''}</div>
+              </div>
+              <span className={`pill ${u.status}`}>{STATUS_LABEL[u.status]}</span>
+            </button>
+          ))}
+        </>
+      )}
+
+      {tab === 'audit' && (
+        <div className="tablewrap">
           <table>
-            <thead><tr><th>#</th><th>Nombre</th><th>Teléfono</th><th>Rol</th><th>Vehículo</th><th>Placa</th><th>Calificación</th><th>Cuenta</th><th>En línea</th><th></th></tr></thead>
+            <thead><tr><th>Cuándo</th><th>Quién</th><th>Qué hizo</th><th>Sobre</th><th>Detalle</th></tr></thead>
             <tbody>
-              {shownUsers.map((u) => (
-                <tr key={u.id}>
-                  <td>{u.id}</td><td>{u.name}</td><td>{u.phone}</td><td>{ROLE[u.role]}</td>
-                  <td>{u.vehicle || '—'}</td><td>{u.plate || '—'}</td>
-                  <td><Stars rating={u.rating} /></td>
-                  <td><span className={`pill ${u.status}`}>{USER_STATUS[u.status]}</span></td>
-                  <td>{u.online ? '🟢' : ''}</td>
-                  <td className="actions">
-                    {u.role === 'driver' && (
-                      <button className="sm" onClick={() => setDocsUser(u)}>Documentos ({u.docs}/3)</button>
-                    )}
-                    {u.role !== 'admin' && u.status === 'pending' && (
-                      <button
-                        className="primary sm"
-                        disabled={u.role === 'driver' && u.docs < 3}
-                        title={u.role === 'driver' && u.docs < 3 ? 'Faltan documentos' : ''}
-                        onClick={() => act(`users/${u.id}/status`, { status: 'active' })}
-                      >Aprobar</button>
-                    )}
-                    {u.role !== 'admin' && u.status !== 'blocked' && (
-                      <button className="danger sm" onClick={() => act(`users/${u.id}/status`, { status: 'blocked' }, `¿Bloquear a ${u.name}? Se cancelarán sus viajes activos.`)}>Bloquear</button>
-                    )}
-                    {u.role !== 'admin' && u.status === 'blocked' && (
-                      <button className="sm" onClick={() => act(`users/${u.id}/status`, { status: 'active' })}>Desbloquear</button>
-                    )}
-                  </td>
+              {audit.map((l) => (
+                <tr key={l.id}>
+                  <td>{when(l.created_at)}</td>
+                  <td>{l.actor} <span className="muted">({ROLE_LABEL[l.actor_role]})</span></td>
+                  <td>{ACTION_LABEL[l.action] || l.action}</td>
+                  <td>{l.target_name || '—'}</td>
+                  <td>{detailText(l.action, l.details)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        )}
-      </div>
+          {audit.length === 0 && <p className="muted pad">Todavía no hay movimientos.</p>}
+        </div>
+      )}
+
+      {detailId && (
+        <UserDetail
+          userId={detailId}
+          me={me}
+          perms={perms}
+          call={call}
+          token={token}
+          onClose={() => setDetailId(null)}
+          onChanged={load}
+        />
+      )}
       {docsUser && (
         <DocsModal
           user={users.find((u) => u.id === docsUser.id) || docsUser}
           call={call}
           token={token}
+          canManage={can('users.manage')}
           onClose={() => setDocsUser(null)}
           onApprove={async () => { await act(`users/${docsUser.id}/status`, { status: 'active' }); setDocsUser(null); }}
           onChanged={load}
         />
       )}
-    </div>
-  );
-}
-
-// Revisión de los documentos de un conductor
-function DocsModal({ user, call, token, onClose, onApprove, onChanged }) {
-  const [docs, setDocs] = useState(null);
-  const [images, setImages] = useState({});
-  const [error, setError] = useState('');
-
-  const refresh = useCallback(async () => {
-    try {
-      const list = await call(`users/${user.id}/documents`);
-      setDocs(list);
-      // Las imágenes exigen sesión de admin, por eso se bajan con fetch y se muestran como blob
-      const urls = {};
-      for (const d of list) {
-        const res = await fetch(`${API}/api/admin/documents/${d.id}/file`, { headers: { Authorization: `Bearer ${token}` } });
-        if (res.ok) urls[d.id] = URL.createObjectURL(await res.blob());
-      }
-      setImages((old) => { Object.values(old).forEach(URL.revokeObjectURL); return urls; });
-    } catch (e) {
-      setError(e.message);
-    }
-  }, [call, token, user.id]);
-
-  useEffect(() => { refresh(); }, [refresh]);
-  useEffect(() => () => Object.values(images).forEach(URL.revokeObjectURL), []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  async function reject(d) {
-    const note = window.prompt(`¿Por qué rechazas ${DOC_LABEL[d.type].toLowerCase()}? (el conductor verá este motivo)`, 'Foto borrosa o ilegible');
-    if (note === null) return;
-    try {
-      await call(`documents/${d.id}/reject`, { note });
-      await refresh();
-      onChanged();
-    } catch (e) {
-      setError(e.message);
-    }
-  }
-
-  const byType = Object.fromEntries((docs || []).map((d) => [d.type, d]));
-  const ready = (docs || []).filter((d) => d.status === 'uploaded').length === 3;
-
-  return (
-    <div className="overlay">
-      <div className="overlay-head">
-        <b>Documentos de {user.name} · {user.vehicle} {user.plate}</b>
-        <button className="link" onClick={onClose}>Cerrar ✕</button>
-      </div>
-      <div className="overlay-body wide">
-        {error && <div className="error">{error}</div>}
-        {!docs && !error && <div className="pulse">Cargando…</div>}
-        <div className="docgrid">
-          {Object.entries(DOC_LABEL).map(([type, label]) => {
-            const d = byType[type];
-            return (
-              <div className="req" key={type}>
-                <b>{label}</b>
-                {!d && <div className="muted">No lo ha subido</div>}
-                {d && images[d.id] && (
-                  <a href={images[d.id]} target="_blank" rel="noreferrer"><img className="docimg" src={images[d.id]} alt={label} /></a>
-                )}
-                {d?.status === 'rejected' && <div className="error">Rechazado: {d.note}</div>}
-                {d?.status === 'uploaded' && <button className="danger sm" onClick={() => reject(d)}>Rechazar</button>}
-              </div>
-            );
-          })}
-        </div>
-        {user.status === 'pending' && (
-          <button className="primary" disabled={!ready} onClick={onApprove}>
-            {ready ? 'Aprobar conductor' : 'Faltan documentos para aprobar'}
-          </button>
-        )}
-      </div>
+      {temp && <TempPassword who={temp.who} password={temp.password} onClose={() => setTemp(null)} />}
     </div>
   );
 }

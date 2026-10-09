@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
-import { apiGet, icons } from './lib.js';
+import { apiGet, icons, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
 import { FitTo } from './components.jsx';
 
 const STATUS = {
@@ -43,7 +43,7 @@ export default function Track({ token }) {
       <div className="screen">
         <div className="map">
           <MapContainer center={points[0]} zoom={14} style={{ height: '100%' }}>
-            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap" />
+            <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
             <FitTo points={points} />
             <Polyline positions={points} pathOptions={{ color: '#0a7d4f', weight: 5, opacity: 0.85 }} />
             <Marker position={[data.origin.lat, data.origin.lng]} icon={icons.me} />

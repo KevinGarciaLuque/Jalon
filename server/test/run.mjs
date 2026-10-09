@@ -2,7 +2,7 @@
 import { spawnSync } from 'child_process';
 
 let failed = false;
-for (const t of ['flow', 'phase3', 'phase4', 'expiry']) {
+for (const t of ['flow', 'phase3', 'phase4', 'phase5b', 'expiry']) {
   const r = spawnSync(process.execPath, [`test/${t}.mjs`], { stdio: 'inherit' });
   if (r.status !== 0) failed = true;
 }

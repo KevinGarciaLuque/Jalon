@@ -2,11 +2,13 @@
 import fs from 'fs';
 import path from 'path';
 import { pool } from '../src/db.js';
-const names = ['Test Driver', 'Test Pasajero', 'Exp', 'P3 Driver', 'P3 Pasajero', 'E2E Driver', 'E2E Pasajero', 'P4 Pasajero', 'P4 Formato', 'P4 Bloqueo', 'P4 Reset', 'P4 Driver'];
-const [u] = await pool.query('SELECT id, phone FROM users WHERE name IN (?) AND role <> "admin"', [names]);
+const names = ['Test Driver', 'Test Pasajero', 'Exp', 'P3 Driver', 'P3 Pasajero', 'E2E Driver', 'E2E Pasajero', 'P4 Pasajero', 'P4 Formato', 'P4 Bloqueo', 'P4 Reset', 'P4 Driver', 'P5B Admin', 'P5B Soporte', 'P5B Pasajero', 'P5B Pasajero Editado', 'P5B Conductor', 'P5B Soporte UI', 'Cuenta eliminada'];
+const [u] = await pool.query('SELECT id, phone FROM users WHERE name IN (?) AND role <> "superadmin"', [names]);
 const ids = u.map((x) => x.id);
 const phones = u.map((x) => x.phone);
 if (ids.length) {
+  // movimientos del personal sobre los usuarios de prueba (y los de las pruebas de viajes y alertas)
+  await pool.query('DELETE FROM audit_log WHERE actor_id IN (?) OR target_user_id IN (?)', [ids, ids]);
   const [docs] = await pool.query('SELECT file FROM documents WHERE user_id IN (?)', [ids]);
   for (const d of docs) fs.rmSync(path.join(process.cwd(), 'uploads', d.file), { force: true });
   await pool.query('DELETE FROM documents WHERE user_id IN (?)', [ids]);
@@ -19,4 +21,5 @@ if (ids.length) {
 }
 if (phones.length) await pool.query('DELETE FROM otp_codes WHERE phone IN (?)', [phones]);
 console.log(`Borrados ${ids.length} usuarios de prueba`);
+await pool.query("DELETE FROM audit_log WHERE action IN ('ride.cancel','alert.resolve')");
 await pool.end();

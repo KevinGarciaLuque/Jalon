@@ -10,8 +10,8 @@ const rnd = String(Math.floor(Math.random() * 1e6)).padStart(6, '0');
 let fails = 0;
 const check = (name, ok, extra = '') => { console.log(`${ok ? 'OK  ' : 'FAIL'} ${name} ${extra}`); if (!ok) fails++; };
 
-const [[adm]] = await pool.query("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
-const A = jwt.sign({ id: adm.id, role: 'admin' }, process.env.JWT_SECRET, { expiresIn: '5m' });
+const [[adm]] = await pool.query("SELECT id FROM users WHERE role = 'superadmin' LIMIT 1");
+const A = jwt.sign({ id: adm.id, role: 'superadmin' }, process.env.JWT_SECRET, { expiresIn: '5m' });
 const phone = (prefix) => `${prefix}${rnd}9`.slice(0, 8);
 
 // ---------------- Registro con código ----------------
@@ -105,7 +105,7 @@ check('sube la matrícula', (await http('PUT', 'driver/documents/registration', 
 
 const docs = await http('GET', `admin/users/${D.user.id}/documents`, A);
 check('el admin ve los 3 documentos', docs.length === 3 && docs.every((d) => d.status === 'uploaded'));
-const list = await http('GET', 'admin/users', A);
+const list = (await http('GET', 'admin/users', A)).users;
 check('la lista de usuarios muestra cuántos documentos subió', list.find((u) => u.id === D.user.id)?.docs === 3);
 
 const file = await fetch(`${API}/api/admin/documents/${docs[0].id}/file`, { headers: { Authorization: `Bearer ${A}` } });

@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react';
 
 // Desarrollo: API en :4000. Producción: el mismo servidor entrega la web, así que se usa la misma dirección ('')
 export const API = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? 'http://localhost:4000' : '');
+// Proveedor de mapas: se cambia con VITE_TILE_URL y VITE_TILE_ATTRIBUTION (al compilar). Por defecto, OpenStreetMap.
+export const TILE_URL = import.meta.env.VITE_TILE_URL || 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+export const TILE_ATTRIBUTION = import.meta.env.VITE_TILE_ATTRIBUTION || '&copy; OpenStreetMap';
 export const DEFAULT_POS = { lat: 14.0723, lng: -87.1921 }; // Tegucigalpa
 
 export async function api(path, body) {

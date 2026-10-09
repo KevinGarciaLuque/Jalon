@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { apiPost, useInstall } from './lib.js';
 
-const ROLE = { passenger: 'Pasajero', driver: 'Conductor', admin: 'Administrador' };
+const ROLE = { passenger: 'Pasajero', driver: 'Conductor', admin: 'Administrador', superadmin: 'Superadministrador', support: 'Soporte' };
 
-export default function Account({ user, token, onToken, onClose, onLogout }) {
+export default function Account({ user, token, onToken, onClose, onLogout, forced = false }) {
   const install = useInstall();
   const [f, setF] = useState({ current: '', next: '', again: '' });
   const [msg, setMsg] = useState({ ok: false, text: '' });
@@ -30,17 +30,18 @@ export default function Account({ user, token, onToken, onClose, onLogout }) {
   return (
     <div className="overlay">
       <div className="overlay-head">
-        <b>Mi cuenta</b>
-        <button className="link" onClick={onClose}>Cerrar ✕</button>
+        <b>{forced ? 'Cambia tu contraseña para continuar' : 'Mi cuenta'}</b>
+        {!forced && <button className="link" onClick={onClose}>Cerrar ✕</button>}
       </div>
       <div className="overlay-body">
+        {forced && <div className="hint">Entraste con una contraseña temporal. Elige una nueva que solo tú conozcas; después podrás usar la app.</div>}
         <div className="req">
           <b>{user.name}</b>
           <div className="muted">{ROLE[user.role]} · {user.phone}</div>
           {user.vehicle && <div className="muted">{user.vehicle} · {user.plate}</div>}
         </div>
 
-        {(install.canInstall || install.ios) && (
+        {!forced && (install.canInstall || install.ios) && (
           <div className="req">
             <b>📲 Instalar Jalón en tu celular</b>
             {install.canInstall ? (

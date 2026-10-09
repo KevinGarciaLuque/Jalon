@@ -14,7 +14,7 @@ await conn.query(`
     name VARCHAR(100) NOT NULL,
     phone VARCHAR(20) NOT NULL UNIQUE,
     password_hash VARCHAR(100) NOT NULL,
-    role ENUM('passenger','driver','admin') NOT NULL,
+    role ENUM('passenger','driver','admin','superadmin','support') NOT NULL,
     vehicle VARCHAR(100) NULL,
     plate VARCHAR(20) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -57,7 +57,7 @@ await conn.query(`
 `);
 
 // Bases creadas antes de existir el rol admin
-await conn.query("ALTER TABLE users MODIFY role ENUM('passenger','driver','admin') NOT NULL");
+await conn.query("ALTER TABLE users MODIFY role ENUM('passenger','driver','admin','superadmin','support') NOT NULL");
 
 // Migraciones: agrega columnas si todavía no existen (MySQL 8 no tiene ADD COLUMN IF NOT EXISTS)
 async function addColumn(table, column, definition) {
@@ -145,24 +145,48 @@ await conn.query(`
   )
 `);
 
-// Admin inicial: solo si no existe ninguno y están definidas ADMIN_PHONE y ADMIN_PASSWORD (útil en Railway, sin consola)
-const { ADMIN_PHONE, ADMIN_PASSWORD } = process.env;
-if (ADMIN_PHONE && ADMIN_PASSWORD) {
-  const [admins] = await conn.query("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
-  if (!admins.length) {
-    if (ADMIN_PASSWORD.length < 8) console.warn('⚠ ADMIN_PASSWORD es muy corta: usa al menos 10 caracteres');
-    await conn.query(
-      `INSERT INTO users (name, phone, password_hash, role) VALUES ('Super Admin', ?, ?, 'admin')
-       ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash), role = 'admin'`,
-      [normalizePhone(ADMIN_PHONE) ?? ADMIN_PHONE.trim(), await bcrypt.hash(ADMIN_PASSWORD, 10)]
-    );
-    console.log('Administrador inicial creado.');
-  }
-}
-
 // Fase 5: constancia de que el usuario aceptó los términos y la política de privacidad
 await addColumn('users', 'terms_accepted_at', 'TIMESTAMP NULL');
 await addColumn('users', 'terms_version', 'VARCHAR(10) NULL');
+
+// Fase 5B: gestión de usuarios y personal
+await addColumn('users', 'must_change_password', 'TINYINT(1) NOT NULL DEFAULT 0');
+await addColumn('users', 'deleted_at', 'TIMESTAMP NULL');
+
+await conn.query(`
+  CREATE TABLE IF NOT EXISTS audit_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    actor_id INT NOT NULL,
+    action VARCHAR(40) NOT NULL,
+    target_user_id INT NULL,
+    details TEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    KEY by_target (target_user_id),
+    FOREIGN KEY (actor_id) REFERENCES users(id)
+  )
+`);
+
+// El administrador que ya existía pasa a ser superadministrador (solo si todavía no hay ninguno)
+const [supers] = await conn.query("SELECT id FROM users WHERE role = 'superadmin' LIMIT 1");
+if (!supers.length) {
+  const [r] = await conn.query("UPDATE users SET role = 'superadmin' WHERE role = 'admin' ORDER BY id LIMIT 1");
+  if (r.affectedRows) console.log('El administrador existente ahora es superadministrador.');
+}
+
+// Superadmin inicial: solo si no existe ninguno y están definidas ADMIN_PHONE y ADMIN_PASSWORD (útil en Railway, sin consola)
+const { ADMIN_PHONE, ADMIN_PASSWORD } = process.env;
+if (ADMIN_PHONE && ADMIN_PASSWORD) {
+  const [existing] = await conn.query("SELECT id FROM users WHERE role = 'superadmin' LIMIT 1");
+  if (!existing.length) {
+    if (ADMIN_PASSWORD.length < 8) console.warn('⚠ ADMIN_PASSWORD es muy corta: usa al menos 10 caracteres');
+    await conn.query(
+      `INSERT INTO users (name, phone, password_hash, role) VALUES ('Super Admin', ?, ?, 'superadmin')
+       ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash), role = 'superadmin'`,
+      [normalizePhone(ADMIN_PHONE) ?? ADMIN_PHONE.trim(), await bcrypt.hash(ADMIN_PASSWORD, 10)]
+    );
+    console.log('Superadministrador inicial creado.');
+  }
+}
 
 console.log(`Base de datos "${DB_NAME}" lista.`);
 await conn.end();

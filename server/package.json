@@ -9,7 +9,8 @@
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "test": "node test/run.mjs",
-    "test:e2e": "node test/e2e.mjs"
+    "test:e2e": "node test/e2e.mjs",
+    "test:tiles": "node test/tiles.mjs"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
-import { icons, useGeo, distanceKm, lempiras, minutes } from './lib.js';
+import { icons, useGeo, distanceKm, lempiras, minutes, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
 import { FitTo, Rate, SafetyBar, Stars } from './components.jsx';
 import DriverDocs from './DriverDocs.jsx';
 
@@ -85,7 +85,7 @@ export default function Driver({ socket, token, status }) {
       <div className="map">
         {pos && (
           <MapContainer center={[pos.lat, pos.lng]} zoom={15} style={{ height: '100%' }}>
-            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap" />
+            <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
             <Recenter pos={pos} />
             <Marker
               position={[pos.lat, pos.lng]}

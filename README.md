@@ -77,3 +77,24 @@ El servicio mantiene en memoria las posiciones de los conductores, así que debe
 - `/terminos` y `/privacidad` son las páginas legales (`client/src/Legal.jsx`). Al registrarse hay que aceptarlas y el servidor guarda cuándo y qué versión (`users.terms_accepted_at` y `terms_version`). Si cambias el texto de forma importante, sube `TERMS_VERSION` en `server/src/index.js`.
 - **Antes de lanzar:** define la variable `VITE_CONTACT_EMAIL` en Railway (se usa al compilar la web) con el correo de soporte que aparece en las páginas legales, y haz que un abogado revise los textos.
 - En Railway, Settings → Healthcheck Path: `/api/health` (responde 503 si no hay base de datos).
+
+## Roles del personal y gestión de usuarios
+
+| Rol | Puede |
+|---|---|
+| **Superadministrador** | Todo: además crea y gestiona al personal, cambia roles, elimina cuentas y ve el registro. No se puede bloquear ni modificar. |
+| **Administrador** | Aprobar, bloquear y desbloquear usuarios, revisar y rechazar documentos, editar datos, restablecer contraseñas, ver el registro, cancelar viajes y atender emergencias. |
+| **Soporte** | Ver usuarios y viajes, cancelar viajes y atender emergencias. No ve documentos ni el registro y no modifica cuentas. |
+
+- El superadmin crea al personal en la pestaña **Personal**: se genera una contraseña temporal que se muestra una sola vez y la persona debe cambiarla al entrar. Restablecer la contraseña de un usuario funciona igual.
+- Cada usuario tiene una ficha (datos, estadísticas, últimos viajes, documentos y movimientos del personal sobre su cuenta).
+- **Eliminar una cuenta** la anonimiza: se borran nombre, teléfono, vehículo, documentos y comentarios; los viajes se conservan sin direcciones para estadísticas y reclamos.
+- La pestaña **Registro** anota quién hizo qué (aprobar, bloquear, editar, restablecer contraseña, eliminar, cambiar roles, rechazar documentos, cancelar viajes, atender emergencias).
+- El administrador que ya existía pasa a ser superadministrador automáticamente al actualizar. `ADMIN_PHONE` y `ADMIN_PASSWORD` solo crean un superadmin si todavía no hay ninguno.
+
+## Proveedor de mapas
+
+Por defecto el mapa usa los servidores públicos de OpenStreetMap, que no están pensados para una app con muchos usuarios y bloquean a quien no cumple su política
+(por eso el sitio envía `Referrer-Policy: strict-origin-when-cross-origin`). Para producción conviene un proveedor propio o de pago: define en Railway
+`VITE_TILE_URL` (por ejemplo `https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=TU_CLAVE`) y `VITE_TILE_ATTRIBUTION`; el servidor ajusta solo la política de seguridad.
+`npm run test:tiles` (con el servidor en modo producción) comprueba que las baldosas carguen y que se envíe el Referer.

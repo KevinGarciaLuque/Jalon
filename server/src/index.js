@@ -33,6 +33,17 @@ const isProd = process.env.NODE_ENV === 'production';
 const echoCode = !smsConfigured && (!isProd || process.env.SMS_DEV_ECHO === 'true');
 if (isProd && echoCode) console.warn('⚠ SMS_DEV_ECHO activo: los códigos de verificación se muestran en pantalla. Desactívalo al configurar Twilio.');
 if (isProd && !smsConfigured && !echoCode) console.warn('⚠ Twilio no está configurado: nadie podrá registrarse por SMS.');
+// Baldosas del mapa: OpenStreetMap por defecto. Para producción conviene un proveedor propio o de pago (VITE_TILE_URL), porque
+// los servidores públicos de OSM no están pensados para apps con muchos usuarios y bloquean a quien no cumple su política.
+const TILE_URL = process.env.VITE_TILE_URL || 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+function tileOrigin(url) {
+  try {
+    const u = new URL(url.replace('{s}', 'a').replace(/\{[^}]+\}/g, '0'));
+    return url.includes('{s}') ? `https://*.${u.hostname.split('.').slice(1).join('.')}` : `https://${u.hostname}`;
+  } catch {
+    return 'https://*.tile.openstreetmap.org';
+  }
+}
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 // En Railway el disco se borra en cada despliegue: monta un Volume y apunta UPLOADS_DIR a él (ej. /data/uploads)
 const UPLOADS = process.env.UPLOADS_DIR || path.join(HERE, '..', 'uploads');
@@ -45,10 +56,12 @@ const allowOrigin = (origin, cb) => cb(null, !origin || origin === ORIGIN || /^h
 const app = express();
 if (process.env.TRUST_PROXY) app.set('trust proxy', Number(process.env.TRUST_PROXY)); // detrás de nginx/Railway/etc.
 app.use(helmet({
+  // OpenStreetMap exige saber desde qué sitio se piden sus baldosas; con "no-referrer" (el valor por defecto de helmet) las bloquea
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
   contentSecurityPolicy: {
     useDefaults: true,
     directives: {
-      'img-src': ["'self'", 'data:', 'blob:', 'https://*.tile.openstreetmap.org'], // mapa y documentos del admin
+      'img-src': ["'self'", 'data:', 'blob:', tileOrigin(TILE_URL)], // mapa y documentos del admin
       'connect-src': ["'self'"], // API y WebSocket del mismo servidor
     },
   },
@@ -74,7 +87,7 @@ const passengers = new Map(); // userId -> { id, lat, lng }
 const openRides = new Map(); // rideId -> ride listo para enviar a conductores
 
 const sign = (u) => jwt.sign({ id: u.id, role: u.role, tv: u.token_version ?? 0 }, JWT_SECRET, { expiresIn: '30d' });
-const publicUser = (u) => ({ id: u.id, name: u.name, phone: u.phone, role: u.role, status: u.status, vehicle: u.vehicle, plate: u.plate });
+const publicUser = (u) => ({ id: u.id, name: u.name, phone: u.phone, role: u.role, status: u.status, vehicle: u.vehicle, plate: u.plate, mustChangePassword: !!u.must_change_password });
 
 // ---------- Auth ----------
 app.post('/api/register', registerLimiter, async (req, res) => {
@@ -159,7 +172,7 @@ app.post('/api/password/forgot', otpLimiter, async (req, res) => {
   const phone = normalizePhone(req.body?.phone);
   if (!phone) return res.status(400).json({ error: 'Teléfono inválido (8 dígitos de Honduras)' });
   // Las cuentas de administrador no se recuperan por SMS
-  const [rows] = await pool.query("SELECT id FROM users WHERE phone = ? AND role <> 'admin' AND status <> 'blocked'", [phone]);
+  const [rows] = await pool.query("SELECT id FROM users WHERE phone = ? AND role IN ('passenger','driver') AND status <> 'blocked' AND deleted_at IS NULL", [phone]);
   let code = null;
   if (rows[0]) {
     try {
@@ -176,7 +189,7 @@ app.post('/api/password/reset', otpLimiter, async (req, res) => {
   const { code, password } = req.body || {};
   if (!phone || typeof password !== 'string' || password.length < 6 || password.length > 72)
     return res.status(400).json({ error: 'La contraseña debe tener entre 6 y 72 caracteres' });
-  const [rows] = await pool.query("SELECT id FROM users WHERE phone = ? AND role <> 'admin' AND status <> 'blocked'", [phone]);
+  const [rows] = await pool.query("SELECT id FROM users WHERE phone = ? AND role IN ('passenger','driver') AND status <> 'blocked' AND deleted_at IS NULL", [phone]);
   if (!rows[0] || !(await consumeOtp(phone, 'reset', code))) return res.status(400).json({ error: 'Código incorrecto o vencido' });
   // token_version + 1 cierra todas las sesiones abiertas con la contraseña anterior
   await pool.query('UPDATE users SET password_hash = ?, token_version = token_version + 1 WHERE id = ?', [await bcrypt.hash(password, 10), rows[0].id]);
@@ -189,7 +202,8 @@ app.post('/api/password/change', authUser, loginLimiter, async (req, res) => {
   if (typeof current !== 'string' || typeof password !== 'string' || password.length < 6 || password.length > 72)
     return res.status(400).json({ error: 'La contraseña nueva debe tener entre 6 y 72 caracteres' });
   if (!(await bcrypt.compare(current, req.user.password_hash))) return res.status(403).json({ error: 'La contraseña actual es incorrecta' });
-  await pool.query('UPDATE users SET password_hash = ?, token_version = token_version + 1 WHERE id = ?', [await bcrypt.hash(password, 10), req.user.id]);
+  if (current === password) return res.status(400).json({ error: 'La contraseña nueva debe ser distinta de la actual' });
+  await pool.query('UPDATE users SET password_hash = ?, must_change_password = 0, token_version = token_version + 1 WHERE id = ?', [await bcrypt.hash(password, 10), req.user.id]);
   const [[u]] = await pool.query('SELECT * FROM users WHERE id = ?', [req.user.id]);
   res.json({ ok: true, token: sign(u) });
 });
@@ -211,6 +225,8 @@ async function authUser(req, res, next) {
     const { id } = payload;
     const [rows] = await pool.query('SELECT * FROM users WHERE id = ?', [id]);
     if (!rows[0] || rows[0].status === 'blocked' || (payload.tv ?? 0) !== rows[0].token_version) return res.status(401).json({ error: 'No autorizado' });
+    if (rows[0].must_change_password && req.path !== '/api/password/change')
+      return res.status(403).json({ error: 'Debes cambiar tu contraseña', code: 'MUST_CHANGE_PASSWORD' });
     req.user = rows[0];
     next();
   } catch {
@@ -358,25 +374,65 @@ app.put('/api/driver/documents/:type', authUser, driverOnly, photoJson, async (r
   res.json({ ok: true });
 });
 
-// ---------- Admin ----------
-async function adminOnly(req, res, next) {
-  try {
-    const payload = jwt.verify((req.headers.authorization || '').replace('Bearer ', ''), JWT_SECRET);
-    const { id } = payload;
-    // Se consulta la base: un admin degradado o bloqueado pierde acceso aunque su token siga vigente
-    const [rows] = await pool.query('SELECT role, status, token_version FROM users WHERE id = ?', [id]);
-    if (rows[0] && (payload.tv ?? 0) !== rows[0].token_version) return res.status(401).json({ error: 'No autorizado' });
-    if (rows[0]?.role !== 'admin' || rows[0].status !== 'active') return res.status(403).json({ error: 'Solo administradores' });
-    next();
-  } catch {
-    res.status(401).json({ error: 'No autorizado' });
-  }
+// ---------- Personal: superadmin, administrador y soporte ----------
+const STAFF = ['superadmin', 'admin', 'support'];
+const isStaff = (role) => STAFF.includes(role);
+// Qué puede hacer cada rol: el superadmin todo; el administrador opera la plataforma; soporte mira y atiende emergencias
+const PERMS = {
+  superadmin: ['view', 'alerts', 'rides.cancel', 'users.manage', 'docs', 'audit', 'staff.manage'],
+  admin: ['view', 'alerts', 'rides.cancel', 'users.manage', 'docs', 'audit'],
+  support: ['view', 'alerts', 'rides.cancel'],
+};
+
+// Middleware: exige sesión de personal activo con el permiso indicado (se consulta la base en cada petición)
+function staffOnly(perm) {
+  return async (req, res, next) => {
+    try {
+      const payload = jwt.verify((req.headers.authorization || '').replace('Bearer ', ''), JWT_SECRET);
+      const [rows] = await pool.query('SELECT * FROM users WHERE id = ?', [payload.id]);
+      const u = rows[0];
+      if (!u || (payload.tv ?? 0) !== u.token_version) return res.status(401).json({ error: 'No autorizado' });
+      if (!isStaff(u.role) || u.status !== 'active') return res.status(403).json({ error: 'Solo personal autorizado' });
+      if (u.must_change_password) return res.status(403).json({ error: 'Debes cambiar tu contraseña', code: 'MUST_CHANGE_PASSWORD' });
+      if (!PERMS[u.role].includes(perm)) return res.status(403).json({ error: 'No tienes permiso para esto' });
+      req.staff = u;
+      next();
+    } catch {
+      res.status(401).json({ error: 'No autorizado' });
+    }
+  };
 }
 
-app.get('/api/admin/stats', adminOnly, async (_req, res) => {
+// Registro de quién hizo qué
+async function audit(actor, action, { target = null, details = null } = {}) {
+  await pool.query('INSERT INTO audit_log (actor_id, action, target_user_id, details) VALUES (?,?,?,?)', [
+    actor.id, action, target, details ? JSON.stringify(details) : null,
+  ]);
+}
+
+// Contraseña temporal legible (sin letras que se confunden: 0/O, 1/l/I)
+function tempPassword() {
+  const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+  return Array.from(crypto.randomBytes(10), (b) => alphabet[b % alphabet.length]).join('');
+}
+
+// Carga al usuario sobre el que se actúa y comprueba que quien actúa pueda tocarlo
+async function actOn(req, res, { allowDeleted = false } = {}) {
+  const [rows] = await pool.query('SELECT * FROM users WHERE id = ?', [Number(req.params.id)]);
+  const t = rows[0];
+  if (!t || (t.deleted_at && !allowDeleted)) return void res.status(404).json({ error: 'Usuario no existe' });
+  let problem = null;
+  if (t.id === req.staff.id) problem = 'No puedes hacer esto con tu propia cuenta (usa Cuenta para cambiar tu contraseña)';
+  else if (t.role === 'superadmin') problem = 'No se puede modificar a un superadministrador';
+  else if (isStaff(t.role) && !PERMS[req.staff.role].includes('staff.manage')) problem = 'Solo el superadministrador gestiona al personal';
+  if (problem) return void res.status(403).json({ error: problem });
+  return t;
+}
+
+app.get('/api/admin/stats', staffOnly('view'), async (_req, res) => {
   const [[u]] = await pool.query(
     `SELECT SUM(role='passenger') AS passengers, SUM(role='driver') AS drivers,
-            SUM(role='driver' AND status='pending') AS pending, SUM(status='blocked') AS blocked FROM users`
+            SUM(role='driver' AND status='pending') AS pending, SUM(status='blocked' AND deleted_at IS NULL) AS blocked FROM users`
   );
   const [[r]] = await pool.query(
     `SELECT COUNT(*) AS total, SUM(status='completed') AS completed, SUM(status='cancelled') AS cancelled,
@@ -397,17 +453,18 @@ app.get('/api/admin/stats', adminOnly, async (_req, res) => {
   });
 });
 
-app.get('/api/admin/users', adminOnly, async (_req, res) => {
+app.get('/api/admin/users', staffOnly('view'), async (req, res) => {
   const [rows] = await pool.query(
-    `SELECT id, name, phone, role, status, vehicle, plate, created_at,
+    `SELECT id, name, phone, role, status, vehicle, plate, created_at, must_change_password, deleted_at,
             (SELECT COUNT(*) FROM documents d WHERE d.user_id = users.id AND d.status = 'uploaded') AS docs
      FROM users ORDER BY id DESC LIMIT 500`
   );
   const ratings = await ratingsOf(rows.map((u) => u.id));
-  res.json(rows.map((u) => ({ ...u, online: drivers.has(u.id), rating: ratings.get(u.id) || null })));
+  // Cada quien recibe también lo que puede hacer, para que la pantalla muestre solo lo permitido
+  res.json({ perms: PERMS[req.staff.role], me: { id: req.staff.id, role: req.staff.role }, users: rows.map((u) => ({ ...u, online: drivers.has(u.id), rating: ratings.get(u.id) || null })) });
 });
 
-app.get('/api/admin/rides', adminOnly, async (_req, res) => {
+app.get('/api/admin/rides', staffOnly('view'), async (_req, res) => {
   const [rows] = await pool.query(
     `SELECT r.id, r.status, r.cancelled_by, r.distance_km, r.offered_price, r.final_price, r.created_at,
             p.name AS passenger, d.name AS driver
@@ -417,29 +474,194 @@ app.get('/api/admin/rides', adminOnly, async (_req, res) => {
   res.json(rows);
 });
 
-// Documentos de un conductor y descarga de cada imagen (solo administradores)
-app.get('/api/admin/users/:id/documents', adminOnly, async (req, res) => {
+// Ficha completa de un usuario: datos, estadísticas, últimos viajes, documentos y movimientos del personal sobre su cuenta
+app.get('/api/admin/users/:id', staffOnly('view'), async (req, res) => {
+  const id = Number(req.params.id);
+  const [[u]] = await pool.query(
+    `SELECT id, name, phone, role, status, vehicle, plate, created_at, terms_accepted_at, terms_version, must_change_password, deleted_at
+     FROM users WHERE id = ?`, [id]
+  );
+  if (!u) return res.status(404).json({ error: 'Usuario no existe' });
+  const [[stats]] = await pool.query(
+    `SELECT COALESCE(SUM(passenger_id = ?),0) AS asPassenger, COALESCE(SUM(driver_id = ?),0) AS asDriver,
+            COALESCE(SUM(status = 'completed'),0) AS completed, COALESCE(SUM(status = 'cancelled'),0) AS cancelled,
+            COALESCE(SUM(IF(status = 'completed', final_price, 0)),0) AS money
+     FROM rides WHERE passenger_id = ? OR driver_id = ?`, [id, id, id, id]
+  );
+  const [rides] = await pool.query(
+    `SELECT r.id, r.status, r.cancelled_by, r.dest_text, r.distance_km, r.final_price, r.offered_price, r.created_at, o.name AS other_name
+     FROM rides r LEFT JOIN users o ON o.id = IF(r.passenger_id = ?, r.driver_id, r.passenger_id)
+     WHERE r.passenger_id = ? OR r.driver_id = ? ORDER BY r.id DESC LIMIT 10`, [id, id, id]
+  );
+  const can = PERMS[req.staff.role];
+  const docs = can.includes('docs') ? (await pool.query('SELECT id, type, status, note, created_at FROM documents WHERE user_id = ?', [id]))[0] : null;
+  const history = can.includes('audit')
+    ? (await pool.query(
+        `SELECT a.id, a.action, a.details, a.created_at, s.name AS actor FROM audit_log a JOIN users s ON s.id = a.actor_id
+         WHERE a.target_user_id = ? ORDER BY a.id DESC LIMIT 15`, [id]
+      ))[0].map((r) => ({ ...r, details: r.details ? JSON.parse(r.details) : null }))
+    : null;
+  res.json({
+    user: { ...u, online: drivers.has(id) },
+    stats: { ...stats, money: Number(stats.money) },
+    rating: (await ratingsOf([id])).get(id) || null,
+    rides, docs, history,
+  });
+});
+
+// Corregir los datos de un usuario (nombre, teléfono, vehículo y placa)
+app.patch('/api/admin/users/:id', staffOnly('users.manage'), async (req, res) => {
+  const t = await actOn(req, res);
+  if (!t) return;
+  const { name, phone, vehicle, plate } = req.body || {};
+  const fields = {};
+  if (name !== undefined) {
+    if (typeof name !== 'string' || !name.trim() || name.length > 100) return res.status(400).json({ error: 'Nombre inválido' });
+    fields.name = name.trim();
+  }
+  if (phone !== undefined) {
+    const p = normalizePhone(phone);
+    if (!p) return res.status(400).json({ error: 'Teléfono inválido (8 dígitos de Honduras)' });
+    fields.phone = p;
+  }
+  if (t.role === 'driver') {
+    if (vehicle !== undefined) {
+      if (typeof vehicle !== 'string' || !vehicle.trim() || vehicle.length > 100) return res.status(400).json({ error: 'Vehículo inválido' });
+      fields.vehicle = vehicle.trim();
+    }
+    if (plate !== undefined) {
+      if (typeof plate !== 'string' || !plate.trim() || plate.length > 20) return res.status(400).json({ error: 'Placa inválida' });
+      fields.plate = plate.trim();
+    }
+  }
+  const keys = Object.keys(fields).filter((k) => fields[k] !== t[k]);
+  if (!keys.length) return res.status(400).json({ error: 'No hay cambios que guardar' });
+  try {
+    await pool.query(`UPDATE users SET ${keys.map((k) => `${k} = ?`).join(', ')} WHERE id = ?`, [...keys.map((k) => fields[k]), t.id]);
+  } catch (e) {
+    if (e.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'Ese teléfono ya pertenece a otra cuenta' });
+    throw e;
+  }
+  await audit(req.staff, 'user.edit', { target: t.id, details: { changed: keys } });
+  res.json({ ok: true });
+});
+
+// Restablecer la contraseña: se genera una temporal que se muestra una sola vez y el usuario debe cambiarla al entrar
+app.post('/api/admin/users/:id/reset-password', staffOnly('users.manage'), async (req, res) => {
+  const t = await actOn(req, res);
+  if (!t) return;
+  const temp = tempPassword();
+  await pool.query('UPDATE users SET password_hash = ?, must_change_password = 1, token_version = token_version + 1 WHERE id = ?', [await bcrypt.hash(temp, 10), t.id]);
+  io.in(room(t.id)).disconnectSockets(true);
+  await audit(req.staff, 'user.reset_password', { target: t.id });
+  res.json({ tempPassword: temp });
+});
+
+// Eliminar una cuenta = anonimizarla: se borran sus datos personales y documentos; los viajes quedan para estadísticas y reclamos
+app.post('/api/admin/users/:id/delete', staffOnly('staff.manage'), async (req, res) => {
+  const t = await actOn(req, res);
+  if (!t) return;
+  await kickUser(t.id); // cancela sus viajes y cierra sus conexiones
+  const [docs] = await pool.query('SELECT file FROM documents WHERE user_id = ?', [t.id]);
+  for (const d of docs) await fs.rm(path.join(UPLOADS, d.file), { force: true });
+  await pool.query('DELETE FROM documents WHERE user_id = ?', [t.id]);
+  await pool.query('DELETE FROM otp_codes WHERE phone = ?', [t.phone]);
+  await pool.query('UPDATE ratings SET comment = NULL WHERE rater_id = ?', [t.id]);
+  await pool.query('UPDATE rides SET origin_text = NULL, dest_text = NULL, share_token = NULL WHERE passenger_id = ? OR driver_id = ?', [t.id, t.id]);
+  await pool.query(
+    `UPDATE users SET name = 'Cuenta eliminada', phone = ?, password_hash = ?, vehicle = NULL, plate = NULL, status = 'blocked',
+            must_change_password = 0, deleted_at = NOW(), token_version = token_version + 1 WHERE id = ?`,
+    [`del-${t.id}`, await bcrypt.hash(tempPassword() + tempPassword(), 10), t.id]
+  );
+  await audit(req.staff, 'user.delete', { target: t.id, details: { role: t.role } });
+  res.json({ ok: true });
+});
+
+// Aprobar / desbloquear (active) o bloquear (blocked) a un usuario
+app.post('/api/admin/users/:id/status', staffOnly('users.manage'), async (req, res) => {
+  const { status } = req.body || {};
+  if (!['active', 'blocked'].includes(status)) return res.status(400).json({ error: 'Estado inválido' });
+  const t = await actOn(req, res);
+  if (!t) return;
+  if (status === 'active' && t.role === 'driver') {
+    const [[c]] = await pool.query("SELECT COUNT(*) AS n FROM documents WHERE user_id = ? AND status = 'uploaded'", [t.id]);
+    if (c.n < DOC_TYPES.length)
+      return res.status(409).json({ error: 'El conductor debe subir los 3 documentos (foto, licencia y matrícula) antes de aprobarlo' });
+  }
+  await pool.query('UPDATE users SET status = ? WHERE id = ?', [status, t.id]);
+  io.to(room(t.id)).emit('account:status', { status });
+  if (status === 'blocked') await kickUser(t.id);
+  await audit(req.staff, status === 'blocked' ? 'user.block' : t.status === 'pending' ? 'user.approve' : 'user.unblock', { target: t.id });
+  res.json({ ok: true });
+});
+
+// --- Gestión del personal (solo superadmin) ---
+app.post('/api/admin/staff', staffOnly('staff.manage'), async (req, res) => {
+  const { name, phone, role } = req.body || {};
+  const p = normalizePhone(phone);
+  if (typeof name !== 'string' || !name.trim() || name.length > 100) return res.status(400).json({ error: 'Nombre inválido' });
+  if (!p) return res.status(400).json({ error: 'Teléfono inválido (8 dígitos de Honduras)' });
+  if (!['admin', 'support'].includes(role)) return res.status(400).json({ error: 'Rol inválido' });
+  const temp = tempPassword();
+  try {
+    const [r] = await pool.query(
+      "INSERT INTO users (name, phone, password_hash, role, status, must_change_password) VALUES (?,?,?,?, 'active', 1)",
+      [name.trim(), p, await bcrypt.hash(temp, 10), role]
+    );
+    await audit(req.staff, 'staff.create', { target: r.insertId, details: { role } });
+    res.json({ id: r.insertId, tempPassword: temp });
+  } catch (e) {
+    if (e.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'Ese teléfono ya está registrado' });
+    throw e;
+  }
+});
+
+app.post('/api/admin/staff/:id/role', staffOnly('staff.manage'), async (req, res) => {
+  const { role } = req.body || {};
+  if (!['admin', 'support'].includes(role)) return res.status(400).json({ error: 'Rol inválido' });
+  const t = await actOn(req, res);
+  if (!t) return;
+  if (!isStaff(t.role)) return res.status(400).json({ error: 'Esa cuenta no es del personal' });
+  if (t.role === role) return res.status(400).json({ error: 'Ya tiene ese rol' });
+  await pool.query('UPDATE users SET role = ? WHERE id = ?', [role, t.id]);
+  await audit(req.staff, 'staff.role', { target: t.id, details: { from: t.role, to: role } });
+  res.json({ ok: true });
+});
+
+app.get('/api/admin/audit', staffOnly('audit'), async (_req, res) => {
+  const [rows] = await pool.query(
+    `SELECT a.id, a.action, a.details, a.created_at, a.target_user_id, s.name AS actor, s.role AS actor_role, t.name AS target_name
+     FROM audit_log a JOIN users s ON s.id = a.actor_id LEFT JOIN users t ON t.id = a.target_user_id
+     ORDER BY a.id DESC LIMIT 200`
+  );
+  res.json(rows.map((r) => ({ ...r, details: r.details ? JSON.parse(r.details) : null })));
+});
+
+// Documentos de un conductor y descarga de cada imagen
+app.get('/api/admin/users/:id/documents', staffOnly('docs'), async (req, res) => {
   const [rows] = await pool.query('SELECT id, type, status, note, created_at FROM documents WHERE user_id = ?', [Number(req.params.id)]);
   res.json(rows);
 });
 
-app.get('/api/admin/documents/:id/file', adminOnly, async (req, res) => {
+app.get('/api/admin/documents/:id/file', staffOnly('docs'), async (req, res) => {
   const [rows] = await pool.query('SELECT file FROM documents WHERE id = ?', [Number(req.params.id)]);
   if (!rows[0]) return res.status(404).json({ error: 'No existe' });
   res.set('Cache-Control', 'private, no-store');
   res.type('image/jpeg').sendFile(path.join(UPLOADS, rows[0].file));
 });
 
-app.post('/api/admin/documents/:id/reject', adminOnly, async (req, res) => {
-  const [rows] = await pool.query('SELECT user_id FROM documents WHERE id = ?', [Number(req.params.id)]);
+app.post('/api/admin/documents/:id/reject', staffOnly('docs'), async (req, res) => {
+  const [rows] = await pool.query('SELECT user_id, type FROM documents WHERE id = ?', [Number(req.params.id)]);
   if (!rows[0]) return res.status(404).json({ error: 'No existe' });
-  await pool.query("UPDATE documents SET status = 'rejected', note = ? WHERE id = ?", [clean(req.body?.note), Number(req.params.id)]);
+  const note = clean(req.body?.note);
+  await pool.query("UPDATE documents SET status = 'rejected', note = ? WHERE id = ?", [note, Number(req.params.id)]);
   io.to(room(rows[0].user_id)).emit('docs:changed');
+  await audit(req.staff, 'doc.reject', { target: rows[0].user_id, details: { type: rows[0].type, note } });
   res.json({ ok: true });
 });
 
 // Alertas de emergencia (botón SOS) con los datos de quienes viajan
-app.get('/api/admin/alerts', adminOnly, async (_req, res) => {
+app.get('/api/admin/alerts', staffOnly('alerts'), async (_req, res) => {
   const [rows] = await pool.query(
     `SELECT a.id, a.lat, a.lng, a.created_at, a.ride_id, r.status AS ride_status,
             u.name AS user_name, u.phone AS user_phone, u.role AS user_role,
@@ -452,33 +674,16 @@ app.get('/api/admin/alerts', adminOnly, async (_req, res) => {
   res.json(rows);
 });
 
-app.post('/api/admin/alerts/:id/resolve', adminOnly, async (req, res) => {
+app.post('/api/admin/alerts/:id/resolve', staffOnly('alerts'), async (req, res) => {
   await pool.query("UPDATE alerts SET status = 'resolved', resolved_at = NOW() WHERE id = ?", [Number(req.params.id)]);
+  await audit(req.staff, 'alert.resolve', { details: { alert: Number(req.params.id) } });
   res.json({ ok: true });
 });
 
-// Aprobar / desbloquear (active) o bloquear (blocked) a un usuario
-app.post('/api/admin/users/:id/status', adminOnly, async (req, res) => {
-  const id = Number(req.params.id);
-  const { status } = req.body || {};
-  if (!['active', 'blocked'].includes(status)) return res.status(400).json({ error: 'Estado inválido' });
-  const [rows] = await pool.query('SELECT id, role FROM users WHERE id = ?', [id]);
-  if (!rows[0]) return res.status(404).json({ error: 'Usuario no existe' });
-  if (rows[0].role === 'admin') return res.status(400).json({ error: 'No se puede modificar a un administrador' });
-  if (status === 'active' && rows[0].role === 'driver') {
-    const [[c]] = await pool.query("SELECT COUNT(*) AS n FROM documents WHERE user_id = ? AND status = 'uploaded'", [id]);
-    if (c.n < DOC_TYPES.length)
-      return res.status(409).json({ error: 'El conductor debe subir los 3 documentos (foto, licencia y matrícula) antes de aprobarlo' });
-  }
-  await pool.query('UPDATE users SET status = ? WHERE id = ?', [status, id]);
-  io.to(room(id)).emit('account:status', { status });
-  if (status === 'blocked') await kickUser(id);
-  res.json({ ok: true });
-});
-
-app.post('/api/admin/rides/:id/cancel', adminOnly, async (req, res) => {
+app.post('/api/admin/rides/:id/cancel', staffOnly('rides.cancel'), async (req, res) => {
   const view = await cancelRide(Number(req.params.id), 'admin');
   if (!view) return res.status(409).json({ error: 'El viaje ya no está activo' });
+  await audit(req.staff, 'ride.cancel', { details: { ride: Number(req.params.id) } });
   res.json({ ok: true });
 });
 
@@ -592,6 +797,7 @@ io.use(async (socket, next) => {
     const [rows] = await pool.query('SELECT * FROM users WHERE id = ?', [id]);
     if (!rows[0]) return next(new Error('Usuario no existe'));
     if (rows[0].status === 'blocked') return next(new Error('Cuenta bloqueada'));
+    if (rows[0].must_change_password) return next(new Error('Debes cambiar tu contraseña'));
     if ((payload.tv ?? 0) !== rows[0].token_version) return next(new Error('No autorizado'));
     socket.user = rows[0];
     next();
