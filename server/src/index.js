@@ -37,6 +37,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 // En Railway el disco se borra en cada despliegue: monta un Volume y apunta UPLOADS_DIR a él (ej. /data/uploads)
 const UPLOADS = process.env.UPLOADS_DIR || path.join(HERE, '..', 'uploads');
 const DOC_TYPES = ['photo', 'license', 'registration'];
+const TERMS_VERSION = '1.0'; // súbela cuando cambien los términos o la política de privacidad
 
 // En desarrollo se acepta cualquier puerto de localhost (Vite cambia de puerto si el 5173 está ocupado)
 const allowOrigin = (origin, cb) => cb(null, !origin || origin === ORIGIN || /^http:\/\/localhost:\d+$/.test(origin));
@@ -58,7 +59,7 @@ app.use((req, res, next) => (req.path.startsWith('/api/driver/documents') ? next
 
 const limitMsg = { error: 'Demasiados intentos. Intenta de nuevo en unos minutos.' };
 // Solo cuentan los intentos fallidos de login (contra fuerza bruta)
-const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, skipSuccessfulRequests: true, message: limitMsg });
+const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: isProd ? 10 : 500, skipSuccessfulRequests: true, message: limitMsg }); // en desarrollo es holgado: las pruebas fallan a propósito muchas veces
 const mapsLimiter = rateLimit({ windowMs: 60 * 1000, limit: 120, message: limitMsg });
 const trackLimiter = rateLimit({ windowMs: 60 * 1000, limit: 60, message: limitMsg });
 const registerLimiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: isProd ? 50 : 1000, message: limitMsg });
@@ -78,7 +79,7 @@ const publicUser = (u) => ({ id: u.id, name: u.name, phone: u.phone, role: u.rol
 // ---------- Auth ----------
 app.post('/api/register', registerLimiter, async (req, res) => {
   try {
-    const { name, phone, password, role, vehicle, plate, code } = req.body || {};
+    const { name, phone, password, role, vehicle, plate, code, acceptTerms } = req.body || {};
     if ([name, phone, password].some((v) => typeof v !== 'string' || !v.trim()) || !['passenger', 'driver'].includes(role))
       return res.status(400).json({ error: 'Datos incompletos' });
     if ([vehicle, plate].some((v) => v != null && typeof v !== 'string'))
@@ -90,6 +91,7 @@ app.post('/api/register', registerLimiter, async (req, res) => {
     if (!phoneN) return res.status(400).json({ error: 'Teléfono inválido (8 dígitos de Honduras)' });
     if (name.length > 100 || (vehicle || '').length > 100 || (plate || '').length > 20)
       return res.status(400).json({ error: 'Algún dato es demasiado largo' });
+    if (acceptTerms !== true) return res.status(400).json({ error: 'Debes aceptar los Términos y la Política de Privacidad' });
     // El teléfono debe verificarse con el código enviado por SMS (se consume al final de las validaciones)
     if (!(await consumeOtp(phoneN, 'register', code))) return res.status(400).json({ error: 'Código incorrecto o vencido' });
 
@@ -97,8 +99,8 @@ app.post('/api/register', registerLimiter, async (req, res) => {
     // Los conductores quedan pendientes hasta que un administrador los apruebe
     const status = role === 'driver' ? 'pending' : 'active';
     const [r] = await pool.query(
-      'INSERT INTO users (name, phone, password_hash, role, status, vehicle, plate) VALUES (?,?,?,?,?,?,?)',
-      [name.trim(), phoneN, hash, role, status, vehicle?.trim() || null, plate?.trim() || null]
+      'INSERT INTO users (name, phone, password_hash, role, status, vehicle, plate, terms_accepted_at, terms_version) VALUES (?,?,?,?,?,?,?,NOW(),?)',
+      [name.trim(), phoneN, hash, role, status, vehicle?.trim() || null, plate?.trim() || null, TERMS_VERSION]
     );
     const user = { id: r.insertId, name: name.trim(), phone: phoneN, role, status, vehicle, plate };
     res.json({ token: sign(user), user: publicUser(user) });
@@ -181,7 +183,26 @@ app.post('/api/password/reset', otpLimiter, async (req, res) => {
   res.json({ ok: true });
 });
 
-app.get('/api/health', (_req, res) => res.json({ ok: true }));
+// Cambiar la contraseña conociendo la actual. Cierra las demás sesiones y devuelve un token nuevo para esta.
+app.post('/api/password/change', authUser, loginLimiter, async (req, res) => {
+  const { current, password } = req.body || {};
+  if (typeof current !== 'string' || typeof password !== 'string' || password.length < 6 || password.length > 72)
+    return res.status(400).json({ error: 'La contraseña nueva debe tener entre 6 y 72 caracteres' });
+  if (!(await bcrypt.compare(current, req.user.password_hash))) return res.status(403).json({ error: 'La contraseña actual es incorrecta' });
+  await pool.query('UPDATE users SET password_hash = ?, token_version = token_version + 1 WHERE id = ?', [await bcrypt.hash(password, 10), req.user.id]);
+  const [[u]] = await pool.query('SELECT * FROM users WHERE id = ?', [req.user.id]);
+  res.json({ ok: true, token: sign(u) });
+});
+
+// Railway usa esta ruta para saber si el servicio está sano: responde 503 si no hay base de datos
+app.get('/api/health', async (_req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.json({ ok: true });
+  } catch {
+    res.status(503).json({ ok: false });
+  }
+});
 
 // ---------- Usuario autenticado (REST) ----------
 async function authUser(req, res, next) {
@@ -777,10 +798,32 @@ await pool.query("UPDATE rides SET status = 'cancelled', cancelled_by = 'system'
 const DIST = path.join(HERE, '..', '..', 'client', 'dist');
 if (existsSync(DIST)) {
   app.use('/assets', express.static(path.join(DIST, 'assets'), { immutable: true, maxAge: '1y' }));
-  app.use(express.static(DIST, { index: false, maxAge: '1h' }));
+  app.use(express.static(DIST, {
+    index: false,
+    maxAge: '1h',
+    setHeaders: (res, file) => {
+      if (/(sw\.js|manifest\.webmanifest)$/.test(file)) res.setHeader('Cache-Control', 'no-cache');
+    },
+  }));
   app.use((req, res, next) => {
     if (req.method !== 'GET' || req.path.startsWith('/api/') || req.path.startsWith('/socket.io/')) return next();
     res.sendFile(path.join(DIST, 'index.html'));
+  });
+}
+
+// Errores no controlados: siempre JSON, sin filtrar detalles internos
+app.use((err, _req, res, _next) => {
+  const status = err.status >= 400 && err.status < 500 ? err.status : 500;
+  if (status === 500) console.error(err);
+  res.status(status).json({ error: status === 500 ? 'Error del servidor' : 'Solicitud inválida' });
+});
+
+// Railway envía SIGTERM al desplegar una versión nueva: se cierran las conexiones con orden
+for (const sig of ['SIGTERM', 'SIGINT']) {
+  process.on(sig, () => {
+    console.log(`${sig} recibido: cerrando…`);
+    io.close(() => pool.end().finally(() => process.exit(0)));
+    setTimeout(() => process.exit(0), 8000).unref();
   });
 }
 

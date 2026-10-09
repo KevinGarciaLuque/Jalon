@@ -160,5 +160,9 @@ if (ADMIN_PHONE && ADMIN_PASSWORD) {
   }
 }
 
+// Fase 5: constancia de que el usuario aceptó los términos y la política de privacidad
+await addColumn('users', 'terms_accepted_at', 'TIMESTAMP NULL');
+await addColumn('users', 'terms_version', 'VARCHAR(10) NULL');
+
 console.log(`Base de datos "${DB_NAME}" lista.`);
 await conn.end();

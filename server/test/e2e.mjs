@@ -72,11 +72,44 @@ try {
   await pass.type('input[placeholder^="Teléfono"]', passPhone);
   await pass.type('input[placeholder="Contraseña"]', 'secreto1');
   await click(pass, 'Enviar código por SMS');
+  check('sin aceptar los términos no se puede continuar', await see(pass, 'Debes aceptar los Términos'));
+  await pass.click('.check.terms input');
+  await click(pass, 'Enviar código por SMS');
   check('la pantalla pide el código del SMS', await see(pass, 'Te enviamos un código por SMS'));
   check('en desarrollo se muestra el código de prueba', await see(pass, 'Modo desarrollo'));
   await shot(pass, '0-codigo-sms');
   await click(pass, 'Verificar y crear cuenta');
   check('el pasajero queda registrado y entra', await see(pass, 'Historial'));
+
+  // ---- Páginas legales y datos de la app instalable ----
+  const legal = await browser.newPage();
+  await legal.goto(`${CLIENT}/terminos`, { waitUntil: 'domcontentloaded' });
+  check('página de términos de uso', await see(legal, '1. Qué es Jalón'));
+  await legal.goto(`${CLIENT}/privacidad`, { waitUntil: 'domcontentloaded' });
+  check('página de política de privacidad', await see(legal, '3. Con quién se comparten'));
+  const manifest = await legal.evaluate(async () => {
+    const link = document.querySelector('link[rel=manifest]');
+    const m = await (await fetch(link.href)).json();
+    const icons = await Promise.all(m.icons.map((i) => fetch(i.src).then((r) => r.status)));
+    return { name: m.name, display: m.display, icons };
+  });
+  check('el manifiesto de la app es válido y sus íconos existen', manifest.name === 'Jalón' && manifest.display === 'standalone' && manifest.icons.length === 3 && manifest.icons.every((c) => c === 200));
+  if (process.env.E2E_EXPECT_SW) {
+    const sw = await legal.evaluate(async () => !!(await navigator.serviceWorker.ready).active);
+    check('el service worker queda activo (app instalable)', sw);
+  }
+  await legal.close();
+
+  // ---- Cambiar la contraseña desde Mi cuenta ----
+  await click(pass, 'Cuenta');
+  check('se abre Mi cuenta', await see(pass, 'Mi cuenta'));
+  await pass.type('input[placeholder="Contraseña actual"]', 'secreto1');
+  await pass.type('input[placeholder="Contraseña nueva"]', 'secreto2-nueva');
+  await pass.type('input[placeholder="Repite la contraseña nueva"]', 'secreto2-nueva');
+  await click(pass, 'Cambiar contraseña');
+  check('contraseña cambiada desde la cuenta', await see(pass, 'Contraseña actualizada. Se cerraron tus otras sesiones.'));
+  await shot(pass, '0d-mi-cuenta');
+  await click(pass, 'Cerrar ✕');
 
   // ---- El conductor sube sus documentos y el admin lo aprueba ----
   check('conductor pendiente ve que debe subir documentos', await see(driver, 'Documentos para aprobar tu cuenta (0 de 3)'));

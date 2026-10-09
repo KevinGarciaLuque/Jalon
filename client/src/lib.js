@@ -80,3 +80,24 @@ export const icons = {
   me: emojiIcon('📍', 34),
   dest: emojiIcon('🏁', 32),
 };
+
+// "Instalar app": Chrome/Android avisa con beforeinstallprompt; iPhone no tiene botón y hay que explicarlo
+export function useInstall() {
+  const [evt, setEvt] = useState(null);
+  const standalone = window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone;
+  useEffect(() => {
+    const onPrompt = (e) => { e.preventDefault(); setEvt(e); };
+    const onInstalled = () => setEvt(null);
+    window.addEventListener('beforeinstallprompt', onPrompt);
+    window.addEventListener('appinstalled', onInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onPrompt);
+      window.removeEventListener('appinstalled', onInstalled);
+    };
+  }, []);
+  return {
+    canInstall: !!evt && !standalone,
+    ios: /iphone|ipad|ipod/i.test(navigator.userAgent) && !standalone,
+    prompt: async () => { if (evt) { evt.prompt(); await evt.userChoice.catch(() => {}); setEvt(null); } },
+  };
+}

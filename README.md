@@ -70,3 +70,10 @@ Un solo servicio (este repositorio) entrega la API y la web compilada; la base d
 5. **Respaldos:** activa los backups del MySQL en Railway.
 
 El servicio mantiene en memoria las posiciones de los conductores, así que debe correr en **una sola instancia**.
+
+## App instalable (PWA) y páginas legales
+
+- La web se puede instalar en el celular ("Instalar la app" en Mi cuenta y en la pantalla de entrada; en iPhone: Compartir → Agregar a inicio). Usa `client/public/manifest.webmanifest`, los íconos de `client/public/icons/` y un service worker mínimo (`client/public/sw.js`) que nunca guarda la API ni los sockets.
+- `/terminos` y `/privacidad` son las páginas legales (`client/src/Legal.jsx`). Al registrarse hay que aceptarlas y el servidor guarda cuándo y qué versión (`users.terms_accepted_at` y `terms_version`). Si cambias el texto de forma importante, sube `TERMS_VERSION` en `server/src/index.js`.
+- **Antes de lanzar:** define la variable `VITE_CONTACT_EMAIL` en Railway (se usa al compilar la web) con el correo de soporte que aparece en las páginas legales, y haz que un abogado revise los textos.
+- En Railway, Settings → Healthcheck Path: `/api/health` (responde 503 si no hay base de datos).

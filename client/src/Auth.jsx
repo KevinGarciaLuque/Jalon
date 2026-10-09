@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api } from './lib.js';
+import { api, useInstall } from './lib.js';
 
 const RESEND_SECONDS = 60;
 const friendly = (e) => (e.message === 'Failed to fetch' ? 'No se pudo conectar con el servidor' : e.message);
@@ -14,6 +14,8 @@ export default function Auth({ onAuth, notice }) {
   const [devCode, setDevCode] = useState('');
   const [wait, setWait] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [terms, setTerms] = useState(false);
+  const install = useInstall();
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
 
   useEffect(() => {
@@ -51,9 +53,10 @@ export default function Auth({ onAuth, notice }) {
         onAuth(await api('login', { phone: f.phone, password: f.password }));
       } else if (step === 1) {
         if (f.password.length < 6) throw new Error('La contraseña debe tener al menos 6 caracteres');
+        if (mode === 'register' && !terms) throw new Error('Debes aceptar los Términos y la Política de Privacidad');
         await sendCode();
       } else if (mode === 'register') {
-        onAuth(await api('register', { ...f, role }));
+        onAuth(await api('register', { ...f, role, acceptTerms: terms }));
       } else {
         await api('password/reset', { phone: f.phone, code: f.code, password: f.password });
         go('login');
@@ -142,6 +145,16 @@ export default function Auth({ onAuth, notice }) {
           </>
         )}
 
+        {mode === 'register' && step === 1 && (
+          <label className="check terms">
+            <input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} />
+            <span>
+              Tengo 18 años o más y acepto los <a href="/terminos" target="_blank" rel="noreferrer">Términos de uso</a> y la{' '}
+              <a href="/privacidad" target="_blank" rel="noreferrer">Política de privacidad</a>.
+            </span>
+          </label>
+        )}
+
         {step === 1 && info && <div className="hint ok">{info}</div>}
         {error && <div className="error">{error}</div>}
         <button className="primary" disabled={busy || (step === 2 && f.code.length !== 6)}>{busy ? 'Un momento…' : button}</button>
@@ -153,6 +166,7 @@ export default function Auth({ onAuth, notice }) {
           </>
         )}
         {mode !== 'login' && <button type="button" className="link" onClick={() => go('login')}>← Volver a entrar</button>}
+        {mode === 'login' && install.canInstall && <button type="button" className="link" onClick={install.prompt}>📲 Instalar la app</button>}
       </form>
     </div>
   );

@@ -4,6 +4,7 @@ import Passenger from './Passenger.jsx';
 import Driver from './Driver.jsx';
 import Admin from './Admin.jsx';
 import History from './History.jsx';
+import Account from './Account.jsx';
 import { connectSocket } from './lib.js';
 
 function loadSession() {
@@ -16,6 +17,7 @@ export default function App() {
   const [connError, setConnError] = useState('');
   const [notice, setNotice] = useState('');
   const [showHistory, setShowHistory] = useState(false);
+  const [showAccount, setShowAccount] = useState(false);
   const [accountStatus, setAccountStatus] = useState(() => loadSession()?.user.status);
 
   useEffect(() => {
@@ -43,6 +45,13 @@ export default function App() {
     setSession(data);
   }
 
+  // Al cambiar la contraseña el servidor entrega un token nuevo; se reemplaza para no cerrar esta sesión
+  function updateToken(token) {
+    const next = { ...session, token };
+    localStorage.setItem('jalon', JSON.stringify(next));
+    setSession(next);
+  }
+
   function logout(message = '') {
     localStorage.removeItem('jalon');
     setNotice(typeof message === 'string' ? message : '');
@@ -58,6 +67,7 @@ export default function App() {
         <b>Jalón</b>
         <span>{session.user.name} · {{ driver: 'Conductor', admin: 'Administrador' }[session.user.role] || 'Pasajero'}</span>
         {session.user.role !== 'admin' && <button className="link" onClick={() => setShowHistory(true)}>Historial</button>}
+        <button className="link" onClick={() => setShowAccount(true)}>Cuenta</button>
         <button className="link" onClick={() => logout()}>Salir</button>
       </header>
       {connError && <div className="banner">{connError}</div>}
@@ -65,6 +75,15 @@ export default function App() {
       {socket && (session.user.role === 'driver'
         ? <Driver socket={socket} token={session.token} status={accountStatus} />
         : <Passenger socket={socket} token={session.token} />)}
+      {showAccount && (
+        <Account
+          user={session.user}
+          token={session.token}
+          onToken={updateToken}
+          onClose={() => setShowAccount(false)}
+          onLogout={() => { setShowAccount(false); logout(); }}
+        />
+      )}
       {showHistory && <History token={session.token} role={session.user.role} onClose={() => setShowHistory(false)} />}
     </div>
   );

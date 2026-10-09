@@ -123,3 +123,14 @@ label.upload input { display: none; }
 .overlay-body.wide { max-width: 1000px; }
 .docgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
 .docimg { width: 100%; max-height: 260px; object-fit: contain; border-radius: 8px; background: #000; }
+
+/* ---- Fase 5 ---- */
+.legal { max-width: 720px; margin: 0 auto; padding: 24px 16px 48px; line-height: 1.55; }
+.legal h1 { color: var(--brand); margin: 12px 0 4px; }
+.legal h2 { font-size: 18px; margin: 24px 0 6px; }
+.legal ul { padding-left: 20px; }
+.legal a, .check a, .overlay a:not(.primary), .hint a { color: var(--brand); }
+.legal .back { text-decoration: none; font-weight: 600; }
+.check.terms { align-items: flex-start; font-size: 13px; }
+.check.terms input { margin-top: 3px; flex: none; }
+header { padding-top: max(10px, env(safe-area-inset-top)); }

@@ -19,7 +19,7 @@ export async function http(method, path, token, body) {
 export async function registerUser(data) {
   const o = await http('POST', 'otp/send', null, { phone: data.phone });
   if (!o.devCode) throw new Error(`No se pudo obtener el código de prueba (${o.status} ${o.error || ''})`);
-  return http('POST', 'register', null, { ...data, code: o.devCode });
+  return http('POST', 'register', null, { acceptTerms: true, ...data, code: o.devCode });
 }
 
 // Sube los 3 documentos que exige la aprobación de un conductor

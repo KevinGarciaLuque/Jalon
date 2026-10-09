@@ -16,7 +16,7 @@ const phone = (prefix) => `${prefix}${rnd}9`.slice(0, 8);
 
 // ---------------- Registro con código ----------------
 const ph = phone('93');
-const base = { name: 'P4 Pasajero', phone: ph, password: 'secreto1', role: 'passenger' };
+const base = { name: 'P4 Pasajero', phone: ph, password: 'secreto1', role: 'passenger', acceptTerms: true };
 check('registro sin código es rechazado', (await http('POST', 'register', null, base)).status === 400);
 check('enviar código a un teléfono inválido', (await http('POST', 'otp/send', null, { phone: 'abc' })).status === 400);
 
@@ -24,9 +24,14 @@ const sent = await http('POST', 'otp/send', null, { phone: ph });
 check('se envía un código de 6 dígitos', /^\d{6}$/.test(sent.devCode || ''));
 check('no se puede pedir otro código enseguida', (await http('POST', 'otp/send', null, { phone: ph })).status === 429);
 const wrong = sent.devCode === '000000' ? '111111' : '000000';
+const noTerms = await http('POST', 'register', null, { ...base, acceptTerms: false, code: sent.devCode });
+check('registro sin aceptar los términos es rechazado', noTerms.status === 400 && /Términos/.test(noTerms.error));
+check('un registro rechazado por los términos no gasta el código', (await http('POST', 'register', null, { ...base, code: wrong })).status === 400 && !!sent.devCode);
 check('código incorrecto es rechazado', (await http('POST', 'register', null, { ...base, code: wrong })).status === 400);
 const reg = await http('POST', 'register', null, { ...base, code: sent.devCode });
 check('registro con el código correcto', !!reg.token && reg.user.status === 'active');
+const [[acc]] = await pool.query('SELECT terms_accepted_at, terms_version FROM users WHERE id = ?', [reg.user.id]);
+check('queda registrada la aceptación de los términos', !!acc.terms_accepted_at && acc.terms_version === '1.0');
 check('el código solo sirve una vez', (await http('POST', 'register', null, { ...base, code: sent.devCode })).status === 400);
 check('no se envía código a un teléfono ya registrado', (await http('POST', 'otp/send', null, { phone: ph })).status === 409);
 
@@ -65,6 +70,23 @@ check('la sesión anterior se cierra', (await http('GET', 'rides/mine', oldToken
 const regCode = await http('POST', 'otp/send', null, { phone: phone('89') });
 check('un código de registro no sirve para recuperar', (await http('POST', 'password/reset', null, { phone: ph2, code: regCode.devCode, password: 'otra-clave-1' })).status === 400);
 await pool.query("UPDATE users SET name = 'P4 Reset' WHERE phone = ?", [ph2]);
+
+// ---------------- Cambiar la contraseña desde la cuenta ----------------
+const chg = await http('POST', 'login', null, { phone: ph2, password: 'nueva-clave-1' });
+check('cambiar contraseña exige sesión', (await http('POST', 'password/change', null, { current: 'x', password: 'abcdef' })).status === 401);
+check('cambiar contraseña con la actual incorrecta', (await http('POST', 'password/change', chg.token, { current: 'no-es-esa', password: 'otra-clave-2' })).status === 403);
+check('cambiar contraseña: la nueva es muy corta', (await http('POST', 'password/change', chg.token, { current: 'nueva-clave-1', password: '123' })).status === 400);
+const changed = await http('POST', 'password/change', chg.token, { current: 'nueva-clave-1', password: 'otra-clave-2' });
+check('se cambia la contraseña conociendo la actual', changed.ok === true && !!changed.token);
+check('la sesión anterior se cierra', (await http('GET', 'rides/mine', chg.token)).status === 401);
+check('la sesión nueva sigue funcionando', (await http('GET', 'rides/mine', changed.token)).status === 200);
+check('la contraseña anterior ya no sirve', (await http('POST', 'login', null, { phone: ph2, password: 'nueva-clave-1' })).status === 401);
+check('la nueva contraseña sirve', !!(await http('POST', 'login', null, { phone: ph2, password: 'otra-clave-2' })).token);
+
+// ---------------- Salud del servicio ----------------
+const health = await http('GET', 'health');
+check('el servicio informa que está sano (incluye la base de datos)', health.ok === true);
+check('un cuerpo demasiado grande recibe un error JSON, no una página', (await fetch(`${API}/api/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone: 'x'.repeat(20000) }) }).then(async (r) => r.status === 413 && (await r.json()).error === 'Solicitud inválida')));
 
 // ---------------- Documentos del conductor ----------------
 const D = await registerUser({ name: 'P4 Driver', phone: phone('88'), password: 'secreto1', role: 'driver', vehicle: 'Civic', plate: 'HDD1111' });
