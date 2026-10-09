@@ -4,7 +4,7 @@ import fs from 'fs';
 import jwt from 'jsonwebtoken';
 import { io } from 'socket.io-client';
 import { pool } from '../src/db.js';
-import { API, http, registerUser, uploadDocs } from './helpers.mjs';
+import { API, http, registerUser, uploadDocs, createTestSuperadmin } from './helpers.mjs';
 
 const LOG = new URL('../.sms-dev.log', import.meta.url);
 const sms = () => (fs.existsSync(LOG) ? fs.readFileSync(LOG, 'utf8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l)) : []);
@@ -21,7 +21,7 @@ const phones = (process.env.SOS_ALERT_PHONES || '').split(',').filter(Boolean);
 if (phones.length < 2) { console.log('SKIP: define SOS_ALERT_PHONES con 2 teléfonos de prueba en server/.env'); process.exit(0); }
 
 const rnd = String(Math.floor(Math.random() * 1e6)).padStart(6, '0');
-const [[root]] = await pool.query("SELECT id FROM users WHERE role = 'superadmin' LIMIT 1");
+const root = await createTestSuperadmin(pool);
 const SA = jwt.sign({ id: root.id, role: 'superadmin' }, process.env.JWT_SECRET, { expiresIn: '10m' });
 
 check('el panel sabe cuántos teléfonos reciben las emergencias', (await http('GET', 'admin/stats', SA)).sosPhones === phones.length);

@@ -5,6 +5,7 @@ import Driver from './Driver.jsx';
 import Admin from './Admin.jsx';
 import History from './History.jsx';
 import Account from './Account.jsx';
+import TwoFactorSetup from './TwoFactorSetup.jsx';
 import { connectSocket } from './lib.js';
 
 const STAFF = ['superadmin', 'admin', 'support'];
@@ -49,12 +50,20 @@ export default function App() {
     setSession(data);
   }
 
-  // Al cambiar la contraseña el servidor entrega un token nuevo; se reemplaza para no cerrar esta sesión
+  const save = (next) => { localStorage.setItem('jalon', JSON.stringify(next)); setSession(next); };
+
+  // Al cambiar la contraseña (o cerrar las demás sesiones) el servidor entrega un token nuevo; se reemplaza para no cerrar esta sesión
   function updateToken(token) {
-    const next = { ...session, token, user: { ...session.user, mustChangePassword: false } };
-    localStorage.setItem('jalon', JSON.stringify(next));
-    setSession(next);
+    save({ ...session, token, user: { ...session.user, mustChangePassword: false } });
   }
+
+  // El servidor puede exigir pasos pendientes aunque la sesión guardada no lo sepa (p. ej. un superadmin que ya estaba conectado)
+  function onGate(code) {
+    if (code === 'MUST_ENROLL_2FA' && !session.user.mustEnrollTwoFactor) save({ ...session, user: { ...session.user, mustEnrollTwoFactor: true } });
+    if (code === 'MUST_CHANGE_PASSWORD' && !session.user.mustChangePassword) save({ ...session, user: { ...session.user, mustChangePassword: true } });
+  }
+
+  const staff = STAFF.includes(session?.user.role);
 
   function logout(message = '') {
     localStorage.removeItem('jalon');
@@ -75,7 +84,7 @@ export default function App() {
         <button className="link" onClick={() => logout()}>Salir</button>
       </header>
       {connError && <div className="banner">{connError}</div>}
-      {STAFF.includes(session.user.role) && !session.user.mustChangePassword && <Admin token={session.token} />}
+      {staff && !session.user.mustChangePassword && !session.user.mustEnrollTwoFactor && <Admin token={session.token} onGate={onGate} />}
       {socket && !session.user.mustChangePassword && (session.user.role === 'driver'
         ? <Driver socket={socket} token={session.token} status={accountStatus} />
         : <Passenger socket={socket} token={session.token} />)}
@@ -87,6 +96,13 @@ export default function App() {
           onToken={updateToken}
           onClose={() => setShowAccount(false)}
           onLogout={() => { setShowAccount(false); logout(); }}
+        />
+      )}
+      {!session.user.mustChangePassword && session.user.mustEnrollTwoFactor && (
+        <TwoFactorSetup
+          token={session.token}
+          onLogout={() => logout()}
+          onDone={() => save({ ...session, user: { ...session.user, mustEnrollTwoFactor: false, twoFactorEnabled: true } })}
         />
       )}
       {showHistory && <History token={session.token} role={session.user.role} onClose={() => setShowHistory(false)} />}

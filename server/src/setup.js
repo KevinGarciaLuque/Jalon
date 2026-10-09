@@ -192,5 +192,25 @@ if (ADMIN_PHONE && ADMIN_PASSWORD) {
 await addColumn('alerts', 'notified_count', 'TINYINT NOT NULL DEFAULT 0');
 await addColumn('alerts', 'last_notified_at', 'TIMESTAMP NULL');
 
+// Fase 7: verificación en dos pasos (el secreto se guarda cifrado; los códigos de respaldo, solo como huella)
+await addColumn('users', 'totp_secret', 'TEXT NULL');
+await addColumn('users', 'totp_enabled', 'TINYINT(1) NOT NULL DEFAULT 0');
+await addColumn('users', 'totp_last_step', 'BIGINT NULL');
+await addColumn('users', 'backup_codes', 'TEXT NULL');
+await addColumn('users', 'two_fa_failures', 'TINYINT NOT NULL DEFAULT 0');
+await addColumn('users', 'two_fa_locked_until', 'TIMESTAMP NULL');
+
+// Salida de emergencia: si el superadmin pierde su teléfono Y sus códigos de respaldo, define RESET_2FA_FOR=<su teléfono>
+// en Railway, reinicia, entra y vuelve a activar la verificación. Después QUITA la variable.
+if (process.env.RESET_2FA_FOR) {
+  const ph = normalizePhone(process.env.RESET_2FA_FOR) ?? process.env.RESET_2FA_FOR.trim();
+  const [r] = await conn.query(
+    `UPDATE users SET totp_enabled = 0, totp_secret = NULL, totp_last_step = NULL, backup_codes = NULL, two_fa_failures = 0,
+            two_fa_locked_until = NULL, token_version = token_version + 1
+     WHERE phone = ? AND role IN ('superadmin','admin','support')`, [ph]
+  );
+  console.warn(r.affectedRows ? `⚠ Verificación en dos pasos restablecida para ${ph}. Quita RESET_2FA_FOR.` : '⚠ RESET_2FA_FOR: no hay personal con ese teléfono');
+}
+
 console.log(`Base de datos "${DB_NAME}" lista.`);
 await conn.end();

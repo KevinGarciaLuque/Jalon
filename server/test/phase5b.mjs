@@ -4,14 +4,14 @@ import fs from 'fs';
 import path from 'path';
 import jwt from 'jsonwebtoken';
 import { pool } from '../src/db.js';
-import { API, http, registerUser, uploadDocs } from './helpers.mjs';
+import { API, http, registerUser, uploadDocs, createTestSuperadmin, enroll2fa } from './helpers.mjs';
 
 const rnd = String(Math.floor(Math.random() * 1e6)).padStart(6, '0');
 const phone = (prefix) => `${prefix}${rnd}9`.slice(0, 8);
 let fails = 0;
 const check = (name, ok, extra = '') => { console.log(`${ok ? 'OK  ' : 'FAIL'} ${name} ${extra}`); if (!ok) fails++; };
 
-const [[root]] = await pool.query("SELECT id FROM users WHERE role = 'superadmin' LIMIT 1");
+const root = await createTestSuperadmin(pool);
 const SA = jwt.sign({ id: root.id, role: 'superadmin' }, process.env.JWT_SECRET, { expiresIn: '10m' });
 
 // Entra con una contraseña temporal y la cambia (obligatorio la primera vez)
@@ -19,7 +19,10 @@ async function firstLogin(ph, temp, newPass) {
   const login = await http('POST', 'login', null, { phone: ph, password: temp });
   const forced = await http('GET', 'admin/stats', login.token);
   const changed = await http('POST', 'password/change', login.token, { current: temp, password: newPass });
-  return { login, forced, changed };
+  // El personal, además, debe activar la verificación en dos pasos antes de usar el panel
+  const needEnroll = changed.token ? await http('GET', 'admin/stats', changed.token) : null;
+  const twoFactor = changed.token && login.user?.role !== 'passenger' ? await enroll2fa(changed.token) : null;
+  return { login, forced, changed, needEnroll, twoFactor };
 }
 
 // ---------------- Crear personal ----------------
@@ -42,8 +45,11 @@ check('la contraseña nueva debe ser distinta de la temporal', (await http('POST
 const S1 = await firstLogin(supportPhone, su.tempPassword, 'soporte-clave-1');
 const AD = A1.changed.token;
 const SU = S1.changed.token;
-check('después de cambiarla ya puede entrar al panel', (await http('GET', 'admin/stats', AD)).rides !== undefined);
-check('el login ya no pide cambio', (await http('POST', 'login', null, { phone: adminPhone, password: 'admin-clave-1' })).user.mustChangePassword === false);
+check('el personal sin verificación en dos pasos no puede usar el panel', A1.needEnroll.status === 403 && A1.needEnroll.code === 'MUST_ENROLL_2FA');
+check('después de activarla ya puede entrar al panel', (await http('GET', 'admin/stats', AD)).rides !== undefined);
+const relogin = await http('POST', 'login', null, { phone: adminPhone, password: 'admin-clave-1' });
+check('el personal con verificación activa recibe un desafío en vez de la sesión', relogin.twoFactor === true && !relogin.token);
+check('con un código de respaldo completa el ingreso y ya no pide cambio de contraseña', (await http('POST', 'login/2fa', null, { challenge: relogin.challenge, code: A1.twoFactor.backupCodes[0] })).user?.mustChangePassword === false);
 
 // ---------------- Permisos por rol ----------------
 const pass = await registerUser({ name: 'P5B Pasajero', phone: phone('75'), password: 'secreto1', role: 'passenger' });

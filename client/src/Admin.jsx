@@ -25,7 +25,7 @@ function beep(ctx) {
 
 const when = (d) => new Date(d).toLocaleString('es-HN', { dateStyle: 'medium', timeStyle: 'short' });
 
-export default function Admin({ token }) {
+export default function Admin({ token, onGate }) {
   const [tab, setTab] = useState('rides');
   const [stats, setStats] = useState(null);
   const [directory, setDirectory] = useState({ users: [], perms: [], me: { id: 0, role: '' } });
@@ -54,9 +54,12 @@ export default function Admin({ token }) {
       body: body ? JSON.stringify(body) : undefined,
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || 'Error');
+    if (!res.ok) {
+      if (data.code) onGate?.(data.code); // la cuenta tiene un paso pendiente (activar la verificación o cambiar la contraseña)
+      throw new Error(data.error || 'Error');
+    }
     return data;
-  }, [token]);
+  }, [token, onGate]);
 
   const load = useCallback(async () => {
     try {

@@ -3,7 +3,7 @@ import 'dotenv/config';
 import { io } from 'socket.io-client';
 import jwt from 'jsonwebtoken';
 import { pool } from '../src/db.js';
-import { registerUser } from './helpers.mjs';
+import { registerUser, createTestSuperadmin } from './helpers.mjs';
 
 const API = process.env.API_URL || 'http://localhost:4000';
 const rnd = String(Math.floor(Math.random() * 1e7)).padStart(7, '0');
@@ -24,7 +24,7 @@ const call = async (method, path, token, body) => {
 const D = await registerUser({ name: 'P3 Driver', phone: `9${rnd}`, password: 'secreto1', role: 'driver', vehicle: 'Hilux', plate: 'HBB5678' });
 const P = await registerUser({ name: 'P3 Pasajero', phone: `8${rnd}`, password: 'secreto1', role: 'passenger' });
 await pool.query("UPDATE users SET status = 'active' WHERE id = ?", [D.user.id]);
-const [[adm]] = await pool.query("SELECT id FROM users WHERE role = 'superadmin' LIMIT 1");
+const adm = await createTestSuperadmin(pool);
 const A = jwt.sign({ id: adm.id, role: 'superadmin' }, process.env.JWT_SECRET, { expiresIn: '5m' });
 
 const origin = { lat: 14.0723, lng: -87.1921, text: 'Colonia Kennedy' };

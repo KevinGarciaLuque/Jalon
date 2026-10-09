@@ -152,3 +152,12 @@ header { padding-top: max(10px, env(safe-area-inset-top)); }
 select { font: inherit; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--text); }
 .temp { font-family: ui-monospace, Consolas, monospace; font-size: 28px; letter-spacing: 2px; text-align: center; padding: 16px; border: 2px dashed var(--brand); border-radius: 12px; user-select: all; word-break: break-all; }
 .pad { padding: 12px; }
+
+/* ---- Fase 7 ---- */
+.steps { padding-left: 20px; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.qr { width: 240px; height: 240px; align-self: center; background: #fff; padding: 8px; border-radius: 12px; }
+.secret { font-family: ui-monospace, Consolas, monospace; font-size: 16px; letter-spacing: 2px; text-align: center; padding: 10px; border: 1px dashed var(--line); border-radius: 10px; word-break: break-all; user-select: all; }
+.backup { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.backup code { font-size: 18px; letter-spacing: 1px; text-align: center; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); }
+.overlay-body input.code, .req input.code { text-align: center; font-size: 26px; letter-spacing: 6px; font-weight: 700; }
+input.code::placeholder { letter-spacing: 0; font-size: 15px; font-weight: 400; }

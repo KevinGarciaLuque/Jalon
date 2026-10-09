@@ -4,13 +4,14 @@ import fs from 'fs';
 import path from 'path';
 import jwt from 'jsonwebtoken';
 import { pool } from '../src/db.js';
-import { API, FIXTURE, JPG, http, registerUser, uploadDocs } from './helpers.mjs';
+import { API, FIXTURE, JPG, http, registerUser, uploadDocs, createTestSuperadmin } from './helpers.mjs';
+import { sanitizeJpeg } from '../src/jpeg.js';
 
 const rnd = String(Math.floor(Math.random() * 1e6)).padStart(6, '0');
 let fails = 0;
 const check = (name, ok, extra = '') => { console.log(`${ok ? 'OK  ' : 'FAIL'} ${name} ${extra}`); if (!ok) fails++; };
 
-const [[adm]] = await pool.query("SELECT id FROM users WHERE role = 'superadmin' LIMIT 1");
+const adm = await createTestSuperadmin(pool);
 const A = jwt.sign({ id: adm.id, role: 'superadmin' }, process.env.JWT_SECRET, { expiresIn: '5m' });
 const phone = (prefix) => `${prefix}${rnd}9`.slice(0, 8);
 
@@ -31,7 +32,7 @@ check('código incorrecto es rechazado', (await http('POST', 'register', null, {
 const reg = await http('POST', 'register', null, { ...base, code: sent.devCode });
 check('registro con el código correcto', !!reg.token && reg.user.status === 'active');
 const [[acc]] = await pool.query('SELECT terms_accepted_at, terms_version FROM users WHERE id = ?', [reg.user.id]);
-check('queda registrada la aceptación de los términos', !!acc.terms_accepted_at && acc.terms_version === '1.0');
+check('queda registrada la aceptación de los términos', !!acc.terms_accepted_at && acc.terms_version === '1.1');
 check('el código solo sirve una vez', (await http('POST', 'register', null, { ...base, code: sent.devCode })).status === 400);
 check('no se envía código a un teléfono ya registrado', (await http('POST', 'otp/send', null, { phone: ph })).status === 409);
 
@@ -110,7 +111,7 @@ check('la lista de usuarios muestra cuántos documentos subió', list.find((u) =
 
 const file = await fetch(`${API}/api/admin/documents/${docs[0].id}/file`, { headers: { Authorization: `Bearer ${A}` } });
 const bytes = Buffer.from(await file.arrayBuffer());
-check('el admin descarga la imagen original', file.status === 200 && file.headers.get('content-type') === 'image/jpeg' && bytes.equals(FIXTURE));
+check('el admin descarga la imagen (limpia de metadatos)', file.status === 200 && file.headers.get('content-type') === 'image/jpeg' && bytes.equals(sanitizeJpeg(FIXTURE).buf)); // el servidor entrega la imagen ya limpia de metadatos
 check('un conductor no puede ver documentos', (await fetch(`${API}/api/admin/documents/${docs[0].id}/file`, { headers: { Authorization: `Bearer ${D.token}` } })).status === 403);
 check('sin sesión tampoco', (await fetch(`${API}/api/admin/documents/${docs[0].id}/file`)).status === 401);
 

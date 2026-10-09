@@ -1,6 +1,6 @@
 // Términos de uso y política de privacidad. Si cambias el contenido, sube TERMS_VERSION en server/src/index.js.
-const VERSION = '1.0';
-const UPDATED = '8 de octubre de 2026';
+const VERSION = '1.1';
+const UPDATED = '9 de octubre de 2026';
 const CONTACT = import.meta.env.VITE_CONTACT_EMAIL; // se define al compilar (variable en Railway)
 
 const Contact = () => (CONTACT ? <a href={`mailto:${CONTACT}`}>{CONTACT}</a> : <i>[correo de soporte: falta definir VITE_CONTACT_EMAIL]</i>);
@@ -142,14 +142,26 @@ function Privacy() {
 
       <h2>5. Tus derechos</h2>
       <p>
-        Puedes pedirnos acceder a tus datos, corregirlos o que eliminemos tu cuenta, escribiendo a <Contact />. Puedes cambiar tu contraseña en cualquier
-        momento desde la sección Cuenta.
+        Desde la sección <b>Cuenta</b> de la aplicación puedes, cuando quieras:
+      </p>
+      <ul>
+        <li><b>Descargar tus datos:</b> un archivo con tu cuenta, tus viajes, tus calificaciones y tus alertas de emergencia.</li>
+        <li>
+          <b>Eliminar tu cuenta:</b> se borran tu nombre, teléfono, vehículo, documentos y comentarios. Tus viajes se conservan sin direcciones, únicamente
+          para estadísticas y para atender reclamos. No se puede eliminar con un viaje en curso.
+        </li>
+        <li><b>Cambiar tu contraseña</b> y <b>cerrar tu sesión en todos los dispositivos</b>.</li>
+      </ul>
+      <p>
+        Para corregir un dato (por ejemplo, tu teléfono o la placa de tu vehículo) o para cualquier otra solicitud, escríbenos a <Contact />.
       </p>
 
       <h2>6. Seguridad</h2>
       <p>
-        La conexión usa HTTPS, las contraseñas se guardan cifradas y los documentos de los conductores solo pueden verlos los administradores. Ningún
-        sistema es completamente seguro, por eso te recomendamos no compartir tu contraseña ni tus códigos.
+        La conexión usa HTTPS y las contraseñas se guardan cifradas de forma que nadie puede leerlas. Los documentos de los conductores se guardan
+        cifrados, se les quitan los datos ocultos de las fotos (como la ubicación), y solo los puede ver el personal autorizado; cada vez que se abren queda
+        un registro. El personal accede con verificación en dos pasos. Ningún sistema es completamente seguro, por eso te recomendamos no compartir tu
+        contraseña ni tus códigos.
       </p>
 
       <h2>7. Menores de edad</h2>

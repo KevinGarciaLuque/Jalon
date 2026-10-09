@@ -6,7 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import jwt from 'jsonwebtoken';
 import { pool } from '../src/db.js';
-import { registerUser } from './helpers.mjs';
+import { registerUser, createTestSuperadmin, totpNow } from './helpers.mjs';
 
 const API = process.env.API_URL || 'http://localhost:4000';
 const CLIENT = process.env.CLIENT_URL || 'http://localhost:5174';
@@ -61,7 +61,7 @@ try {
   const driver = await openAs(D, { latitude: 14.073, longitude: -87.1925 }, 'conductor');
   const pass = await openAs(null, { latitude: 14.0723, longitude: -87.1921 }, 'pasajero');
   // Sesión de admin firmada con el JWT_SECRET del .env (así no hay contraseñas escritas en el código)
-  const [[adm]] = await pool.query("SELECT id, name, phone FROM users WHERE role = 'superadmin' LIMIT 1");
+  const adm = await createTestSuperadmin(pool);
   const adminLogin = { token: jwt.sign({ id: adm.id, role: 'superadmin' }, process.env.JWT_SECRET, { expiresIn: '10m' }), user: { ...adm, role: 'superadmin', status: 'active' } };
   const admin = await openAs(adminLogin, { latitude: 14.07, longitude: -87.19 }, 'admin');
   await admin.setViewport({ width: 1100, height: 800 });
@@ -103,6 +103,8 @@ try {
   // ---- Cambiar la contraseña desde Mi cuenta ----
   await click(pass, 'Cuenta');
   check('se abre Mi cuenta', await see(pass, 'Mi cuenta'));
+  check('Mi cuenta ofrece descargar los datos y eliminar la cuenta', (await see(pass, 'Descargar mis datos')) && (await see(pass, 'Eliminar mi cuenta')));
+  check('y cerrar la sesión en los demás dispositivos', await see(pass, 'Cerrar sesión en los demás dispositivos'));
   await pass.type('input[placeholder="Contraseña actual"]', 'secreto1');
   await pass.type('input[placeholder="Contraseña nueva"]', 'secreto2-nueva');
   await pass.type('input[placeholder="Repite la contraseña nueva"]', 'secreto2-nueva');
@@ -219,8 +221,24 @@ try {
   await staffPage.type('input[placeholder="Contraseña nueva"]', 'soporte-clave-9');
   await staffPage.type('input[placeholder="Repite la contraseña nueva"]', 'soporte-clave-9');
   await click(staffPage, 'Cambiar contraseña');
+
+  // El personal debe activar la verificación en dos pasos antes de ver el panel
+  check('el personal debe activar la verificación en dos pasos antes de usar el panel', await see(staffPage, 'Activa la verificación en dos pasos'));
+  await staffPage.waitForSelector('img.qr', { timeout: 15000 });
+  const secret = await staffPage.$eval('[data-testid="secret"]', (el) => el.textContent.trim());
+  check('se muestra el código QR y la clave para escribirla a mano', /^[A-Z2-7]{32}$/.test(secret));
+  await shot(staffPage, '0h-activar-2fa');
+  await staffPage.type('input[placeholder="Código de 6 dígitos"]', totpNow(secret));
+  await click(staffPage, 'Activar');
+  check('se muestran los códigos de respaldo', await see(staffPage, 'Guarda tus códigos de respaldo'));
+  const backupCodes = await staffPage.$$eval('[data-testid="backup-codes"] code', (els) => els.map((e) => e.textContent));
+  check('son 10 códigos con el formato XXXX-XXXX', backupCodes.length === 10 && backupCodes.every((c) => /^[A-Z2-9]{4}-[A-Z2-9]{4}$/.test(c)));
+  check('no se puede continuar sin confirmar que se guardaron', await staffPage.$eval('button.primary', (b) => b.disabled));
+  await staffPage.click('.overlay-body .check input');
+  await shot(staffPage, '0i-codigos-respaldo');
+  await click(staffPage, 'Continuar al panel');
   await staffPage.waitForSelector('.admin', { timeout: 15000 });
-  check('después de cambiarla entra al panel', true);
+  check('después de activarla entra al panel', true);
   const tabs = await staffPage.$$eval('.seg button', (bs) => bs.map((b) => b.textContent));
   check('soporte solo ve Viajes y Usuarios (sin Personal ni Registro)', tabs.join(',') === 'Viajes,Usuarios', `(${tabs})`);
   await click(staffPage, 'Usuarios');
@@ -230,6 +248,29 @@ try {
   const supportActions = await staffPage.$$eval('.actions-bar button', (bs) => bs.map((b) => b.textContent)).catch(() => []);
   check('soporte no ve botones para editar, aprobar ni bloquear', supportActions.length === 0, `(${supportActions})`);
   await shot(staffPage, '0f-soporte-ficha');
+
+  // Volver a entrar: ahora pide el segundo paso (se usa un código de respaldo porque el de la app ya se usó al activarla)
+  await click(staffPage, 'Cerrar ✕'); // la ficha del usuario sigue abierta y tapa el botón Salir
+  await click(staffPage, 'Salir');
+  await staffPage.type('input[placeholder^="Teléfono"]', staffPhone);
+  await staffPage.type('input[placeholder="Contraseña"]', 'soporte-clave-9');
+  await click(staffPage, 'Entrar');
+  check('al volver a entrar pide la verificación en dos pasos', await see(staffPage, 'Escribe el código de 6 dígitos de tu app'));
+  await shot(staffPage, '0j-segundo-paso');
+  await staffPage.type('input[placeholder="Código"]', 'AAAA-BBBB');
+  await click(staffPage, 'Verificar');
+  check('un código equivocado no deja entrar', await see(staffPage, 'Código incorrecto'));
+  await staffPage.$eval('input[placeholder="Código"]', (el) => el.select()); // seleccionar lo escrito para reemplazarlo
+  await staffPage.type('input[placeholder="Código"]', backupCodes[0]);
+  await click(staffPage, 'Verificar');
+  await staffPage.waitForSelector('.admin', { timeout: 15000 });
+  check('con un código de respaldo entra al panel', true);
+
+  // El superadmin puede restablecer la verificación de esa persona si pierde el teléfono
+  await click(admin, 'Personal');
+  await click(admin, 'P5B Soporte UI');
+  check('el superadmin ve el botón para restablecer la verificación en dos pasos', await see(admin, 'Restablecer verificación en dos pasos'));
+  await click(admin, 'Cerrar ✕');
 
   // El superadmin ve el movimiento en el registro
   await click(admin, 'Registro');
@@ -257,7 +298,9 @@ try {
   await pool.end();
 }
 
-check('sin errores de JavaScript en el navegador', errors.length === 0, errors.slice(0, 3).join(' | '));
+// El 401 del código de verificación equivocado que la prueba escribe a propósito es esperado
+const unexpected = errors.filter((e) => !/^\[soporte\] Failed to load resource: .*401/.test(e));
+check('sin errores de JavaScript en el navegador', unexpected.length === 0, unexpected.slice(0, 3).join(' | '));
 console.log(fails ? `\n${fails} fallos (capturas en ${SHOTS})` : '\nTodo OK');
 process.exitCode = fails ? 1 : 0;
 setTimeout(() => process.exit(process.exitCode), 300);

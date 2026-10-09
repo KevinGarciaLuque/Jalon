@@ -18,6 +18,10 @@ import { searchPlaces, reversePlace, getRoute } from './maps.js';
 import { normalizePhone, toE164 } from './phone.js';
 import { createOtp, consumeOtp, OtpError } from './otp.js';
 import { sendSms, smsConfigured } from './sms.js';
+import { sanitizeJpeg } from './jpeg.js';
+import { encryptBuffer, decryptBuffer, isEncrypted, keyIsDerived, encryptText, decryptText } from './secure.js';
+import { generateSecret, verifyTotp, otpauthUrl, generateBackupCodes, hashBackup } from './totp.js';
+import { encryptLegacyDocuments } from './docs.js';
 
 // Monitoreo de errores (opcional): con SENTRY_DSN los errores inesperados del servidor se reportan a Sentry (sin datos personales)
 const Sentry = process.env.SENTRY_DSN ? await import('@sentry/node') : null;
@@ -64,7 +68,7 @@ const SOS_PHONES = (process.env.SOS_ALERT_PHONES || '').split(',').map((p) => no
 const SOS_REMINDER_MIN = Number(process.env.SOS_REMINDER_MINUTES || 3); // mientras nadie la atienda, se repite el aviso
 const SOS_MAX_NOTICES = 4; // el aviso inicial y hasta 3 recordatorios
 const PUBLIC_URL = process.env.PUBLIC_URL || process.env.CLIENT_ORIGIN || '';
-const TERMS_VERSION = '1.0'; // súbela cuando cambien los términos o la política de privacidad
+const TERMS_VERSION = '1.1'; // súbela cuando cambien los términos o la política de privacidad
 
 // En desarrollo se acepta cualquier puerto de localhost (Vite cambia de puerto si el 5173 está ocupado)
 const allowOrigin = (origin, cb) => cb(null, !origin || origin === ORIGIN || /^http:\/\/localhost:\d+$/.test(origin));
@@ -96,6 +100,12 @@ if (isProd || process.env.LOG_REQUESTS === 'true') {
   });
 }
 
+// Qué funciones del navegador puede usar la web: solo la ubicación (el mapa); cámara y micrófono nunca
+app.use((_req, res, next) => {
+  res.setHeader('Permissions-Policy', 'geolocation=(self), camera=(), microphone=(), payment=(), usb=(), interest-cohort=()');
+  next();
+});
+
 const limitMsg = { error: 'Demasiados intentos. Intenta de nuevo en unos minutos.' };
 // Solo cuentan los intentos fallidos de login (contra fuerza bruta)
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: isProd ? 10 : 500, skipSuccessfulRequests: true, message: limitMsg }); // en desarrollo es holgado: las pruebas fallan a propósito muchas veces
@@ -112,8 +122,24 @@ const drivers = new Map(); // userId -> { id, name, vehicle, plate, lat, lng, av
 const passengers = new Map(); // userId -> { id, lat, lng }
 const openRides = new Map(); // rideId -> ride listo para enviar a conductores
 
-const sign = (u) => jwt.sign({ id: u.id, role: u.role, tv: u.token_version ?? 0 }, JWT_SECRET, { expiresIn: '30d' });
-const publicUser = (u) => ({ id: u.id, name: u.name, phone: u.phone, role: u.role, status: u.status, vehicle: u.vehicle, plate: u.plate, mustChangePassword: !!u.must_change_password });
+// El personal maneja datos de todos: su sesión dura 12 horas; pasajeros y conductores, 30 días
+const sign = (u) => jwt.sign({ id: u.id, role: u.role, tv: u.token_version ?? 0 }, JWT_SECRET, { expiresIn: ['superadmin', 'admin', 'support'].includes(u.role) ? '12h' : '30d' });
+
+// Reglas de contraseña: 8 caracteres (10 para el personal), no solo números, nada obvio y que no contenga el teléfono
+const COMMON_PASSWORDS = new Set(['12345678', '123456789', '1234567890', '87654321', 'password', 'password1', 'contrasena', 'contrasena1', 'qwertyui', 'qwerty123', 'abcdefgh', 'abc12345', '11111111', '00000000', 'jalon2026', 'jalon1234', 'honduras', 'honduras1']);
+function checkPassword(password, { phone = '', role = 'passenger' } = {}) {
+  const min = ['superadmin', 'admin', 'support'].includes(role) ? 10 : 8;
+  if (typeof password !== 'string' || password.length < min || password.length > 72) return `La contraseña debe tener entre ${min} y 72 caracteres`;
+  if (/^\d+$/.test(password)) return 'La contraseña no puede ser solo números';
+  if (new Set(password).size < 4) return 'La contraseña es demasiado simple';
+  if (COMMON_PASSWORDS.has(password.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''))) return 'Esa contraseña es muy común: elige otra';
+  const digits = String(phone).replace(/\D/g, '').slice(-8);
+  if (digits.length === 8 && password.includes(digits)) return 'La contraseña no puede contener tu teléfono';
+  return null;
+}
+const publicUser = (u) => ({ id: u.id, name: u.name, phone: u.phone, role: u.role, status: u.status, vehicle: u.vehicle, plate: u.plate, mustChangePassword: !!u.must_change_password,
+  // El personal debe tener la verificación en dos pasos activa para usar el panel
+  mustEnrollTwoFactor: isStaff(u.role) && !u.totp_enabled, twoFactorEnabled: !!u.totp_enabled });
 
 // ---------- Auth ----------
 app.post('/api/register', registerLimiter, async (req, res) => {
@@ -125,9 +151,10 @@ app.post('/api/register', registerLimiter, async (req, res) => {
       return res.status(400).json({ error: 'Datos inválidos' });
     if (role === 'driver' && (!vehicle || !plate))
       return res.status(400).json({ error: 'El conductor debe indicar vehículo y placa' });
-    if (password.length < 6 || password.length > 72) return res.status(400).json({ error: 'La contraseña debe tener entre 6 y 72 caracteres' });
     const phoneN = normalizePhone(phone);
     if (!phoneN) return res.status(400).json({ error: 'Teléfono inválido (8 dígitos de Honduras)' });
+    const weak = checkPassword(password, { phone: phoneN, role });
+    if (weak) return res.status(400).json({ error: weak });
     if (name.length > 100 || (vehicle || '').length > 100 || (plate || '').length > 20)
       return res.status(400).json({ error: 'Algún dato es demasiado largo' });
     if (acceptTerms !== true) return res.status(400).json({ error: 'Debes aceptar los Términos y la Política de Privacidad' });
@@ -160,6 +187,10 @@ app.post('/api/login', loginLimiter, async (req, res) => {
     if (!u || !(await bcrypt.compare(password, u.password_hash)))
       return res.status(401).json({ error: 'Teléfono o contraseña incorrectos' });
     if (u.status === 'blocked') return res.status(403).json({ error: 'Tu cuenta está bloqueada. Contacta a soporte.' });
+    // Personal con verificación en dos pasos: la contraseña sola no da sesión; se devuelve un desafío válido 5 minutos
+    if (isStaff(u.role) && u.totp_enabled) {
+      return res.json({ twoFactor: true, challenge: jwt.sign({ id: u.id, purpose: '2fa' }, JWT_SECRET, { expiresIn: '5m' }) });
+    }
     res.json({ token: sign(u), user: publicUser(u) });
   } catch (e) {
     console.error(e);
@@ -213,8 +244,8 @@ app.post('/api/password/forgot', otpLimiter, async (req, res) => {
 app.post('/api/password/reset', otpLimiter, async (req, res) => {
   const phone = normalizePhone(req.body?.phone);
   const { code, password } = req.body || {};
-  if (!phone || typeof password !== 'string' || password.length < 6 || password.length > 72)
-    return res.status(400).json({ error: 'La contraseña debe tener entre 6 y 72 caracteres' });
+  const weak = phone ? checkPassword(password, { phone }) : 'Teléfono inválido (8 dígitos de Honduras)';
+  if (weak) return res.status(400).json({ error: weak });
   const [rows] = await pool.query("SELECT id FROM users WHERE phone = ? AND role IN ('passenger','driver') AND status <> 'blocked' AND deleted_at IS NULL", [phone]);
   if (!rows[0] || !(await consumeOtp(phone, 'reset', code))) return res.status(400).json({ error: 'Código incorrecto o vencido' });
   // token_version + 1 cierra todas las sesiones abiertas con la contraseña anterior
@@ -225,8 +256,9 @@ app.post('/api/password/reset', otpLimiter, async (req, res) => {
 // Cambiar la contraseña conociendo la actual. Cierra las demás sesiones y devuelve un token nuevo para esta.
 app.post('/api/password/change', authUser, loginLimiter, async (req, res) => {
   const { current, password } = req.body || {};
-  if (typeof current !== 'string' || typeof password !== 'string' || password.length < 6 || password.length > 72)
-    return res.status(400).json({ error: 'La contraseña nueva debe tener entre 6 y 72 caracteres' });
+  if (typeof current !== 'string') return res.status(400).json({ error: 'Falta la contraseña actual' });
+  const weak = checkPassword(password, { phone: req.user.phone, role: req.user.role });
+  if (weak) return res.status(400).json({ error: weak });
   if (!(await bcrypt.compare(current, req.user.password_hash))) return res.status(403).json({ error: 'La contraseña actual es incorrecta' });
   if (current === password) return res.status(400).json({ error: 'La contraseña nueva debe ser distinta de la actual' });
   await pool.query('UPDATE users SET password_hash = ?, must_change_password = 0, token_version = token_version + 1 WHERE id = ?', [await bcrypt.hash(password, 10), req.user.id]);
@@ -235,6 +267,130 @@ app.post('/api/password/change', authUser, loginLimiter, async (req, res) => {
 });
 
 // Railway usa esta ruta para saber si el servicio está sano: responde 503 si no hay base de datos
+// ---------- Verificación en dos pasos (personal) ----------
+// Segundo paso del login: código de 6 dígitos de la app, o un código de respaldo (de un solo uso)
+async function secondFactorOk(u, code) {
+  if (/^\d{6}$/.test(code)) {
+    const step = verifyTotp(decryptText(u.totp_secret), code, { lastStep: Number(u.totp_last_step || 0) });
+    if (!step) return false;
+    // Un mismo código no sirve dos veces: el intervalo usado queda anotado (la condición evita carreras)
+    const [r] = await pool.query('UPDATE users SET totp_last_step = ? WHERE id = ? AND (totp_last_step IS NULL OR totp_last_step < ?)', [step, u.id, step]);
+    return r.affectedRows === 1;
+  }
+  const hash = hashBackup(code);
+  const list = JSON.parse(u.backup_codes || '[]');
+  if (!list.includes(hash)) return false;
+  const [r] = await pool.query('UPDATE users SET backup_codes = ? WHERE id = ? AND backup_codes = ?', [JSON.stringify(list.filter((h) => h !== hash)), u.id, u.backup_codes]);
+  return r.affectedRows === 1;
+}
+
+app.post('/api/login/2fa', loginLimiter, async (req, res) => {
+  let payload;
+  try {
+    payload = jwt.verify(String(req.body?.challenge || ''), JWT_SECRET);
+  } catch {
+    return res.status(401).json({ error: 'La verificación venció: vuelve a escribir tu contraseña' });
+  }
+  if (payload.purpose !== '2fa') return res.status(401).json({ error: 'No autorizado' });
+  const [rows] = await pool.query('SELECT *, (two_fa_locked_until > NOW()) AS locked FROM users WHERE id = ?', [payload.id]);
+  const u = rows[0];
+  if (!u || !isStaff(u.role) || !u.totp_enabled || u.status === 'blocked') return res.status(401).json({ error: 'No autorizado' });
+  if (u.locked) return res.status(429).json({ error: 'Demasiados intentos fallidos. Espera 15 minutos o pide a otro superadministrador que restablezca tu verificación.' });
+  const code = String(req.body?.code || '').trim();
+  if (!(await secondFactorOk(u, code))) {
+    // 5 errores seguidos bloquean la verificación 15 minutos (aunque cambien de dirección)
+    await pool.query(
+      // (en un UPDATE de MySQL las asignaciones usan los valores ya cambiados: el bloqueo va primero para leer el contador anterior)
+      `UPDATE users SET two_fa_locked_until = IF(two_fa_failures + 1 >= 5, NOW() + INTERVAL 15 MINUTE, two_fa_locked_until),
+              two_fa_failures = two_fa_failures + 1 WHERE id = ?`, [u.id]
+    );
+    await pool.query('UPDATE users SET two_fa_failures = 0 WHERE id = ? AND two_fa_failures >= 5', [u.id]);
+    return res.status(401).json({ error: 'Código incorrecto' });
+  }
+  await pool.query('UPDATE users SET two_fa_failures = 0, two_fa_locked_until = NULL WHERE id = ?', [u.id]);
+  res.json({ token: sign(u), user: publicUser(u) });
+});
+
+// Paso 1 de la activación: se crea un secreto (todavía no vale hasta confirmarlo con un código)
+app.post('/api/2fa/setup', authUser, async (req, res) => {
+  if (!isStaff(req.user.role)) return res.status(403).json({ error: 'Solo el personal usa la verificación en dos pasos' });
+  if (req.user.totp_enabled) return res.status(409).json({ error: 'Ya está activada' });
+  const secret = generateSecret();
+  await pool.query('UPDATE users SET totp_secret = ?, totp_last_step = NULL WHERE id = ?', [encryptText(secret), req.user.id]);
+  res.json({ secret, otpauthUrl: otpauthUrl({ secret, account: req.user.phone }) });
+});
+
+// Paso 2: se confirma con un código de la app; se activa y se entregan 10 códigos de respaldo (se muestran una sola vez)
+app.post('/api/2fa/enable', authUser, loginLimiter, async (req, res) => {
+  const u = req.user;
+  if (!isStaff(u.role)) return res.status(403).json({ error: 'Solo el personal usa la verificación en dos pasos' });
+  if (u.totp_enabled) return res.status(409).json({ error: 'Ya está activada' });
+  if (!u.totp_secret) return res.status(400).json({ error: 'Empieza de nuevo la activación' });
+  const step = verifyTotp(decryptText(u.totp_secret), String(req.body?.code || '').trim());
+  if (!step) return res.status(400).json({ error: 'Código incorrecto. Revisa que la hora de tu teléfono sea automática.' });
+  const codes = generateBackupCodes();
+  await pool.query('UPDATE users SET totp_enabled = 1, totp_last_step = ?, backup_codes = ?, two_fa_failures = 0 WHERE id = ?', [step, JSON.stringify(codes.map(hashBackup)), u.id]);
+  await audit(u, '2fa.enable');
+  res.json({ ok: true, backupCodes: codes });
+});
+
+// Códigos de respaldo nuevos (los anteriores dejan de servir). Pide la contraseña.
+app.post('/api/2fa/backup-codes', authUser, loginLimiter, async (req, res) => {
+  const u = req.user;
+  if (!isStaff(u.role) || !u.totp_enabled) return res.status(409).json({ error: 'La verificación en dos pasos no está activa' });
+  if (typeof req.body?.password !== 'string' || !(await bcrypt.compare(req.body.password, u.password_hash)))
+    return res.status(403).json({ error: 'La contraseña es incorrecta' });
+  const codes = generateBackupCodes();
+  await pool.query('UPDATE users SET backup_codes = ? WHERE id = ?', [JSON.stringify(codes.map(hashBackup)), u.id]);
+  await audit(u, '2fa.backup_codes');
+  res.json({ backupCodes: codes });
+});
+
+// ---------- Derechos del usuario sobre sus datos ----------
+// Descargar todo lo que la plataforma guarda de la persona (JSON). Las imágenes de los documentos no se incluyen: se piden a soporte.
+app.get('/api/me/export', authUser, async (req, res) => {
+  const u = req.user;
+  const id = u.id;
+  const [rides] = await pool.query(
+    `SELECT r.id, r.status, r.cancelled_by, r.origin_text, r.dest_text, r.origin_lat, r.origin_lng, r.dest_lat, r.dest_lng,
+            r.distance_km, r.duration_min, r.offered_price, r.final_price, r.created_at,
+            IF(r.passenger_id = ?, 'pasajero', 'conductor') AS mi_rol, o.name AS otra_persona
+     FROM rides r LEFT JOIN users o ON o.id = IF(r.passenger_id = ?, r.driver_id, r.passenger_id)
+     WHERE r.passenger_id = ? OR r.driver_id = ? ORDER BY r.id`, [id, id, id, id]
+  );
+  const [given] = await pool.query('SELECT ride_id, stars, comment, created_at FROM ratings WHERE rater_id = ? ORDER BY id', [id]);
+  const [received] = await pool.query('SELECT ride_id, stars, comment, created_at FROM ratings WHERE ratee_id = ? ORDER BY id', [id]);
+  const [alerts] = await pool.query('SELECT ride_id, lat, lng, status, created_at FROM alerts WHERE user_id = ? ORDER BY id', [id]);
+  const [docs] = await pool.query('SELECT type, status, note, created_at FROM documents WHERE user_id = ?', [id]);
+  res.set('Content-Disposition', 'attachment; filename="mis-datos-jalon.json"');
+  res.json({
+    generadoEl: new Date().toISOString(),
+    cuenta: { nombre: u.name, telefono: u.phone, rol: u.role, estado: u.status, vehiculo: u.vehicle, placa: u.plate, registradoEl: u.created_at, aceptoTerminosEl: u.terms_accepted_at, versionTerminos: u.terms_version },
+    viajes: rides, calificacionesQueDi: given, calificacionesQueRecibi: received, alertasDeEmergencia: alerts,
+    documentos: docs.map((d) => ({ tipo: d.type, estado: d.status, nota: d.note, subidoEl: d.created_at })),
+  });
+});
+
+// Eliminar la propia cuenta (pide la contraseña). No se puede con un viaje en curso. El personal no se elimina solo: lo hace el superadmin.
+app.post('/api/me/delete', authUser, loginLimiter, async (req, res) => {
+  const u = req.user;
+  if (isStaff(u.role)) return res.status(403).json({ error: 'Las cuentas del personal las elimina el superadministrador' });
+  if (typeof req.body?.password !== 'string' || !(await bcrypt.compare(req.body.password, u.password_hash)))
+    return res.status(403).json({ error: 'La contraseña es incorrecta' });
+  if (await activeRideFor(u)) return res.status(409).json({ error: 'Tienes un viaje en curso. Termínalo o cancélalo antes de eliminar tu cuenta.' });
+  await anonymizeUser(u);
+  await audit(u, 'user.self_delete', { target: u.id, details: { role: u.role } });
+  res.json({ ok: true });
+});
+
+// Cerrar la sesión en todos los dispositivos (por si perdiste el celular o la dejaste abierta en otro): invalida todos los tokens y devuelve uno nuevo
+app.post('/api/logout-all', authUser, async (req, res) => {
+  await pool.query('UPDATE users SET token_version = token_version + 1 WHERE id = ?', [req.user.id]);
+  io.in(room(req.user.id)).disconnectSockets(true);
+  const [[u]] = await pool.query('SELECT * FROM users WHERE id = ?', [req.user.id]);
+  res.json({ ok: true, token: sign(u) });
+});
+
 app.get('/api/health', async (_req, res) => {
   try {
     await pool.query('SELECT 1');
@@ -387,9 +543,16 @@ app.put('/api/driver/documents/:type', authUser, driverOnly, photoJson, async (r
   if (!buf || buf.length < 100 || buf.length > 2 * 1024 * 1024 || buf[0] !== 0xff || buf[1] !== 0xd8 || buf[2] !== 0xff)
     return res.status(400).json({ error: 'Sube una foto JPG de menos de 2 MB' });
 
+  // Nunca se confía en lo que manda la app: se valida la estructura, se quitan los metadatos (ubicación GPS, modelo del celular) y se cifra
+  let cleaned;
+  try {
+    cleaned = sanitizeJpeg(buf).buf;
+  } catch {
+    return res.status(400).json({ error: 'La imagen no es un JPG válido' });
+  }
   await fs.mkdir(UPLOADS, { recursive: true });
-  const file = `${req.user.id}-${type}-${crypto.randomBytes(8).toString('hex')}.jpg`;
-  await fs.writeFile(path.join(UPLOADS, file), buf);
+  const file = `${req.user.id}-${type}-${crypto.randomBytes(8).toString('hex')}.enc`;
+  await fs.writeFile(path.join(UPLOADS, file), encryptBuffer(cleaned));
   const [old] = await pool.query('SELECT file FROM documents WHERE user_id = ? AND type = ?', [req.user.id, type]);
   await pool.query(
     `INSERT INTO documents (user_id, type, file) VALUES (?,?,?)
@@ -420,6 +583,7 @@ function staffOnly(perm) {
       if (!u || (payload.tv ?? 0) !== u.token_version) return res.status(401).json({ error: 'No autorizado' });
       if (!isStaff(u.role) || u.status !== 'active') return res.status(403).json({ error: 'Solo personal autorizado' });
       if (u.must_change_password) return res.status(403).json({ error: 'Debes cambiar tu contraseña', code: 'MUST_CHANGE_PASSWORD' });
+      if (!u.totp_enabled) return res.status(403).json({ error: 'Activa la verificación en dos pasos para continuar', code: 'MUST_ENROLL_2FA' });
       if (!PERMS[u.role].includes(perm)) return res.status(403).json({ error: 'No tienes permiso para esto' });
       req.staff = u;
       next();
@@ -434,6 +598,15 @@ async function audit(actor, action, { target = null, details = null } = {}) {
   await pool.query('INSERT INTO audit_log (actor_id, action, target_user_id, details) VALUES (?,?,?,?)', [
     actor.id, action, target, details ? JSON.stringify(details) : null,
   ]);
+}
+
+// Igual que audit(), pero no repite la misma anotación si ya existe una reciente (abrir un documento carga 3 imágenes)
+async function auditOnce(actor, action, target, minutes = 10) {
+  const [r] = await pool.query(
+    'SELECT 1 FROM audit_log WHERE actor_id = ? AND action = ? AND target_user_id = ? AND created_at > NOW() - INTERVAL ? MINUTE LIMIT 1',
+    [actor.id, action, target, minutes]
+  );
+  if (!r.length) await audit(actor, action, { target });
 }
 
 // Contraseña temporal legible (sin letras que se confunden: 0/O, 1/l/I)
@@ -505,7 +678,7 @@ app.get('/api/admin/rides', staffOnly('view'), async (_req, res) => {
 app.get('/api/admin/users/:id', staffOnly('view'), async (req, res) => {
   const id = Number(req.params.id);
   const [[u]] = await pool.query(
-    `SELECT id, name, phone, role, status, vehicle, plate, created_at, terms_accepted_at, terms_version, must_change_password, deleted_at
+    `SELECT id, name, phone, role, status, vehicle, plate, created_at, terms_accepted_at, terms_version, must_change_password, deleted_at, totp_enabled
      FROM users WHERE id = ?`, [id]
   );
   if (!u) return res.status(404).json({ error: 'Usuario no existe' });
@@ -584,10 +757,8 @@ app.post('/api/admin/users/:id/reset-password', staffOnly('users.manage'), async
   res.json({ tempPassword: temp });
 });
 
-// Eliminar una cuenta = anonimizarla: se borran sus datos personales y documentos; los viajes quedan para estadísticas y reclamos
-app.post('/api/admin/users/:id/delete', staffOnly('staff.manage'), async (req, res) => {
-  const t = await actOn(req, res);
-  if (!t) return;
+// Eliminar una cuenta = anonimizarla: se borran sus datos personales y documentos; los viajes quedan sin direcciones para estadísticas y reclamos
+async function anonymizeUser(t) {
   await kickUser(t.id); // cancela sus viajes y cierra sus conexiones
   const [docs] = await pool.query('SELECT file FROM documents WHERE user_id = ?', [t.id]);
   for (const d of docs) await fs.rm(path.join(UPLOADS, d.file), { force: true });
@@ -597,9 +768,16 @@ app.post('/api/admin/users/:id/delete', staffOnly('staff.manage'), async (req, r
   await pool.query('UPDATE rides SET origin_text = NULL, dest_text = NULL, share_token = NULL WHERE passenger_id = ? OR driver_id = ?', [t.id, t.id]);
   await pool.query(
     `UPDATE users SET name = 'Cuenta eliminada', phone = ?, password_hash = ?, vehicle = NULL, plate = NULL, status = 'blocked',
-            must_change_password = 0, deleted_at = NOW(), token_version = token_version + 1 WHERE id = ?`,
+            must_change_password = 0, totp_enabled = 0, totp_secret = NULL, backup_codes = NULL, totp_last_step = NULL,
+            deleted_at = NOW(), token_version = token_version + 1 WHERE id = ?`,
     [`del-${t.id}`, await bcrypt.hash(tempPassword() + tempPassword(), 10), t.id]
   );
+}
+
+app.post('/api/admin/users/:id/delete', staffOnly('staff.manage'), async (req, res) => {
+  const t = await actOn(req, res);
+  if (!t) return;
+  await anonymizeUser(t);
   await audit(req.staff, 'user.delete', { target: t.id, details: { role: t.role } });
   res.json({ ok: true });
 });
@@ -623,6 +801,18 @@ app.post('/api/admin/users/:id/status', staffOnly('users.manage'), async (req, r
 });
 
 // --- Gestión del personal (solo superadmin) ---
+app.post('/api/admin/users/:id/reset-2fa', staffOnly('staff.manage'), async (req, res) => {
+  const t = await actOn(req, res);
+  if (!t) return;
+  if (!isStaff(t.role)) return res.status(400).json({ error: 'Esa cuenta no es del personal' });
+  await pool.query(
+    `UPDATE users SET totp_enabled = 0, totp_secret = NULL, totp_last_step = NULL, backup_codes = NULL, two_fa_failures = 0,
+            two_fa_locked_until = NULL, token_version = token_version + 1 WHERE id = ?`, [t.id]
+  );
+  await audit(req.staff, '2fa.reset', { target: t.id });
+  res.json({ ok: true });
+});
+
 app.post('/api/admin/staff', staffOnly('staff.manage'), async (req, res) => {
   const { name, phone, role } = req.body || {};
   const p = normalizePhone(phone);
@@ -671,10 +861,17 @@ app.get('/api/admin/users/:id/documents', staffOnly('docs'), async (req, res) =>
 });
 
 app.get('/api/admin/documents/:id/file', staffOnly('docs'), async (req, res) => {
-  const [rows] = await pool.query('SELECT file FROM documents WHERE id = ?', [Number(req.params.id)]);
+  const [rows] = await pool.query('SELECT user_id, file FROM documents WHERE id = ?', [Number(req.params.id)]);
   if (!rows[0]) return res.status(404).json({ error: 'No existe' });
+  let blob;
+  try {
+    blob = await fs.readFile(path.join(UPLOADS, rows[0].file));
+  } catch {
+    return res.status(404).json({ error: 'El archivo no está disponible' });
+  }
+  await auditOnce(req.staff, 'doc.view', rows[0].user_id); // queda anotado quién abrió los documentos de quién
   res.set('Cache-Control', 'private, no-store');
-  res.type('image/jpeg').sendFile(path.join(UPLOADS, rows[0].file));
+  res.type('image/jpeg').send(isEncrypted(blob) ? decryptBuffer(blob) : blob);
 });
 
 app.post('/api/admin/documents/:id/reject', staffOnly('docs'), async (req, res) => {
@@ -1081,6 +1278,11 @@ if (existsSync(DIST)) {
     res.sendFile(path.join(DIST, 'index.html'));
   });
 }
+
+// Los documentos que se guardaron antes del cifrado se cifran una sola vez al arrancar
+const legacyDocs = await encryptLegacyDocuments(UPLOADS);
+if (legacyDocs) console.log(`Se cifraron ${legacyDocs} documento(s) guardados antes del cifrado.`);
+if (isProd && keyIsDerived) console.warn('⚠ DATA_KEY no está definida: la llave de cifrado se deriva de JWT_SECRET. Define DATA_KEY (ver README) para poder rotar JWT_SECRET sin perder los documentos.');
 
 // Errores no controlados: siempre JSON, sin filtrar detalles internos
 app.use((err, _req, res, _next) => {

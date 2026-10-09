@@ -17,6 +17,11 @@ export const ACTION_LABEL = {
   'user.reset_password': 'Restableció la contraseña',
   'user.delete': 'Eliminó la cuenta',
   'doc.reject': 'Rechazó un documento',
+  'doc.view': 'Abrió los documentos',
+  'user.self_delete': 'Eliminó su propia cuenta',
+  '2fa.enable': 'Activó la verificación en dos pasos',
+  '2fa.reset': 'Restableció la verificación en dos pasos',
+  '2fa.backup_codes': 'Generó códigos de respaldo nuevos',
   'alert.resolve': 'Atendió una emergencia',
   'ride.cancel': 'Canceló un viaje',
 };
@@ -118,6 +123,10 @@ export default function UserDetail({ userId, me, perms, call, token, onClose, on
     run(() => call(`users/${u.id}/delete`, {}), onClose);
   };
   const changeRole = (role) => run(() => call(`staff/${u.id}/role`, { role }));
+  const reset2fa = () => {
+    if (!window.confirm(`¿Restablecer la verificación en dos pasos de ${u.name}? Se cerrarán sus sesiones y tendrá que activarla de nuevo al entrar (úsalo si perdió su teléfono).`)) return;
+    run(() => call(`users/${u.id}/reset-2fa`, {}));
+  };
 
   return (
     <div className="overlay top">
@@ -139,6 +148,7 @@ export default function UserDetail({ userId, me, perms, call, token, onClose, on
             Registrado el {when(u.created_at)}
             {u.terms_accepted_at && ` · aceptó los términos v${u.terms_version} el ${when(u.terms_accepted_at)}`}
           </div>
+          {staffTarget && <div className={u.totp_enabled ? 'ok small' : 'muted small'}>{u.totp_enabled ? '🔐 Verificación en dos pasos activa' : 'Verificación en dos pasos: pendiente de activar'}</div>}
           {u.must_change_password ? <div className="hint">Tiene una contraseña temporal pendiente de cambiar.</div> : null}
         </div>
 
@@ -168,6 +178,7 @@ export default function UserDetail({ userId, me, perms, call, token, onClose, on
                 <option value="support">Soporte</option>
               </select>
             )}
+            {staffTarget && can('staff.manage') && u.totp_enabled ? <button disabled={busy} onClick={reset2fa}>🔐 Restablecer verificación en dos pasos</button> : null}
             {can('staff.manage') && <button className="danger" disabled={busy} onClick={remove}>🗑 Eliminar cuenta</button>}
           </div>
         )}

@@ -117,3 +117,20 @@ Resultados en una PC local (MySQL local, un solo proceso):
 | 150 conductores y 2500 pasajeros, 300 viajes | 2650/2650 | 95% | 0.7 s | 65 ms | ~330 MB |
 
 Esto mide el servidor y la base de datos, no redes móviles ni la distancia a Railway; cada viaje de la prueba dura ~1 s, no minutos. Cada pasajero recibe como máximo los 25 conductores más cercanos (con más, mostrar la lista completa saturaba el servidor).
+
+## Fase 7: seguridad y privacidad
+
+**Verificación en dos pasos (obligatoria para el personal).** Superadmin, administrador y soporte deben activarla antes de usar el panel: escanean un QR con Google Authenticator (o Microsoft Authenticator, Authy, 1Password), confirman con un código y guardan 10 códigos de respaldo (de un solo uso). Al entrar, la contraseña sola no da sesión; falta el código. Cinco códigos incorrectos bloquean la verificación 15 minutos, un mismo código no sirve dos veces, y el secreto se guarda cifrado.
+- Si alguien pierde el teléfono: usa un código de respaldo, o el superadmin abre su ficha y pulsa **Restablecer verificación en dos pasos**.
+- Si el **superadmin** pierde el teléfono *y* los códigos: define en Railway `RESET_2FA_FOR=<su teléfono>`, reinicia, entra y vuelve a activarla; **después quita la variable**.
+
+**Documentos de conductores.** Se validan como JPEG reales, se les quitan los metadatos (ubicación GPS, modelo del celular, comentarios) y cualquier archivo escondido tras la imagen, y se guardan **cifrados** (AES-256-GCM). Cada vez que el personal los abre queda una anotación en el Registro. Los documentos guardados antes del cifrado se cifran solos la primera vez que arranca el servidor.
+- Define `DATA_KEY` en Railway (32 bytes en base64): `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`. Sin ella se deriva de `JWT_SECRET`, y rotar `JWT_SECRET` dejaría ilegibles los documentos y los secretos del 2FA. **Guarda `DATA_KEY` en un lugar seguro: sin ella los documentos no se pueden recuperar.**
+
+**Contraseñas y sesiones.** Mínimo 8 caracteres (10 para el personal), no solo números, nada obvio y sin el teléfono. La sesión del personal dura 12 horas (30 días la de pasajeros y conductores). Cada persona puede cerrar su sesión en todos los dispositivos desde Cuenta. El navegador solo puede usar la ubicación (no cámara ni micrófono).
+
+**Derechos del usuario.** Desde Cuenta, pasajeros y conductores pueden descargar sus datos (JSON) y eliminar su cuenta (con contraseña; no con un viaje en curso). La política de privacidad es la versión 1.1.
+
+**Pruebas de seguridad.** `npm test` incluye ataques simulados: tokens falsos (sin firma, otra llave, vencidos), inyección SQL, escalada de rol al registrarse y al editar, que un pasajero no pueda aceptar, cancelar ni ofertar sobre viajes ajenos, las 17 rutas del panel sin sesión y con la sesión de un pasajero, y documentos alterados en disco. El CI también revisa las dependencias (`npm audit`).
+
+**Lo que NO está hecho:** la sesión se guarda en el almacenamiento local del navegador (no en cookies protegidas); con la política de seguridad estricta del sitio el riesgo es bajo, pero es la mejora pendiente más grande. Tampoco hay una auditoría externa de seguridad: antes de un lanzamiento grande conviene encargar una.
