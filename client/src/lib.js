@@ -2,7 +2,8 @@ import { io } from 'socket.io-client';
 import L from 'leaflet';
 import { useEffect, useState } from 'react';
 
-export const API = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+// Desarrollo: API en :4000. Producción: el mismo servidor entrega la web, así que se usa la misma dirección ('')
+export const API = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? 'http://localhost:4000' : '');
 export const DEFAULT_POS = { lat: 14.0723, lng: -87.1921 }; // Tegucigalpa
 
 export async function api(path, body) {
@@ -17,7 +18,7 @@ export async function api(path, body) {
 }
 
 export function connectSocket(token) {
-  return io(API, { auth: { token } });
+  return io(API || undefined, { auth: { token } });
 }
 
 export function distanceKm(a, b) {

@@ -6,7 +6,7 @@ export const smsConfigured = Boolean(SID && TOKEN && (FROM || SERVICE));
 
 export async function sendSms(to, body) {
   if (!smsConfigured) {
-    if (process.env.NODE_ENV === 'production') throw new Error('SMS no configurado: define las variables TWILIO_* en .env');
+    if (process.env.NODE_ENV === 'production' && process.env.SMS_DEV_ECHO !== 'true') throw new Error('SMS no configurado: define las variables TWILIO_* en .env');
     console.log(`📱 [SMS de desarrollo] a ${to}: ${body}`);
     return;
   }

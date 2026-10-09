@@ -47,3 +47,26 @@ Límites: un código por minuto por tipo, 5 por hora por teléfono, 5 intentos p
 Cada conductor sube foto, licencia y matrícula (se reducen a JPEG en el celular). El admin las revisa en Usuarios → Documentos,
 puede rechazar una con un motivo, y solo puede aprobar a un conductor con los 3 documentos. Los archivos quedan en `server/uploads/`
 (fuera de las rutas públicas, solo descargables por un admin). Antes de publicar, respalda esa carpeta junto con la base de datos.
+
+## Despliegue en Railway
+
+Un solo servicio (este repositorio) entrega la API y la web compilada; la base de datos es el plugin MySQL de Railway.
+
+1. **Servicio:** conecta este repositorio. La raíz tiene un `package.json` que instala `server/` y `client/`, compila la web (`npm run build`) y arranca con `npm start` (que primero crea/actualiza las tablas y luego inicia el servidor).
+2. **Variables** del servicio:
+
+   | Variable | Valor |
+   |---|---|
+   | `NODE_ENV` | `production` |
+   | `JWT_SECRET` | texto largo y aleatorio: `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"` |
+   | `MYSQL_URL` | referencia a la base: `${{MySQL.MYSQL_URL}}` (no pegues la clave a mano) |
+   | `TRUST_PROXY` | `1` |
+   | `ADMIN_PHONE` / `ADMIN_PASSWORD` | el superadmin inicial (solo se crea si todavía no existe ningún admin); usa una clave larga |
+   | `UPLOADS_DIR` | `/data/uploads` (ver el Volume abajo) |
+   | `SMS_DEV_ECHO` | `true` solo mientras no haya Twilio; quítala al configurar `TWILIO_*` |
+
+3. **Volume:** agrega un Volume al servicio montado en `/data`. Sin él, los documentos de los conductores se pierden en cada despliegue.
+4. **Dominio:** Settings → Networking → Generate Domain (el HTTPS viene incluido y el GPS del celular lo necesita).
+5. **Respaldos:** activa los backups del MySQL en Railway.
+
+El servicio mantiene en memoria las posiciones de los conductores, así que debe correr en **una sola instancia**.

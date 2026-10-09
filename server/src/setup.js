@@ -1,4 +1,6 @@
 import mysql from 'mysql2/promise';
+import bcrypt from 'bcryptjs';
+import { normalizePhone } from './phone.js';
 import { dbConfig, DB_NAME } from './db.js';
 
 const conn = await mysql.createConnection(dbConfig);
@@ -142,6 +144,21 @@ await conn.query(`
     FOREIGN KEY (user_id) REFERENCES users(id)
   )
 `);
+
+// Admin inicial: solo si no existe ninguno y están definidas ADMIN_PHONE y ADMIN_PASSWORD (útil en Railway, sin consola)
+const { ADMIN_PHONE, ADMIN_PASSWORD } = process.env;
+if (ADMIN_PHONE && ADMIN_PASSWORD) {
+  const [admins] = await conn.query("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
+  if (!admins.length) {
+    if (ADMIN_PASSWORD.length < 8) console.warn('⚠ ADMIN_PASSWORD es muy corta: usa al menos 10 caracteres');
+    await conn.query(
+      `INSERT INTO users (name, phone, password_hash, role) VALUES ('Super Admin', ?, ?, 'admin')
+       ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash), role = 'admin'`,
+      [normalizePhone(ADMIN_PHONE) ?? ADMIN_PHONE.trim(), await bcrypt.hash(ADMIN_PASSWORD, 10)]
+    );
+    console.log('Administrador inicial creado.');
+  }
+}
 
 console.log(`Base de datos "${DB_NAME}" lista.`);
 await conn.end();

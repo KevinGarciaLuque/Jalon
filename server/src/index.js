@@ -10,6 +10,7 @@ import { Server } from 'socket.io';
 import { pool } from './db.js';
 import crypto from 'crypto';
 import fs from 'fs/promises';
+import { existsSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { distanceKm, suggestedPrice } from './geo.js';
@@ -28,8 +29,13 @@ if (JWT_SECRET === 'dev-secret' || JWT_SECRET.startsWith('cambia-esto')) {
 const NEARBY_KM = 5;
 const isProd = process.env.NODE_ENV === 'production';
 // Sin Twilio y fuera de producción, el código se devuelve en la respuesta para poder probar sin SMS reales
-const echoCode = !isProd && !smsConfigured;
-const UPLOADS = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'uploads');
+// SMS_DEV_ECHO=true lo habilita también en producción mientras no haya Twilio (solo para pruebas del equipo: cualquiera vería su código)
+const echoCode = !smsConfigured && (!isProd || process.env.SMS_DEV_ECHO === 'true');
+if (isProd && echoCode) console.warn('⚠ SMS_DEV_ECHO activo: los códigos de verificación se muestran en pantalla. Desactívalo al configurar Twilio.');
+if (isProd && !smsConfigured && !echoCode) console.warn('⚠ Twilio no está configurado: nadie podrá registrarse por SMS.');
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+// En Railway el disco se borra en cada despliegue: monta un Volume y apunta UPLOADS_DIR a él (ej. /data/uploads)
+const UPLOADS = process.env.UPLOADS_DIR || path.join(HERE, '..', 'uploads');
 const DOC_TYPES = ['photo', 'license', 'registration'];
 
 // En desarrollo se acepta cualquier puerto de localhost (Vite cambia de puerto si el 5173 está ocupado)
@@ -37,7 +43,15 @@ const allowOrigin = (origin, cb) => cb(null, !origin || origin === ORIGIN || /^h
 
 const app = express();
 if (process.env.TRUST_PROXY) app.set('trust proxy', Number(process.env.TRUST_PROXY)); // detrás de nginx/Railway/etc.
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    useDefaults: true,
+    directives: {
+      'img-src': ["'self'", 'data:', 'blob:', 'https://*.tile.openstreetmap.org'], // mapa y documentos del admin
+      'connect-src': ["'self'"], // API y WebSocket del mismo servidor
+    },
+  },
+}));
 app.use(cors({ origin: allowOrigin }));
 const smallJson = express.json({ limit: '10kb' });
 app.use((req, res, next) => (req.path.startsWith('/api/driver/documents') ? next() : smallJson(req, res, next)));
@@ -758,5 +772,16 @@ setInterval(() => expireStaleRides().catch(console.error), 30000);
 
 // Al reiniciar, las solicitudes abiertas se pierden de memoria: se cancelan para no dejar viajes huérfanos
 await pool.query("UPDATE rides SET status = 'cancelled', cancelled_by = 'system' WHERE status = 'requested'");
+
+// En producción el mismo servidor entrega la web ya compilada (client/dist), incluida /t/<código> del seguimiento
+const DIST = path.join(HERE, '..', '..', 'client', 'dist');
+if (existsSync(DIST)) {
+  app.use('/assets', express.static(path.join(DIST, 'assets'), { immutable: true, maxAge: '1y' }));
+  app.use(express.static(DIST, { index: false, maxAge: '1h' }));
+  app.use((req, res, next) => {
+    if (req.method !== 'GET' || req.path.startsWith('/api/') || req.path.startsWith('/socket.io/')) return next();
+    res.sendFile(path.join(DIST, 'index.html'));
+  });
+}
 
 server.listen(PORT, () => console.log(`Jalón API en http://localhost:${PORT}`));
