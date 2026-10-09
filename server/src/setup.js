@@ -1,0 +1,147 @@
+import mysql from 'mysql2/promise';
+import { dbConfig, DB_NAME } from './db.js';
+
+const conn = await mysql.createConnection(dbConfig);
+
+await conn.query(`CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+await conn.query(`USE \`${DB_NAME}\``);
+
+await conn.query(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    phone VARCHAR(20) NOT NULL UNIQUE,
+    password_hash VARCHAR(100) NOT NULL,
+    role ENUM('passenger','driver','admin') NOT NULL,
+    vehicle VARCHAR(100) NULL,
+    plate VARCHAR(20) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
+await conn.query(`
+  CREATE TABLE IF NOT EXISTS rides (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    passenger_id INT NOT NULL,
+    driver_id INT NULL,
+    origin_lat DOUBLE NOT NULL,
+    origin_lng DOUBLE NOT NULL,
+    origin_text VARCHAR(200) NULL,
+    dest_lat DOUBLE NOT NULL,
+    dest_lng DOUBLE NOT NULL,
+    dest_text VARCHAR(200) NULL,
+    distance_km DOUBLE NOT NULL,
+    offered_price DECIMAL(10,2) NOT NULL,
+    final_price DECIMAL(10,2) NULL,
+    status ENUM('requested','accepted','arrived','started','completed','cancelled') NOT NULL DEFAULT 'requested',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (passenger_id) REFERENCES users(id),
+    FOREIGN KEY (driver_id) REFERENCES users(id)
+  )
+`);
+
+await conn.query(`
+  CREATE TABLE IF NOT EXISTS offers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    ride_id INT NOT NULL,
+    driver_id INT NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
+    status ENUM('pending','accepted','rejected') NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (ride_id) REFERENCES rides(id),
+    FOREIGN KEY (driver_id) REFERENCES users(id)
+  )
+`);
+
+// Bases creadas antes de existir el rol admin
+await conn.query("ALTER TABLE users MODIFY role ENUM('passenger','driver','admin') NOT NULL");
+
+// Migraciones: agrega columnas si todavía no existen (MySQL 8 no tiene ADD COLUMN IF NOT EXISTS)
+async function addColumn(table, column, definition) {
+  const [rows] = await conn.query(
+    'SELECT 1 FROM information_schema.columns WHERE table_schema = ? AND table_name = ? AND column_name = ?',
+    [DB_NAME, table, column]
+  );
+  if (!rows.length) await conn.query(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`);
+}
+// pending: conductor esperando aprobación | active | blocked
+await addColumn('users', 'status', "ENUM('pending','active','blocked') NOT NULL DEFAULT 'active'");
+await addColumn('rides', 'cancelled_by', "ENUM('passenger','driver','admin','system') NULL");
+
+// Fase 3: ruta real, compartir viaje, calificaciones y alertas de emergencia
+await addColumn('rides', 'duration_min', 'DOUBLE NULL');
+await addColumn('rides', 'route_json', 'MEDIUMTEXT NULL');
+await addColumn('rides', 'share_token', 'VARCHAR(32) NULL');
+
+const [idx] = await conn.query(
+  "SELECT 1 FROM information_schema.statistics WHERE table_schema = ? AND table_name = 'rides' AND index_name = 'idx_share_token'",
+  [DB_NAME]
+);
+if (!idx.length) await conn.query('CREATE INDEX idx_share_token ON rides (share_token)');
+
+await conn.query(`
+  CREATE TABLE IF NOT EXISTS ratings (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    ride_id INT NOT NULL,
+    rater_id INT NOT NULL,
+    ratee_id INT NOT NULL,
+    stars TINYINT NOT NULL,
+    comment VARCHAR(200) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY one_per_ride (ride_id, rater_id),
+    KEY by_ratee (ratee_id),
+    FOREIGN KEY (ride_id) REFERENCES rides(id),
+    FOREIGN KEY (rater_id) REFERENCES users(id),
+    FOREIGN KEY (ratee_id) REFERENCES users(id)
+  )
+`);
+
+await conn.query(`
+  CREATE TABLE IF NOT EXISTS alerts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    ride_id INT NOT NULL,
+    user_id INT NOT NULL,
+    lat DOUBLE NULL,
+    lng DOUBLE NULL,
+    status ENUM('open','resolved') NOT NULL DEFAULT 'open',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    resolved_at TIMESTAMP NULL,
+    FOREIGN KEY (ride_id) REFERENCES rides(id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )
+`);
+
+// Fase 4: verificación por SMS, documentos del conductor y cierre de sesiones al cambiar la contraseña
+await addColumn('users', 'token_version', 'INT NOT NULL DEFAULT 0');
+
+await conn.query(`
+  CREATE TABLE IF NOT EXISTS otp_codes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    phone VARCHAR(20) NOT NULL,
+    purpose ENUM('register','reset') NOT NULL,
+    code_hash CHAR(64) NOT NULL,
+    attempts TINYINT NOT NULL DEFAULT 0,
+    used TINYINT(1) NOT NULL DEFAULT 0,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    KEY by_phone (phone, purpose)
+  )
+`);
+
+await conn.query(`
+  CREATE TABLE IF NOT EXISTS documents (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    type ENUM('photo','license','registration') NOT NULL,
+    file VARCHAR(100) NOT NULL,
+    status ENUM('uploaded','rejected') NOT NULL DEFAULT 'uploaded',
+    note VARCHAR(200) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY one_per_type (user_id, type),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )
+`);
+
+console.log(`Base de datos "${DB_NAME}" lista.`);
+await conn.end();

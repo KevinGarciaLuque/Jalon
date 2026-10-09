@@ -1,0 +1,29 @@
+{
+  "name": "jalon-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "setup": "node src/setup.js",
+    "admin": "node src/seed-admin.js",
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "node test/run.mjs",
+    "test:e2e": "node test/e2e.mjs"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.6",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.7.1",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "mysql2": "^3.24.5",
+    "socket.io": "^4.8.4"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^25.13.0",
+    "socket.io-client": "^4.8.4"
+  }
+}
