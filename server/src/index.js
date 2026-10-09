@@ -863,6 +863,9 @@ const PERMS = {
   support: ['view', 'alerts', 'rides.cancel'],
 };
 
+// 'monitor' (mapa en vivo y desempeño de conductores): siempre el superadmin; un administrador solo si el superadmin se lo concedió; soporte nunca
+const permsOf = (u) => (u.role === 'superadmin' || (u.role === 'admin' && u.can_monitor) ? [...PERMS[u.role], 'monitor'] : PERMS[u.role]);
+
 // Middleware: exige sesión de personal activo con el permiso indicado (se consulta la base en cada petición)
 function staffOnly(perm) {
   return async (req, res, next) => {
@@ -874,7 +877,7 @@ function staffOnly(perm) {
       if (!isStaff(u.role) || u.status !== 'active') return res.status(403).json({ error: 'Solo personal autorizado' });
       if (u.must_change_password) return res.status(403).json({ error: 'Debes cambiar tu contraseña', code: 'MUST_CHANGE_PASSWORD' });
       if (!u.totp_enabled) return res.status(403).json({ error: 'Activa la verificación en dos pasos para continuar', code: 'MUST_ENROLL_2FA' });
-      if (!PERMS[u.role].includes(perm)) return res.status(403).json({ error: 'No tienes permiso para esto' });
+      if (!permsOf(u).includes(perm)) return res.status(403).json({ error: 'No tienes permiso para esto' });
       req.staff = u;
       next();
     } catch {
@@ -913,7 +916,7 @@ async function actOn(req, res, { allowDeleted = false } = {}) {
   let problem = null;
   if (t.id === req.staff.id) problem = 'No puedes hacer esto con tu propia cuenta (usa Cuenta para cambiar tu contraseña)';
   else if (t.role === 'superadmin') problem = 'No se puede modificar a un superadministrador';
-  else if (isStaff(t.role) && !PERMS[req.staff.role].includes('staff.manage')) problem = 'Solo el superadministrador gestiona al personal';
+  else if (isStaff(t.role) && !permsOf(req.staff).includes('staff.manage')) problem = 'Solo el superadministrador gestiona al personal';
   if (problem) return void res.status(403).json({ error: problem });
   return t;
 }
@@ -953,7 +956,7 @@ app.get('/api/admin/users', staffOnly('view'), async (req, res) => {
   );
   const ratings = await ratingsOf(rows.map((u) => u.id));
   // Cada quien recibe también lo que puede hacer, para que la pantalla muestre solo lo permitido
-  res.json({ perms: PERMS[req.staff.role], me: { id: req.staff.id, role: req.staff.role }, users: rows.map(({ balance, ...u }) => ({ ...u, ...(PERMS[req.staff.role].includes('wallet') && u.role === 'driver' ? { balance: Number(balance) } : {}), online: drivers.has(u.id), rating: ratings.get(u.id) || null })) });
+  res.json({ perms: permsOf(req.staff), me: { id: req.staff.id, role: req.staff.role }, users: rows.map(({ balance, ...u }) => ({ ...u, ...(permsOf(req.staff).includes('wallet') && u.role === 'driver' ? { balance: Number(balance) } : {}), online: drivers.has(u.id), rating: ratings.get(u.id) || null })) });
 });
 
 app.get('/api/admin/rides', staffOnly('view'), async (_req, res) => {
@@ -970,7 +973,7 @@ app.get('/api/admin/rides', staffOnly('view'), async (_req, res) => {
 app.get('/api/admin/users/:id', staffOnly('view'), async (req, res) => {
   const id = Number(req.params.id);
   const [[u]] = await pool.query(
-    `SELECT id, name, phone, email, role, status, vehicle, plate, created_at, terms_accepted_at, terms_version, must_change_password, deleted_at, totp_enabled
+    `SELECT id, name, phone, email, role, status, vehicle, plate, created_at, terms_accepted_at, terms_version, must_change_password, deleted_at, totp_enabled, can_monitor
      FROM users WHERE id = ?`, [id]
   );
   if (!u) return res.status(404).json({ error: 'Usuario no existe' });
@@ -985,7 +988,7 @@ app.get('/api/admin/users/:id', staffOnly('view'), async (req, res) => {
      FROM rides r LEFT JOIN users o ON o.id = IF(r.passenger_id = ?, r.driver_id, r.passenger_id)
      WHERE r.passenger_id = ? OR r.driver_id = ? ORDER BY r.id DESC LIMIT 10`, [id, id, id]
   );
-  const can = PERMS[req.staff.role];
+  const can = permsOf(req.staff);
   const docs = can.includes('docs') ? (await pool.query('SELECT id, type, status, note, created_at FROM documents WHERE user_id = ?', [id]))[0] : null;
   const history = can.includes('audit')
     ? (await pool.query(
@@ -1148,9 +1151,106 @@ app.post('/api/admin/staff/:id/role', staffOnly('staff.manage'), async (req, res
   if (!t) return;
   if (!isStaff(t.role)) return res.status(400).json({ error: 'Esa cuenta no es del personal' });
   if (t.role === role) return res.status(400).json({ error: 'Ya tiene ese rol' });
-  await pool.query('UPDATE users SET role = ? WHERE id = ?', [role, t.id]);
+  await pool.query('UPDATE users SET role = ?, can_monitor = 0 WHERE id = ?', [role, t.id]);
   await audit(req.staff, 'staff.role', { target: t.id, details: { from: t.role, to: role } });
   res.json({ ok: true });
+});
+
+// ---------- Monitoreo de conductores (permiso 'monitor') ----------
+const RIDE_LIVE = "('accepted','arrived','started')";
+
+// El superadmin decide qué administradores pueden ver el mapa en vivo
+app.post('/api/admin/staff/:id/monitor', staffOnly('staff.manage'), async (req, res) => {
+  if (typeof req.body?.enabled !== 'boolean') return res.status(400).json({ error: 'Indica si se activa o se quita' });
+  const t = await actOn(req, res);
+  if (!t) return;
+  if (t.role !== 'admin') return res.status(400).json({ error: 'Solo se puede dar a un administrador (el superadministrador ya lo tiene y soporte no puede tenerlo)' });
+  await pool.query('UPDATE users SET can_monitor = ? WHERE id = ?', [req.body.enabled ? 1 : 0, t.id]);
+  await audit(req.staff, 'staff.monitor', { target: t.id, details: { enabled: req.body.enabled } });
+  res.json({ ok: true });
+});
+
+// Foto del momento: dónde está cada conductor conectado, en qué estado, y las solicitudes que esperan. El panel la pide cada pocos segundos.
+app.get('/api/admin/monitor', staffOnly('monitor'), async (req, res) => {
+  await auditOnce(req.staff, 'monitor.view', req.staff.id, 30);
+  const list = [...drivers.values()];
+  let rides = [];
+  if (list.length) {
+    [rides] = await pool.query(
+      `SELECT r.id, r.driver_id, r.status, r.origin_lat, r.origin_lng, r.origin_text, r.dest_lat, r.dest_lng, r.dest_text, r.offered_price, r.final_price, p.name AS passenger
+       FROM rides r JOIN users p ON p.id = r.passenger_id WHERE r.driver_id IN (?) AND r.status IN ${RIDE_LIVE}`, [list.map((d) => d.id)]
+    );
+  }
+  const byDriver = new Map(rides.map((r) => [r.driver_id, r]));
+  const now = Date.now();
+  const out = list.map((d) => {
+    const r = byDriver.get(d.id);
+    return {
+      id: d.id, name: d.name, vehicle: d.vehicle, plate: d.plate, lat: d.lat, lng: d.lng,
+      state: r || !d.available ? 'busy' : d.disconnected ? 'away' : 'free',
+      seenSecondsAgo: d.seenAt ? Math.round((now - d.seenAt) / 1000) : null,
+      onlineMinutes: d.since ? Math.round((now - d.since) / 60000) : null,
+      ride: r ? {
+        id: r.id, status: r.status, passenger: r.passenger, price: Number(r.final_price ?? r.offered_price),
+        origin: { lat: r.origin_lat, lng: r.origin_lng, text: r.origin_text }, dest: { lat: r.dest_lat, lng: r.dest_lng, text: r.dest_text },
+      } : null,
+    };
+  });
+  const [waiting] = await pool.query(
+    `SELECT id, origin_lat AS lat, origin_lng AS lng, origin_text AS text, dest_text AS dest, offered_price AS price, TIMESTAMPDIFF(SECOND, created_at, NOW()) AS ageSeconds
+     FROM rides WHERE status = 'requested' ORDER BY id DESC LIMIT 100`
+  );
+  res.json({
+    at: now,
+    counts: { free: out.filter((d) => d.state === 'free').length, busy: out.filter((d) => d.state === 'busy').length, away: out.filter((d) => d.state === 'away').length, waiting: waiting.length },
+    drivers: out,
+    waiting: waiting.map((w) => ({ ...w, price: Number(w.price) })),
+  });
+});
+
+// Ficha de rendimiento de un conductor (últimos 30 días, más el total de viajes)
+app.get('/api/admin/monitor/drivers/:id', staffOnly('monitor'), async (req, res) => {
+  const id = Number(req.params.id);
+  const [[u]] = await pool.query("SELECT id, name, phone, vehicle, plate, status, balance, created_at FROM users WHERE id = ? AND role = 'driver' AND deleted_at IS NULL", [id]);
+  if (!u) return res.status(404).json({ error: 'Conductor no existe' });
+  await auditOnce(req.staff, 'monitor.driver', id, 10);
+  const [[r]] = await pool.query(
+    `SELECT COALESCE(SUM(status = 'completed'),0) AS completed, COALESCE(SUM(status = 'cancelled' AND cancelled_by = 'driver'),0) AS cancelledByDriver,
+            COALESCE(SUM(status = 'cancelled'),0) AS cancelled, COALESCE(SUM(IF(status = 'completed', final_price, 0)),0) AS earned,
+            COALESCE(SUM(IF(status = 'completed', distance_km, 0)),0) AS km
+     FROM rides WHERE driver_id = ? AND created_at > NOW() - INTERVAL 30 DAY`, [id]
+  );
+  const [[total]] = await pool.query("SELECT COUNT(*) AS n FROM rides WHERE driver_id = ? AND status = 'completed'", [id]);
+  const [[o]] = await pool.query("SELECT COUNT(*) AS made, COALESCE(SUM(status = 'accepted'),0) AS accepted FROM offers WHERE driver_id = ? AND created_at > NOW() - INTERVAL 30 DAY", [id]);
+  const [[rt]] = await pool.query('SELECT AVG(stars) AS avg, COUNT(*) AS n FROM ratings WHERE ratee_id = ?', [id]);
+  const [[rp]] = await pool.query(
+    `SELECT COUNT(*) AS total, COALESCE(SUM(rp.status = 'open'),0) AS open FROM reports rp JOIN rides r ON r.id = rp.ride_id WHERE r.driver_id = ? AND rp.user_id <> ?`, [id, id]
+  );
+  const [recent] = await pool.query(
+    `SELECT id, status, cancelled_by, dest_text, final_price, offered_price, created_at FROM rides WHERE driver_id = ? ORDER BY id DESC LIMIT 8`, [id]
+  );
+  const d = drivers.get(id);
+  const wallet = permsOf(req.staff).includes('wallet');
+  let commission = null;
+  if (wallet) {
+    const [[c]] = await pool.query("SELECT COALESCE(-SUM(amount),0) AS v FROM wallet_entries WHERE user_id = ? AND kind = 'commission' AND created_at > NOW() - INTERVAL 30 DAY", [id]);
+    commission = Number(c.v);
+  }
+  res.json({
+    driver: { id: u.id, name: u.name, phone: u.phone, vehicle: u.vehicle, plate: u.plate, status: u.status, since: u.created_at },
+    live: d ? { state: d.disconnected ? 'away' : d.available ? 'free' : 'busy', lat: d.lat, lng: d.lng, seenSecondsAgo: d.seenAt ? Math.round((Date.now() - d.seenAt) / 1000) : null, onlineMinutes: d.since ? Math.round((Date.now() - d.since) / 60000) : null } : null,
+    last30: {
+      completed: Number(r.completed), cancelled: Number(r.cancelled), cancelledByDriver: Number(r.cancelledByDriver), earned: Number(r.earned), km: Math.round(Number(r.km) * 10) / 10,
+      offersMade: Number(o.made), offersAccepted: Number(o.accepted),
+      acceptanceRate: Number(o.made) ? Math.round((Number(o.accepted) / Number(o.made)) * 100) : null,
+      ...(wallet ? { commission } : {}),
+    },
+    completedTotal: Number(total.n),
+    rating: rt.n ? { avg: Math.round(Number(rt.avg) * 10) / 10, count: Number(rt.n) } : null,
+    reports: { total: Number(rp.total), open: Number(rp.open) },
+    ...(wallet ? { balance: Number(u.balance) } : {}),
+    recent: recent.map((x) => ({ ...x, price: Number(x.final_price ?? x.offered_price) })),
+  });
 });
 
 app.get('/api/admin/audit', staffOnly('audit'), async (_req, res) => {
@@ -1532,7 +1632,7 @@ io.on('connection', async (socket) => {
       }
       drivers.set(user.id, {
         id: user.id, name: user.name, vehicle: user.vehicle, plate: user.plate,
-        lat, lng, available: !busy,
+        lat, lng, available: !busy, since: Date.now(), seenAt: Date.now(),
       });
       socket.emit('rides:open', openRidesNear(lat, lng));
     });
@@ -1543,7 +1643,7 @@ io.on('connection', async (socket) => {
       if (!isPoint(pos)) return;
       const { lat, lng } = pos;
       const d = drivers.get(user.id);
-      if (d) { d.lat = lat; d.lng = lng; }
+      if (d) { d.lat = lat; d.lng = lng; d.seenAt = Date.now(); }
       const ride = await activeRideFor(user);
       if (!ride) return;
       io.to(room(ride.passenger_id)).emit('ride:driver_location', { lat, lng });

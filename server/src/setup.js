@@ -73,6 +73,7 @@ await addColumn('users', 'email', 'VARCHAR(160) NULL');
   const [idx] = await conn.query("SHOW INDEX FROM users WHERE Key_name = 'uniq_email'");
   if (!idx.length) await conn.query('ALTER TABLE users ADD UNIQUE KEY uniq_email (email)');
 }
+await addColumn('users', 'can_monitor', 'TINYINT(1) NOT NULL DEFAULT 0');
 await addColumn('users', 'status', "ENUM('pending','active','blocked') NOT NULL DEFAULT 'active'");
 await addColumn('rides', 'cancelled_by', "ENUM('passenger','driver','admin','system') NULL");
 

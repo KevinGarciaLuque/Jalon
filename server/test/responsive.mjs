@@ -63,7 +63,7 @@ try {
       check(`${sname} @ ${vname} (${w}px) sin desborde`, !r.wide && r.bad.length === 0, r.bad.join(', '));
       await page.screenshot({ path: path.join(SHOTS, `r-${sname}-${vname}.png`) });
       if (sname === 'panel') {
-        for (const tab of ['Reportes', 'Recargas', 'Ajustes', 'Personal', 'Registro', 'Usuarios']) {
+        for (const tab of ['Reportes', 'Recargas', 'Mapa en vivo', 'Ajustes', 'Personal', 'Registro', 'Usuarios']) {
           const b = await page.$(`button::-p-text(${tab})`);
           if (!b) continue;
           await b.click();

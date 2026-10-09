@@ -23,6 +23,9 @@ export const ACTION_LABEL = {
   'topup.reject': 'Rechazó una recarga de saldo',
   'topup.view': 'Abrió un comprobante de transferencia',
   'wallet.adjust': 'Ajustó el saldo de un conductor',
+  'staff.monitor': 'Cambió el permiso del mapa en vivo',
+  'monitor.view': 'Abrió el mapa en vivo de conductores',
+  'monitor.driver': 'Abrió la ficha de rendimiento de un conductor',
   'settings.update': 'Cambió los ajustes de comisión',
   'report.resolve': 'Resolvió un reporte',
   'user.self_delete': 'Eliminó su propia cuenta',
@@ -39,6 +42,7 @@ const DOC = { photo: 'foto', license: 'licencia', registration: 'matrícula' };
 // Resumen legible de los detalles de una anotación del registro
 export function detailText(action, d) {
   if (!d) return '';
+  if (action === 'staff.monitor') return d.enabled ? 'lo concedió' : 'lo quitó';
   if (action === 'staff.role') return `${ROLE_LABEL[d.from]} → ${ROLE_LABEL[d.to]}`;
   if (action === 'staff.create') return ROLE_LABEL[d.role];
   if (action === 'user.edit') return (d.changed || []).map((k) => FIELD[k] || k).join(', ');
@@ -135,6 +139,7 @@ export default function UserDetail({ userId, me, perms, call, token, onClose, on
     if (word !== 'ELIMINAR') return;
     run(() => call(`users/${u.id}/delete`, {}), onClose);
   };
+  const toggleMonitor = () => run(() => call(`staff/${u.id}/monitor`, { enabled: !u.can_monitor }));
   const changeRole = (role) => run(() => call(`staff/${u.id}/role`, { role }));
   const adjustBalance = () => {
     const v = window.prompt(`Ajustar el saldo de ${u.name}. Escribe el monto: positivo para sumar, negativo para restar (ej. 25 o -12.50):`);
@@ -197,6 +202,12 @@ export default function UserDetail({ userId, me, perms, call, token, onClose, on
                 <option value="admin">Administrador</option>
                 <option value="support">Soporte</option>
               </select>
+            )}
+            {u.role === 'admin' && can('staff.manage') && (
+              <label className="check">
+                <input type="checkbox" checked={!!u.can_monitor} disabled={busy} onChange={toggleMonitor} />
+                <span>Puede ver el <b>mapa en vivo</b> y el desempeño de los conductores</span>
+              </label>
             )}
             {staffTarget && can('staff.manage') && u.totp_enabled ? <button disabled={busy} onClick={reset2fa}>🔐 Restablecer verificación en dos pasos</button> : null}
             {can('staff.manage') && <button className="danger" disabled={busy} onClick={remove}>🗑 Eliminar cuenta</button>}

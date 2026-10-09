@@ -1,5 +1,5 @@
 // Términos de uso y política de privacidad. Si cambias el contenido, sube TERMS_VERSION en server/src/index.js.
-const VERSION = '1.5';
+const VERSION = '1.6';
 const UPDATED = '10 de octubre de 2026';
 const CONTACT = import.meta.env.VITE_CONTACT_EMAIL; // se define al compilar (variable en Railway)
 
@@ -37,6 +37,9 @@ function Terms() {
         <li>El pasajero propone un precio; los conductores pueden aceptarlo o contraofertar. El precio que aceptas es el precio del viaje.</li>
         <li>Por ahora el pago es en efectivo, directamente al conductor al terminar el viaje. Jalón no cobra ni procesa pagos entre usuarios.</li>
         <li>La ruta, la distancia y el tiempo que ves son estimaciones y pueden variar.</li>
+        <li>
+          <b>Conductores:</b> mientras estés conectado o en un viaje, el personal autorizado de Jalón puede ver tu ubicación en un mapa y tu historial de desempeño (viajes, cancelaciones, calificaciones y reportes) para operar el servicio, dar seguridad y atender reclamos. Cada consulta queda registrada.
+        </li>
         <li>
           <b>Conductores:</b> Jalón puede cobrar una comisión por cada viaje, que se descuenta de un saldo que el conductor recarga transfiriendo a la cuenta de
           Jalón y subiendo su comprobante, que el equipo revisa. Con el saldo por debajo del mínimo no se reciben viajes. La comisión vigente y los datos de la cuenta
@@ -113,6 +116,7 @@ function Privacy() {
           <b>Chat del viaje:</b> los mensajes que te escribes con el conductor o el pasajero. Los teléfonos no se comparten entre ustedes: se coordina por el
           chat. Los mensajes se borran automáticamente a los 90 días, y el personal solo los lee si el viaje tiene una emergencia (queda anotado quién los leyó).
         </li>
+        <li><b>Ubicación de los conductores:</b> mientras están conectados o en un viaje, el personal autorizado la ve en un mapa en vivo, junto con su desempeño. No se guarda un historial de recorridos fuera del viaje.</li>
         <li><b>Recargas de saldo (conductores):</b> el monto, el banco, el número de referencia y la foto del comprobante de cada transferencia, y el historial de movimientos de tu saldo. El personal las revisa para acreditarlas; los registros de dinero se conservan con fines contables aunque elimines tu cuenta, pero sin tus datos personales.</li>
         <li><b>Lugares guardados:</b> los destinos que decidas guardar (casa, trabajo…), con su nombre y ubicación. Puedes borrarlos cuando quieras.</li>
         <li>

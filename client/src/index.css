@@ -258,3 +258,31 @@ header span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-spa
   .screen { flex-direction: row; }
   .sheet { width: 340px; max-height: none; border-radius: 0; }
 }
+
+/* ---- Fase 10: mapa en vivo de conductores ---- */
+.monitor { display: flex; flex-direction: column; gap: 12px; }
+.monlayout { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.monmap { position: relative; height: 380px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; z-index: 0; }
+.monmap .leaflet-container { height: 100%; }
+.monempty { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); z-index: 500; background: var(--card); color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font-size: 13px; white-space: nowrap; }
+.monside { display: flex; flex-direction: column; gap: 8px; max-height: 380px; overflow-y: auto; min-width: 0; }
+.ucard.click.on { border-color: var(--brand); box-shadow: 0 0 0 2px rgba(10, 125, 79, .25); }
+.dotstate { width: 12px; height: 12px; border-radius: 50%; flex: none; background: #9aa3ad; }
+.dotstate.free, .stats b.free { background: #16a34a; color: #16a34a; }
+.dotstate.busy, .stats b.busy { background: #2563eb; color: #2563eb; }
+.dotstate.away, .stats b.away { background: #9aa3ad; color: #9aa3ad; }
+.stats b.free, .stats b.busy, .stats b.away { background: none; }
+.mk { display: flex; flex-direction: column; align-items: center; line-height: 1; }
+.mk .car { font-size: 26px; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .5)); }
+.mk .plate { margin-top: 1px; padding: 2px 6px; border-radius: 6px; font: 700 11px system-ui, sans-serif; color: #fff; background: #6b7280; white-space: nowrap; }
+.mk.free .plate { background: #16a34a; }
+.mk.busy .plate { background: #2563eb; }
+.mk.away { opacity: .65; }
+.mk.sel .plate { outline: 2px solid #f59e0b; }
+.mk.wait .car { font-size: 24px; }
+.ficha { gap: 10px; }
+@media (min-width: 900px) {
+  .monlayout { grid-template-columns: 1fr 320px; }
+  .monmap { height: 520px; }
+  .monside { max-height: 520px; }
+}

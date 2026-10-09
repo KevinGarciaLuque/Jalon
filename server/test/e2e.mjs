@@ -222,6 +222,14 @@ try {
 
   await click(driver, 'Ya llegué');
   await click(driver, 'Iniciar viaje');
+
+  // ---- Mapa en vivo: el superadmin ve al conductor conectado y su ficha de rendimiento ----
+  await click(admin, 'Mapa en vivo');
+  check('el mapa en vivo muestra al conductor conectado con su placa y en viaje', await admin.waitForSelector('.monmap .mk .plate', { timeout: 15000 }).then(() => true, () => false) && (await see(admin, 'HCC9999') && await see(admin, 'En viaje')));
+  await shot(admin, '0q-mapa-en-vivo');
+  await click(admin, 'E2E Driver');
+  check('al elegirlo aparece su ficha con los viajes de los últimos 30 días', (await see(admin, 'Últimos 30 días')) && (await see(admin, 'Ofertas aceptadas')));
+  await shot(admin, '0r-ficha-conductor');
   check('pasajero ve viaje en curso', await see(pass, 'Viaje en curso'));
   await click(driver, 'Finalizar viaje');
 
