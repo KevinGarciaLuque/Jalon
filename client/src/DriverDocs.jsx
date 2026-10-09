@@ -1,22 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { apiGet, API } from './lib.js';
+import { apiGet, API, toJpeg } from './lib.js';
 
 const DOCS = [
   { type: 'photo', label: 'Tu foto (rostro visible)' },
   { type: 'license', label: 'Licencia de conducir' },
   { type: 'registration', label: 'Matrícula del vehículo' },
 ];
-
-// Reduce la foto del celular (varios MB) a un JPEG de máx. 1280 px antes de subirla
-async function toJpeg(file) {
-  const bmp = await createImageBitmap(file);
-  const scale = Math.min(1, 1280 / Math.max(bmp.width, bmp.height));
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.round(bmp.width * scale);
-  canvas.height = Math.round(bmp.height * scale);
-  canvas.getContext('2d').drawImage(bmp, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL('image/jpeg', 0.8);
-}
 
 export default function DriverDocs({ token, socket }) {
   const [docs, setDocs] = useState(null);

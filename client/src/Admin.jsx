@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { API, lempiras } from './lib.js';
 import { PushToggle, Stars } from './components.jsx';
 import DocsModal from './DocsModal.jsx';
+import Topups from './Topups.jsx';
+import Settings from './Settings.jsx';
 import UserDetail, { TempPassword, ROLE_LABEL, STATUS_LABEL, ACTION_LABEL, detailText, isStaffRole } from './UserDetail.jsx';
 
 const RIDE_STATUS = {
@@ -34,6 +36,8 @@ export default function Admin({ token, onGate }) {
   const [audit, setAudit] = useState([]);
   const [reports, setReports] = useState([]);
   const [repStatus, setRepStatus] = useState('open');
+  const [topups, setTopups] = useState([]);
+  const [topStatus, setTopStatus] = useState('pending');
   const [error, setError] = useState('');
   const [detailId, setDetailId] = useState(null);
   const [docsUser, setDocsUser] = useState(null);
@@ -69,10 +73,11 @@ export default function Admin({ token, onGate }) {
       const [s, d, r, a, rp] = await Promise.all([call('stats'), call('users'), call('rides'), call('alerts'), call(`reports?status=${repStatus}`)]);
       setStats(s); setDirectory(d); setRides(r); setAlerts(a); setReports(rp); setError('');
       if (d.perms.includes('audit')) setAudit(await call('audit'));
+      if (d.perms.includes('wallet')) setTopups(await call(`topups?status=${topStatus}`));
     } catch (e) {
       setError(e.message);
     }
-  }, [call, repStatus]);
+  }, [call, repStatus, topStatus]);
 
   // Emergencia nueva mientras el panel está abierto: sonido, notificación del sistema y título parpadeando
   useEffect(() => {
@@ -165,6 +170,8 @@ export default function Admin({ token, onGate }) {
     ['rides', 'Viajes'],
     ['users', 'Usuarios'],
     ['reports', `Reportes${stats?.openReports ? ` (${stats.openReports})` : ''}`],
+    ...(can('wallet') ? [['topups', `Recargas${stats?.pendingTopups ? ` (${stats.pendingTopups})` : ''}`]] : []),
+    ...(can('settings') ? [['settings', 'Ajustes']] : []),
     ...(can('staff.manage') ? [['staff', 'Personal']] : []),
     ...(can('audit') ? [['audit', 'Registro']] : []),
   ];
@@ -224,6 +231,15 @@ export default function Admin({ token, onGate }) {
               </div>
             </div>
           ))}
+        </section>
+      )}
+
+      {can('wallet') && stats?.pendingTopups > 0 && tab !== 'topups' && (
+        <section className="pending">
+          <div className="row between wrap">
+            <b>💰 {stats.pendingTopups} recarga{stats.pendingTopups === 1 ? '' : 's'} esperando tu aprobación</b>
+            <button className="primary sm" onClick={() => { setTopStatus('pending'); setTab('topups'); }}>Revisar</button>
+          </div>
         </section>
       )}
 
@@ -290,6 +306,9 @@ export default function Admin({ token, onGate }) {
           ))}
         </>
       )}
+
+      {tab === 'topups' && <Topups topups={topups} status={topStatus} setStatus={setTopStatus} call={call} token={token} reload={load} onError={setError} />}
+      {tab === 'settings' && <Settings call={call} onError={setError} />}
 
       {tab === 'reports' && (
         <>

@@ -292,5 +292,55 @@ await conn.query(`
   )
 `);
 
+// Fase 9: saldo de conductores, comisión y recargas por transferencia con comprobante
+await addColumn('users', 'balance', 'DECIMAL(10,2) NOT NULL DEFAULT 0');
+await conn.query(`
+  CREATE TABLE IF NOT EXISTS settings (
+    name VARCHAR(40) PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_by INT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  )
+`);
+await conn.query(`
+  CREATE TABLE IF NOT EXISTS topups (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    driver_id INT NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    bank VARCHAR(60) NOT NULL,
+    reference VARCHAR(60) NOT NULL,
+    reference_key VARCHAR(80) NULL,
+    receipt_file VARCHAR(100) NULL,
+    receipt_hash CHAR(64) NULL,
+    status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+    approved_amount DECIMAL(10,2) NULL,
+    review_note VARCHAR(300) NULL,
+    reviewed_by INT NULL,
+    reviewed_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    KEY by_status (status),
+    KEY by_driver (driver_id),
+    FOREIGN KEY (driver_id) REFERENCES users(id)
+  )
+`);
+// Libro de cuentas: cada movimiento del saldo queda escrito y no se edita. La comisión de un viaje y la recarga de una solicitud no pueden repetirse.
+await conn.query(`
+  CREATE TABLE IF NOT EXISTS wallet_entries (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    kind ENUM('topup','commission','bonus','adjustment') NOT NULL,
+    ride_id INT NULL,
+    topup_id INT NULL,
+    note VARCHAR(200) NULL,
+    created_by INT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY one_commission (user_id, kind, ride_id),
+    UNIQUE KEY one_topup (kind, topup_id),
+    KEY by_user (user_id, id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )
+`);
+
 console.log(`Base de datos "${DB_NAME}" lista.`);
 await conn.end();

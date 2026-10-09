@@ -208,3 +208,17 @@ export function useNow(ms = 1000) {
 // Enlaces para abrir la navegación en Waze o Google Maps hacia un punto
 export const wazeUrl = ({ lat, lng }) => `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`;
 export const mapsUrl = ({ lat, lng }) => `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+
+// Dinero con centavos (los saldos y comisiones pueden tener decimales)
+export const money2 = (n) => `L ${Number(n).toFixed(2)}`;
+
+// Reduce una foto del celular (varios MB) a un JPEG de máx. 1280 px antes de subirla. También sirve con capturas de pantalla (PNG).
+export async function toJpeg(file) {
+  const bmp = await createImageBitmap(file);
+  const scale = Math.min(1, 1280 / Math.max(bmp.width, bmp.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bmp.width * scale);
+  canvas.height = Math.round(bmp.height * scale);
+  canvas.getContext('2d').drawImage(bmp, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/jpeg', 0.8);
+}

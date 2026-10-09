@@ -170,3 +170,20 @@ Llegan aunque la app esté cerrada (Android/Chrome, escritorio, y en iPhone **so
 - **Reportes:** pasajeros y conductores pueden reportar un problema de un viaje (objeto olvidado, cobro indebido, trato, seguridad, otro) desde el Historial o al terminar. El personal los ve en la pestaña **Reportes** con los teléfonos de las dos personas, puede leer el chat de ese viaje, y al resolver escribe una respuesta que la persona ve en «Mis reportes» (y por notificación). Máximo 5 reportes por persona al día.
 - **Datos y privacidad:** todo se incluye al descargar tus datos y se borra o anonimiza al eliminar la cuenta. Política de privacidad v1.3.
 - **Pendiente (decisión tuya):** viajes programados y paradas múltiples, que requieren su propio diseño.
+
+## Fase 9: saldo, comisión y recargas por transferencia (sin pasarela)
+
+Modelo estilo inDrive **sin pasarela de pago**: el pasajero paga en efectivo al conductor, y Jalón cobra su comisión de un **saldo prepagado** que el conductor recarga **transfiriendo a la cuenta de Jalón y subiendo el comprobante**. Un administrador lo revisa y autoriza. No hay costos de pasarela.
+
+**Está apagado por defecto.** El superadmin lo activa en el panel → **Ajustes**: comisión (%), crédito de bienvenida, saldo mínimo para recibir viajes, recarga mínima y máxima, y los datos de la cuenta bancaria de Jalón (banco, tipo, número, titular e indicaciones). No se puede activar sin los datos bancarios.
+
+**Cómo funciona**
+1. **Recargar:** en la pantalla del conductor, «Recargar» muestra la cuenta de Jalón. El conductor transfiere, y sube el monto, el banco, el número de referencia y la foto o captura del comprobante.
+2. **Autorizar:** en la pestaña **Recargas** (y con un aviso arriba del panel y una notificación) el personal ve el comprobante, lo compara con el banco, y **aprueba** (acreditando el monto que *muestra el comprobante*, aunque sea distinto al que escribió el conductor) o **rechaza con un motivo**. Lo ven soporte NO; solo administrador y superadmin.
+3. **Comisión:** al completar un viaje se descuenta la comisión del saldo. Un viaje cancelado no cobra. Nunca se cobra dos veces el mismo viaje (lo impide la base de datos).
+4. **Saldo bajo:** si el saldo queda por debajo del mínimo, el conductor deja de aparecer disponible, recibe un aviso y no puede volver a conectarse hasta recargar.
+5. **Crédito de bienvenida:** se da una sola vez al aprobar a un conductor nuevo (solo si la comisión está activa en ese momento).
+
+**Control y antifraude:** la misma transferencia (aunque cambien mayúsculas o guiones) o el mismo comprobante no se aceptan dos veces; máximo 3 recargas esperando y 5 por día; dos personas que pulsan «Aprobar» a la vez acreditan una sola vez; los comprobantes se guardan cifrados y sin datos ocultos, y cada vez que alguien los abre queda en el Registro. Cada movimiento queda en un **libro de cuentas que no se edita**, y el saldo siempre cuadra con él (las pruebas lo verifican). El superadmin puede **ajustar un saldo** con un motivo (suma o resta), que también queda registrado. Los datos del conductor se descargan e incluyen su saldo; al eliminar su cuenta se borran los comprobantes pero se conservan los montos (registro contable).
+
+**Lo que NO hace:** no retira ni transfiere dinero a los conductores (el saldo solo sirve para pagar la comisión), no genera facturas fiscales, y la verificación de que la transferencia llegó al banco es manual (la persona que aprueba compara el comprobante con el estado de cuenta). **Antes de cobrar comisión consulta a un contador** sobre cómo facturarla y a un abogado sobre el contrato con los conductores. La pasarela de pago se puede agregar más adelante: solo reemplaza quién aprueba la recarga.

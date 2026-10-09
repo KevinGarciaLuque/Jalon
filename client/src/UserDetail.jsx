@@ -19,6 +19,11 @@ export const ACTION_LABEL = {
   'doc.reject': 'Rechazó un documento',
   'doc.view': 'Abrió los documentos',
   'chat.view': 'Leyó el chat de un viaje con emergencia o reporte',
+  'topup.approve': 'Aprobó una recarga de saldo',
+  'topup.reject': 'Rechazó una recarga de saldo',
+  'topup.view': 'Abrió un comprobante de transferencia',
+  'wallet.adjust': 'Ajustó el saldo de un conductor',
+  'settings.update': 'Cambió los ajustes de comisión',
   'report.resolve': 'Resolvió un reporte',
   'user.self_delete': 'Eliminó su propia cuenta',
   '2fa.enable': 'Activó la verificación en dos pasos',
@@ -40,6 +45,11 @@ export function detailText(action, d) {
   if (action === 'doc.reject') return `${DOC[d.type] || d.type}${d.note ? `: ${d.note}` : ''}`;
   if (action === 'ride.cancel' || action === 'chat.view') return `viaje #${d.ride}`;
   if (action === 'report.resolve') return `reporte #${d.report}`;
+  if (action === 'topup.approve') return `recarga #${d.topup}: L ${d.amount}`;
+  if (action === 'topup.reject') return `recarga #${d.topup}: ${d.note}`;
+  if (action === 'topup.view') return `recarga #${d.topup}`;
+  if (action === 'wallet.adjust') return `${d.amount > 0 ? '+' : ''}${d.amount}: ${d.note}`;
+  if (action === 'settings.update') return (d.changed || []).join(', ');
   if (action === 'alert.resolve') return `alerta #${d.alert}`;
   if (action === 'user.delete') return ROLE_LABEL[d.role] || '';
   return '';
@@ -102,7 +112,7 @@ export default function UserDetail({ userId, me, perms, call, token, onClose, on
     );
   }
 
-  const { user: u, stats, rides, docs, history, rating } = data;
+  const { user: u, stats, rides, docs, history, rating, wallet } = data;
   const can = (p) => perms.includes(p);
   const staffTarget = isStaffRole(u.role);
   // Lo mismo que valida el servidor: no se toca a un superadmin ni a uno mismo, y el personal solo lo gestiona el superadmin
@@ -126,6 +136,13 @@ export default function UserDetail({ userId, me, perms, call, token, onClose, on
     run(() => call(`users/${u.id}/delete`, {}), onClose);
   };
   const changeRole = (role) => run(() => call(`staff/${u.id}/role`, { role }));
+  const adjustBalance = () => {
+    const v = window.prompt(`Ajustar el saldo de ${u.name}. Escribe el monto: positivo para sumar, negativo para restar (ej. 25 o -12.50):`);
+    if (!v) return;
+    const note = window.prompt('¿Por qué? Queda en el registro y el conductor lo verá en sus movimientos:');
+    if (!note) return;
+    run(() => call(`wallet/${u.id}/adjust`, { amount: Number(v), note }));
+  };
   const reset2fa = () => {
     if (!window.confirm(`¿Restablecer la verificación en dos pasos de ${u.name}? Se cerrarán sus sesiones y tendrá que activarla de nuevo al entrar (úsalo si perdió su teléfono).`)) return;
     run(() => call(`users/${u.id}/reset-2fa`, {}));
@@ -196,6 +213,21 @@ export default function UserDetail({ userId, me, perms, call, token, onClose, on
               <button className="primary" disabled={busy} onClick={saveEdit}>Guardar</button>
               <button disabled={busy} onClick={() => setEdit(null)}>Cancelar</button>
             </div>
+          </div>
+        )}
+
+        {wallet && (
+          <div className="req">
+            <div className="row between">
+              <b>💰 Saldo: L {wallet.balance.toFixed(2)}</b>
+              {can('wallet.adjust') && <button className="sm" disabled={busy} onClick={adjustBalance}>Ajustar saldo</button>}
+            </div>
+            {wallet.entries.map((e) => (
+              <div className="row between small" key={e.id}>
+                <span className="muted">{when(e.created_at)} · {e.note || e.kind}</span>
+                <b className={Number(e.amount) < 0 ? 'neg' : 'pos'}>{Number(e.amount) > 0 ? '+' : ''}{Number(e.amount).toFixed(2)}</b>
+              </div>
+            ))}
           </div>
         )}
 

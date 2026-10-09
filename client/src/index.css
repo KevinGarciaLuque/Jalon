@@ -198,3 +198,17 @@ textarea { width: 100%; font: inherit; padding: 12px 14px; border: 1px solid var
   .no-print { display: none !important; }
 }
 .req a:not(.primary):not(.sm), .overlay-body a:not(.primary):not(.sm) { color: var(--brand); }
+
+/* ---- Fase 9: saldo y recargas ---- */
+.wallet-chip { display: flex; justify-content: space-between; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.balance { display: flex; flex-direction: column; gap: 4px; align-items: center; text-align: center; border: 2px solid var(--brand); border-radius: 14px; padding: 16px; }
+.balance b { font-size: 34px; color: var(--brand); }
+.balance.low { border-color: var(--danger); }
+.balance.low b { color: var(--danger); }
+.bank { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px dashed var(--brand); border-radius: 10px; }
+.entry { padding: 6px 0; border-bottom: 1px solid var(--line); }
+.neg { color: var(--danger); }
+.pos { color: var(--brand); }
+label.upload { display: block; text-align: center; padding: 12px; }
+.settings label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.settings .check { flex-direction: row; align-items: flex-start; }

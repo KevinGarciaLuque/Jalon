@@ -66,6 +66,11 @@ try {
   const admin = await openAs(adminLogin, { latitude: 14.07, longitude: -87.19 }, 'admin');
   await admin.setViewport({ width: 1100, height: 800 });
 
+  // La comisión se activa con la cuenta de Jalón para transferencias (como lo haría el superadmin desde Ajustes)
+  const putSettings = (body) => fetch(`${API}/api/admin/settings`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminLogin.token}` }, body: JSON.stringify(body) }).then((r) => r.json());
+  const cfg = await putSettings({ commission_enabled: true, commission_percent: 10, welcome_credit: 0, min_balance: 0, topup_min: 100, topup_max: 1000, bank_name: 'Banco de prueba', bank_account_type: 'Ahorros', bank_account: '12-345-678', bank_holder: 'Jalón S. de R.L.' });
+  check('la comisión queda activa con los datos bancarios', cfg.commission_enabled === '1' && cfg.bank_account === '12-345-678');
+
   // ---- Registro del pasajero por pantalla, con código por SMS ----
   await click(pass, '¿No tienes cuenta? Regístrate');
   await pass.type('input[placeholder="Nombre"]', 'E2E Pasajero');
@@ -225,6 +230,33 @@ try {
   await click(pass, 'Enviar calificación');
   check('calificación enviada', await see(pass, '¡Gracias por tu calificación!'));
   check('conductor puede calificar al pasajero', await see(driver, '¿Cómo estuvo E2E Pasajero?'));
+  // ---- Saldo: se descontó la comisión del viaje y el conductor recarga con un comprobante ----
+  const commission = ((basePrice + 5) * 0.1).toFixed(2);
+  check('al terminar el viaje se descuenta la comisión (10%) del saldo del conductor', await see(driver, `Saldo: L -${commission}`, 20000));
+  check('con el saldo bajo el mínimo, avisa que debe recargar', await see(driver, 'Tu saldo está por debajo del mínimo'));
+  await click(driver, 'Recargar');
+  check('el conductor ve a qué cuenta transferir', (await see(driver, 'Banco de prueba')) && (await see(driver, '12-345-678')) && (await see(driver, 'Jalón S. de R.L.')));
+  await driver.type('input[placeholder^="Monto transferido"]', '200');
+  await driver.type('input[placeholder^="Banco desde"]', 'BAC Credomatic');
+  await driver.type('input[placeholder^="Número de referencia"]', `E2E-${rnd}`);
+  await (await driver.$('.overlay input[type=file]')).uploadFile(FIXTURE_PATH);
+  await shot(driver, '0o-recarga');
+  await click(driver, 'Enviar para aprobación');
+  check('el conductor envía su comprobante', await see(driver, 'Recibimos tu comprobante'));
+  check('y lo ve "En revisión"', await see(driver, 'En revisión'));
+  await click(driver, 'Cerrar ✕');
+
+  check('el personal ve el aviso de una recarga esperando aprobación', await see(admin, 'esperando tu aprobación', 20000));
+  await click(admin, 'Revisar');
+  check('y el comprobante con los datos de la transferencia', (await see(admin, `E2E-${rnd}`)) && !!(await admin.waitForSelector('.docimg', { timeout: 15000 }).catch(() => null)));
+  await shot(admin, '0p-admin-recarga');
+  admin.promptText = '200';
+  await click(admin, 'Aprobar y acreditar');
+  check('la recarga sale de la lista de pendientes al aprobarla', await admin.waitForFunction(() => !document.body.innerText.includes('Aprobar y acreditar'), { timeout: 15000 }).then(() => true, () => false));
+  admin.promptText = '';
+  check('el conductor ve su saldo nuevo al instante (sin recargar la pantalla)', await see(driver, `Saldo: L ${(200 - Number(commission)).toFixed(2)}`, 15000));
+  await click(admin, 'Viajes');
+
   // El pasajero reporta un objeto olvidado
   await click(pass, 'Reportar un problema con este viaje');
   await pass.select('select[aria-label="Tipo de problema"]', 'lost_item');
@@ -295,7 +327,7 @@ try {
   await staffPage.waitForSelector('.admin', { timeout: 15000 });
   check('después de activarla entra al panel', true);
   const tabs = await staffPage.$$eval('.seg button', (bs) => bs.map((b) => b.textContent));
-  check('soporte ve Viajes, Usuarios y Reportes, pero no Personal ni Registro', tabs[0] === 'Viajes' && tabs[1] === 'Usuarios' && tabs.some((t) => t.startsWith('Reportes')) && !tabs.some((t) => /Personal|Registro/.test(t)), `(${tabs})`);
+  check('soporte ve Viajes, Usuarios y Reportes, pero no Personal, Registro, Recargas ni Ajustes', tabs[0] === 'Viajes' && tabs[1] === 'Usuarios' && tabs.some((t) => t.startsWith('Reportes')) && !tabs.some((t) => /Personal|Registro|Recargas|Ajustes/.test(t)), `(${tabs})`);
   await click(staffPage, 'Usuarios');
   await staffPage.waitForSelector('.ucard.click', { timeout: 15000 });
   await staffPage.click('.ucard.click');
@@ -361,6 +393,7 @@ try {
 } catch (e) {
   check('recorrido completo', false, e.message);
 } finally {
+  await fetch(`${API}/api/admin/settings`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt.sign({ id: (await pool.query("SELECT id FROM users WHERE name = 'T Superadmin' ORDER BY id DESC LIMIT 1"))[0][0]?.id || 0, role: 'superadmin' }, process.env.JWT_SECRET, { expiresIn: '5m' })}` }, body: JSON.stringify({ commission_enabled: false, welcome_credit: 0, min_balance: 0 }) }).catch(() => {});
   await browser.close();
   await pool.end();
 }

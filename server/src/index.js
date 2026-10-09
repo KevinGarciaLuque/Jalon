@@ -21,6 +21,7 @@ import { sendSms, smsConfigured } from './sms.js';
 import { sanitizeJpeg } from './jpeg.js';
 import { encryptBuffer, decryptBuffer, isEncrypted, keyIsDerived, encryptText, decryptText } from './secure.js';
 import { TERMS_VERSION } from './legal.js';
+import { getSettings, clearSettingsCache, validateSettings, postEntry, commissionFor, money } from './wallet.js';
 import { chatOpen, chatAllowed, purgeOldMessages, CHAT_MAX } from './chat.js';
 import { sendPush, validEndpoint, pushEnabled, publicKey as vapidPublicKey } from './push.js';
 import { generateSecret, verifyTotp, otpauthUrl, generateBackupCodes, hashBackup } from './totp.js';
@@ -118,7 +119,7 @@ app.use(helmet({
 }));
 app.use(cors({ origin: allowOrigin }));
 const smallJson = express.json({ limit: '10kb' });
-app.use((req, res, next) => (req.path.startsWith('/api/driver/documents') ? next() : smallJson(req, res, next)));
+app.use((req, res, next) => (/^\/api\/driver\/(documents|topups)/.test(req.path) ? next() : smallJson(req, res, next)));
 
 // Una línea JSON por petición a la API (método, ruta, estado y milisegundos), útil en los registros de Railway. Sin teléfonos ni contraseñas.
 if (isProd || process.env.LOG_REQUESTS === 'true') {
@@ -396,6 +397,8 @@ app.get('/api/me/export', authUser, async (req, res) => {
   const [favs] = await pool.query('SELECT label, text, lat, lng FROM favorite_places WHERE user_id = ? ORDER BY id', [id]);
   const [contacts] = await pool.query('SELECT name, phone FROM trusted_contacts WHERE user_id = ? ORDER BY id', [id]);
   const [reps] = await pool.query('SELECT ride_id, type, text, status, resolution, created_at FROM reports WHERE user_id = ? ORDER BY id', [id]);
+  const [moves] = await pool.query('SELECT amount, kind, ride_id, note, created_at FROM wallet_entries WHERE user_id = ? ORDER BY id', [id]);
+  const [tops] = await pool.query('SELECT amount, bank, reference, status, approved_amount, review_note, created_at FROM topups WHERE driver_id = ? ORDER BY id', [id]);
   res.set('Content-Disposition', 'attachment; filename="mis-datos-jalon.json"');
   res.json({
     generadoEl: new Date().toISOString(),
@@ -403,6 +406,9 @@ app.get('/api/me/export', authUser, async (req, res) => {
     viajes: rides, calificacionesQueDi: given, calificacionesQueRecibi: received, alertasDeEmergencia: alerts,
     documentos: docs.map((d) => ({ tipo: d.type, estado: d.status, nota: d.note, subidoEl: d.created_at })),
     mensajesQueEnvie: msgs.map((m) => ({ viaje: m.ride_id, texto: m.text, enviadoEl: m.created_at })),
+    saldo: Number(u.balance || 0),
+    movimientosDeSaldo: moves.map((m) => ({ monto: Number(m.amount), tipo: m.kind, viaje: m.ride_id, nota: m.note, fecha: m.created_at })),
+    recargas: tops.map((t) => ({ monto: Number(t.amount), banco: t.bank, referencia: t.reference, estado: t.status, montoAprobado: t.approved_amount == null ? null : Number(t.approved_amount), nota: t.review_note, fecha: t.created_at })),
     lugaresFavoritos: favs,
     contactosDeConfianza: contacts,
     reportes: reps.map((r) => ({ viaje: r.ride_id, tipo: r.type, texto: r.text, estado: r.status, respuesta: r.resolution, creadoEl: r.created_at })),
@@ -419,6 +425,101 @@ app.post('/api/me/delete', authUser, loginLimiter, async (req, res) => {
   await anonymizeUser(u);
   await audit(u, 'user.self_delete', { target: u.id, details: { role: u.role } });
   res.json({ ok: true });
+});
+
+const driverOnly = (req, res, next) => (req.user.role === 'driver' ? next() : res.status(403).json({ error: 'Solo conductores' }));
+const photoJson = express.json({ limit: '3mb' });
+
+// ---------- Saldo, comisión y recargas por transferencia ----------
+// Con la comisión activa, el conductor necesita saldo para ponerse disponible. El saldo se recarga transfiriendo a la cuenta de Jalón
+// y subiendo el comprobante; el personal lo autoriza. De ese saldo se descuenta la comisión de cada viaje cobrado en efectivo.
+async function walletGate(userId) {
+  const s = await getSettings(pool);
+  if (s.commission_enabled !== '1') return { blocked: false };
+  const [[u]] = await pool.query('SELECT balance FROM users WHERE id = ?', [userId]);
+  const balance = Number(u?.balance || 0);
+  return { blocked: balance < Number(s.min_balance), balance, min: Number(s.min_balance) };
+}
+
+const tellWallet = (userId, balance, extra = {}) => io.to(room(userId)).emit('wallet:update', { balance, ...extra });
+
+async function chargeCommission(ride) {
+  const s = await getSettings(pool);
+  if (s.commission_enabled !== '1' || !ride.driver_id || !(Number(ride.final_price) > 0)) return;
+  const amount = commissionFor(ride.final_price, s.commission_percent);
+  if (!(amount > 0)) return;
+  const balance = await postEntry(pool, { userId: ride.driver_id, amount: -amount, kind: 'commission', rideId: ride.id, note: `Comisión ${Number(s.commission_percent)}% del viaje #${ride.id}` });
+  if (balance === null) return; // esa comisión ya estaba cobrada
+  tellWallet(ride.driver_id, balance, { change: -amount, kind: 'commission', rideId: ride.id });
+  if (balance < Number(s.min_balance)) {
+    // Sin saldo suficiente deja de estar disponible hasta que recargue
+    drivers.delete(ride.driver_id);
+    io.to(room(ride.driver_id)).emit('wallet:low', { balance, min: Number(s.min_balance) });
+    push(ride.driver_id, { title: 'Recarga tu saldo para seguir recibiendo viajes', body: `Tu saldo es L ${balance.toFixed(2)}`, tag: 'wallet-low', url: '/' });
+  }
+}
+
+// Crédito de bienvenida: una sola vez, al aprobar al conductor, si la comisión está activa
+async function grantWelcome(userId) {
+  const s = await getSettings(pool);
+  const amount = money(s.welcome_credit);
+  if (s.commission_enabled !== '1' || !(amount > 0)) return;
+  const [[done]] = await pool.query("SELECT COUNT(*) AS n FROM wallet_entries WHERE user_id = ? AND kind = 'bonus' AND note = 'Crédito de bienvenida'", [userId]);
+  if (done.n) return;
+  const balance = await postEntry(pool, { userId, amount, kind: 'bonus', note: 'Crédito de bienvenida' });
+  if (balance !== null) tellWallet(userId, balance, { change: amount, kind: 'bonus' });
+}
+
+// Lo que ve el conductor: su saldo, cómo transferir, sus movimientos y sus recargas
+app.get('/api/driver/wallet', authUser, driverOnly, async (req, res) => {
+  const s = await getSettings(pool);
+  const [[u]] = await pool.query('SELECT balance FROM users WHERE id = ?', [req.user.id]);
+  const [entries] = await pool.query('SELECT id, amount, kind, ride_id, note, created_at FROM wallet_entries WHERE user_id = ? ORDER BY id DESC LIMIT 50', [req.user.id]);
+  const [topups] = await pool.query('SELECT id, amount, bank, reference, status, approved_amount, review_note, created_at FROM topups WHERE driver_id = ? ORDER BY id DESC LIMIT 20', [req.user.id]);
+  res.json({
+    enabled: s.commission_enabled === '1',
+    balance: Number(u.balance), minBalance: Number(s.min_balance), percent: Number(s.commission_percent),
+    topupMin: Number(s.topup_min), topupMax: Number(s.topup_max),
+    bank: { name: s.bank_name, type: s.bank_account_type, account: s.bank_account, holder: s.bank_holder, note: s.bank_note },
+    entries, topups,
+  });
+});
+
+// El conductor avisa que transfirió: monto, banco, número de referencia y foto del comprobante
+app.post('/api/driver/topups', authUser, driverOnly, photoJson, async (req, res) => {
+  if (req.user.status !== 'active') return res.status(403).json({ error: 'Tu cuenta debe estar aprobada para recargar' });
+  const s = await getSettings(pool);
+  if (s.commission_enabled !== '1') return res.status(409).json({ error: 'Las recargas no están activas' });
+  const amount = money(req.body?.amount);
+  if (!(amount >= Number(s.topup_min) && amount <= Number(s.topup_max)))
+    return res.status(400).json({ error: `La recarga debe ser de L ${Number(s.topup_min)} a L ${Number(s.topup_max)}` });
+  const bank = clean(req.body?.bank)?.slice(0, 60);
+  const reference = clean(req.body?.reference)?.slice(0, 60);
+  if (!bank || !reference || reference.length < 4) return res.status(400).json({ error: 'Indica el banco y el número de referencia de la transferencia' });
+  const m = String(req.body?.image || '').match(/^data:image\/jpeg;base64,([A-Za-z0-9+/=]+)$/);
+  let cleaned;
+  try {
+    const buf = m ? Buffer.from(m[1], 'base64') : null;
+    if (!buf || buf.length > 2 * 1024 * 1024) throw new Error('imagen');
+    cleaned = sanitizeJpeg(buf).buf; // se quitan los datos ocultos de la foto, igual que en los documentos
+  } catch {
+    return res.status(400).json({ error: 'Sube una foto o captura del comprobante (JPG, menos de 2 MB)' });
+  }
+  const [[open]] = await pool.query("SELECT COALESCE(SUM(status = 'pending'), 0) AS pending, COALESCE(SUM(created_at > NOW() - INTERVAL 24 HOUR), 0) AS today FROM topups WHERE driver_id = ?", [req.user.id]);
+  if (Number(open.pending) >= 3) return res.status(429).json({ error: 'Ya tienes 3 recargas esperando aprobación. Espera a que el equipo las revise.' });
+  if (Number(open.today) >= 5) return res.status(429).json({ error: 'Ya enviaste varias recargas hoy. Espera a que el equipo las revise.' });
+  // Contra el fraude: la misma transferencia o el mismo comprobante no se pueden usar dos veces
+  const referenceKey = `${bank}:${reference}`.toUpperCase().replace(/[^A-Z0-9:]/g, '');
+  const hash = crypto.createHash('sha256').update(cleaned).digest('hex');
+  const [dup] = await pool.query("SELECT reference_key = ? AS sameRef FROM topups WHERE status IN ('pending','approved') AND (reference_key = ? OR receipt_hash = ?) LIMIT 1", [referenceKey, referenceKey, hash]);
+  if (dup[0]) return res.status(409).json({ error: dup[0].sameRef ? 'Esa transferencia ya fue enviada' : 'Ese comprobante ya fue enviado' });
+
+  await fs.mkdir(UPLOADS, { recursive: true });
+  const file = `topup-${req.user.id}-${crypto.randomBytes(8).toString('hex')}.enc`;
+  await fs.writeFile(path.join(UPLOADS, file), encryptBuffer(cleaned));
+  const [r] = await pool.query('INSERT INTO topups (driver_id, amount, bank, reference, reference_key, receipt_file, receipt_hash) VALUES (?,?,?,?,?,?,?)', [req.user.id, amount, bank, reference, referenceKey, file, hash]);
+  pushStaff({ title: 'Nueva recarga por aprobar', body: `${req.user.name} · L ${amount}`, tag: `topup-${r.insertId}`, url: '/' }, 'wallet');
+  res.json({ ok: true, id: r.insertId });
 });
 
 // ---------- Lugares favoritos (casa, trabajo...) ----------
@@ -700,8 +801,6 @@ app.get('/api/track/:token', trackLimiter, async (req, res) => {
 });
 
 // ---------- Documentos del conductor (foto, licencia y matrícula) ----------
-const driverOnly = (req, res, next) => (req.user.role === 'driver' ? next() : res.status(403).json({ error: 'Solo conductores' }));
-const photoJson = express.json({ limit: '3mb' });
 
 app.get('/api/driver/documents', authUser, driverOnly, async (req, res) => {
   const [rows] = await pool.query('SELECT type, status, note, created_at FROM documents WHERE user_id = ?', [req.user.id]);
@@ -746,8 +845,8 @@ const STAFF = ['superadmin', 'admin', 'support'];
 const isStaff = (role) => STAFF.includes(role);
 // Qué puede hacer cada rol: el superadmin todo; el administrador opera la plataforma; soporte mira y atiende emergencias
 const PERMS = {
-  superadmin: ['view', 'alerts', 'rides.cancel', 'users.manage', 'docs', 'audit', 'staff.manage'],
-  admin: ['view', 'alerts', 'rides.cancel', 'users.manage', 'docs', 'audit'],
+  superadmin: ['view', 'alerts', 'rides.cancel', 'users.manage', 'docs', 'audit', 'staff.manage', 'wallet', 'wallet.adjust', 'settings'],
+  admin: ['view', 'alerts', 'rides.cancel', 'users.manage', 'docs', 'audit', 'wallet'],
   support: ['view', 'alerts', 'rides.cancel'],
 };
 
@@ -824,6 +923,7 @@ app.get('/api/admin/stats', staffOnly('view'), async (_req, res) => {
     blockedUsers: Number(u.blocked || 0),
     openAlerts: (await pool.query("SELECT COUNT(*) AS n FROM alerts WHERE status = 'open'"))[0][0].n,
     openReports: (await pool.query("SELECT COUNT(*) AS n FROM reports WHERE status = 'open'"))[0][0].n,
+    pendingTopups: (await pool.query("SELECT COUNT(*) AS n FROM topups WHERE status = 'pending'"))[0][0].n,
     sosPhones: SOS_PHONES.length, // cuántos teléfonos reciben las emergencias por SMS (0 = nadie)
     driversOnline: [...drivers.values()].length,
     driversFree: [...drivers.values()].filter((d) => d.available && !d.disconnected).length,
@@ -834,13 +934,13 @@ app.get('/api/admin/stats', staffOnly('view'), async (_req, res) => {
 
 app.get('/api/admin/users', staffOnly('view'), async (req, res) => {
   const [rows] = await pool.query(
-    `SELECT id, name, phone, role, status, vehicle, plate, created_at, must_change_password, deleted_at,
+    `SELECT id, name, phone, role, status, vehicle, plate, created_at, must_change_password, deleted_at, balance,
             (SELECT COUNT(*) FROM documents d WHERE d.user_id = users.id AND d.status = 'uploaded') AS docs
      FROM users ORDER BY id DESC LIMIT 500`
   );
   const ratings = await ratingsOf(rows.map((u) => u.id));
   // Cada quien recibe también lo que puede hacer, para que la pantalla muestre solo lo permitido
-  res.json({ perms: PERMS[req.staff.role], me: { id: req.staff.id, role: req.staff.role }, users: rows.map((u) => ({ ...u, online: drivers.has(u.id), rating: ratings.get(u.id) || null })) });
+  res.json({ perms: PERMS[req.staff.role], me: { id: req.staff.id, role: req.staff.role }, users: rows.map(({ balance, ...u }) => ({ ...u, ...(PERMS[req.staff.role].includes('wallet') && u.role === 'driver' ? { balance: Number(balance) } : {}), online: drivers.has(u.id), rating: ratings.get(u.id) || null })) });
 });
 
 app.get('/api/admin/rides', staffOnly('view'), async (_req, res) => {
@@ -880,8 +980,15 @@ app.get('/api/admin/users/:id', staffOnly('view'), async (req, res) => {
          WHERE a.target_user_id = ? ORDER BY a.id DESC LIMIT 15`, [id]
       ))[0].map((r) => ({ ...r, details: r.details ? JSON.parse(r.details) : null }))
     : null;
+  let wallet = null;
+  if (can.includes('wallet') && u.role === 'driver') {
+    const [[b]] = await pool.query('SELECT balance FROM users WHERE id = ?', [id]);
+    const [entries] = await pool.query('SELECT id, amount, kind, ride_id, note, created_at FROM wallet_entries WHERE user_id = ? ORDER BY id DESC LIMIT 15', [id]);
+    wallet = { balance: Number(b.balance), entries };
+  }
   res.json({
     user: { ...u, online: drivers.has(id) },
+    wallet,
     stats: { ...stats, money: Number(stats.money) },
     rating: (await ratingsOf([id])).get(id) || null,
     rides, docs, history,
@@ -947,6 +1054,10 @@ async function anonymizeUser(t) {
   await pool.query("UPDATE messages SET text = '[mensaje eliminado]' WHERE sender_id = ?", [t.id]);
   await pool.query('DELETE FROM favorite_places WHERE user_id = ?', [t.id]);
   await pool.query('DELETE FROM trusted_contacts WHERE user_id = ?', [t.id]);
+  // Los comprobantes de transferencia se borran; los montos del libro de cuentas se conservan (son registros contables)
+  const [receipts] = await pool.query('SELECT receipt_file FROM topups WHERE driver_id = ? AND receipt_file IS NOT NULL', [t.id]);
+  for (const r of receipts) await fs.rm(path.join(UPLOADS, r.receipt_file), { force: true });
+  await pool.query("UPDATE topups SET receipt_file = NULL, receipt_hash = NULL, reference = '[eliminado]', reference_key = NULL WHERE driver_id = ?", [t.id]);
   await pool.query("UPDATE reports SET text = '[reporte eliminado]' WHERE user_id = ?", [t.id]);
   await pool.query('UPDATE rides SET origin_text = NULL, dest_text = NULL, share_token = NULL WHERE passenger_id = ? OR driver_id = ?', [t.id, t.id]);
   await pool.query(
@@ -980,6 +1091,7 @@ app.post('/api/admin/users/:id/status', staffOnly('users.manage'), async (req, r
   io.to(room(t.id)).emit('account:status', { status });
   if (status === 'blocked') await kickUser(t.id);
   await audit(req.staff, status === 'blocked' ? 'user.block' : t.status === 'pending' ? 'user.approve' : 'user.unblock', { target: t.id });
+  if (status === 'active' && t.role === 'driver' && t.status === 'pending') grantWelcome(t.id).catch(reportError);
   res.json({ ok: true });
 });
 
@@ -1077,6 +1189,95 @@ app.get('/api/admin/rides/:id/chat', staffOnly('alerts'), async (req, res) => {
   await auditOnce(req.staff, 'chat.view', ride.passenger_id, 10, { ride: id });
   const [rows] = await pool.query('SELECT m.id, m.sender_id AS senderId, u.name AS sender, m.text, m.created_at AS at FROM messages m JOIN users u ON u.id = m.sender_id WHERE m.ride_id = ? ORDER BY m.id', [id]);
   res.json({ passengerId: ride.passenger_id, driverId: ride.driver_id, messages: rows });
+});
+
+// --- Recargas de saldo: el personal revisa el comprobante y autoriza ---
+app.get('/api/admin/topups', staffOnly('wallet'), async (req, res) => {
+  const status = ['approved', 'rejected'].includes(req.query.status) ? req.query.status : 'pending';
+  const [rows] = await pool.query(
+    `SELECT t.id, t.amount, t.bank, t.reference, t.status, t.approved_amount, t.review_note, t.created_at, t.reviewed_at,
+            u.id AS driver_id, u.name AS driver, u.phone AS driver_phone, u.balance AS driver_balance, r.name AS reviewer
+     FROM topups t JOIN users u ON u.id = t.driver_id LEFT JOIN users r ON r.id = t.reviewed_by
+     WHERE t.status = ? ORDER BY t.id DESC LIMIT 200`, [status]
+  );
+  res.json(rows.map((t) => ({ ...t, amount: Number(t.amount), approved_amount: t.approved_amount == null ? null : Number(t.approved_amount), driver_balance: Number(t.driver_balance) })));
+});
+
+app.get('/api/admin/topups/:id/receipt', staffOnly('wallet'), async (req, res) => {
+  const [rows] = await pool.query('SELECT driver_id, receipt_file FROM topups WHERE id = ?', [Number(req.params.id)]);
+  if (!rows[0]?.receipt_file) return res.status(404).json({ error: 'No hay comprobante' });
+  let blob;
+  try {
+    blob = await fs.readFile(path.join(UPLOADS, rows[0].receipt_file));
+  } catch {
+    return res.status(404).json({ error: 'El archivo no está disponible' });
+  }
+  await auditOnce(req.staff, 'topup.view', rows[0].driver_id, 10, { topup: Number(req.params.id) });
+  res.set('Cache-Control', 'private, no-store');
+  res.type('image/jpeg').send(decryptBuffer(blob));
+});
+
+app.post('/api/admin/topups/:id/approve', staffOnly('wallet'), async (req, res) => {
+  const id = Number(req.params.id);
+  const [[t]] = await pool.query('SELECT * FROM topups WHERE id = ?', [id]);
+  if (!t) return res.status(404).json({ error: 'Recarga no encontrada' });
+  // El monto acreditado es el que muestra el comprobante (puede ser distinto al que escribió el conductor)
+  const amount = req.body?.amount === undefined ? Number(t.amount) : money(req.body.amount);
+  if (!(amount > 0 && amount <= 50000)) return res.status(400).json({ error: 'Monto inválido' });
+  // Se "reclama" la solicitud de forma atómica: aunque dos personas pulsen Aprobar a la vez, solo una acredita
+  const [claim] = await pool.query("UPDATE topups SET status = 'approved', approved_amount = ?, reviewed_by = ?, reviewed_at = NOW() WHERE id = ? AND status = 'pending'", [amount, req.staff.id, id]);
+  if (claim.affectedRows !== 1) return res.status(409).json({ error: 'Esa recarga ya fue revisada' });
+  let balance;
+  try {
+    balance = await postEntry(pool, { userId: t.driver_id, amount, kind: 'topup', topupId: id, note: `Recarga por transferencia (${t.bank} ${t.reference})`, by: req.staff.id });
+  } catch (e) {
+    await pool.query("UPDATE topups SET status = 'pending', approved_amount = NULL, reviewed_by = NULL, reviewed_at = NULL WHERE id = ?", [id]); // no quedó acreditada: vuelve a la cola
+    throw e;
+  }
+  await audit(req.staff, 'topup.approve', { target: t.driver_id, details: { topup: id, amount } });
+  tellWallet(t.driver_id, balance, { change: amount, kind: 'topup' });
+  push(t.driver_id, { title: 'Recarga aprobada', body: `Se acreditaron L ${amount.toFixed(2)}. Tu saldo es L ${balance.toFixed(2)}`, tag: `topup-${id}`, url: '/' }, { always: true });
+  res.json({ ok: true, balance });
+});
+
+app.post('/api/admin/topups/:id/reject', staffOnly('wallet'), async (req, res) => {
+  const note = typeof req.body?.note === 'string' ? req.body.note.trim().slice(0, 300) : '';
+  if (note.length < 3) return res.status(400).json({ error: 'Escribe el motivo (el conductor lo verá)' });
+  const id = Number(req.params.id);
+  const [[t]] = await pool.query('SELECT driver_id FROM topups WHERE id = ?', [id]);
+  if (!t) return res.status(404).json({ error: 'Recarga no encontrada' });
+  const [r] = await pool.query("UPDATE topups SET status = 'rejected', review_note = ?, reviewed_by = ?, reviewed_at = NOW() WHERE id = ? AND status = 'pending'", [note, req.staff.id, id]);
+  if (r.affectedRows !== 1) return res.status(409).json({ error: 'Esa recarga ya fue revisada' });
+  await audit(req.staff, 'topup.reject', { target: t.driver_id, details: { topup: id, note } });
+  push(t.driver_id, { title: 'Recarga rechazada', body: note, tag: `topup-${id}`, url: '/' }, { always: true });
+  res.json({ ok: true });
+});
+
+// Corrección manual del saldo (solo superadmin, con motivo): queda en el libro y en el registro
+app.post('/api/admin/wallet/:userId/adjust', staffOnly('wallet.adjust'), async (req, res) => {
+  const amount = money(req.body?.amount);
+  const note = typeof req.body?.note === 'string' ? req.body.note.trim().slice(0, 200) : '';
+  if (!amount || Math.abs(amount) > 50000) return res.status(400).json({ error: 'Monto inválido' });
+  if (note.length < 5) return res.status(400).json({ error: 'Explica el motivo del ajuste' });
+  const [[d]] = await pool.query("SELECT id, role FROM users WHERE id = ? AND deleted_at IS NULL", [Number(req.params.userId)]);
+  if (!d || d.role !== 'driver') return res.status(404).json({ error: 'Conductor no encontrado' });
+  const balance = await postEntry(pool, { userId: d.id, amount, kind: 'adjustment', note: `Ajuste: ${note}`, by: req.staff.id });
+  await audit(req.staff, 'wallet.adjust', { target: d.id, details: { amount, note } });
+  tellWallet(d.id, balance, { change: amount, kind: 'adjustment' });
+  res.json({ ok: true, balance });
+});
+
+app.get('/api/admin/settings', staffOnly('wallet'), async (_req, res) => res.json(await getSettings(pool)));
+
+app.put('/api/admin/settings', staffOnly('settings'), async (req, res) => {
+  const current = await getSettings(pool);
+  const { values, error } = validateSettings(req.body || {}, current);
+  if (error) return res.status(400).json({ error });
+  const changed = Object.keys(values).filter((k) => values[k] !== current[k]);
+  for (const k of changed) await pool.query('INSERT INTO settings (name, value, updated_by) VALUES (?,?,?) ON DUPLICATE KEY UPDATE value = VALUES(value), updated_by = VALUES(updated_by)', [k, values[k], req.staff.id]);
+  clearSettingsCache();
+  if (changed.length) await audit(req.staff, 'settings.update', { details: { changed } });
+  res.json(await getSettings(pool));
 });
 
 // Reportes de los usuarios, con los datos de las dos personas del viaje para poder contactarlas
@@ -1312,6 +1513,10 @@ io.on('connection', async (socket) => {
       if (u?.status !== 'active') return socket.emit('driver:denied', { status: u?.status });
       const { lat, lng } = pos;
       const busy = await activeRideFor(user); // si se reconecta en pleno viaje, sigue ocupado
+      if (!busy) {
+        const gate = await walletGate(user.id);
+        if (gate.blocked) return socket.emit('driver:denied', { status: 'balance', balance: gate.balance, min: gate.min });
+      }
       drivers.set(user.id, {
         id: user.id, name: user.name, vehicle: user.vehicle, plate: user.plate,
         lat, lng, available: !busy,
@@ -1370,7 +1575,10 @@ io.on('connection', async (socket) => {
       const ride = await getRide(rideId);
       if (!ride || ride.driver_id !== user.id || order[status] !== ride.status) return;
       await pool.query('UPDATE rides SET status = ? WHERE id = ?', [status, rideId]);
-      if (status === 'completed') releaseDriver(user.id);
+      if (status === 'completed') {
+        releaseDriver(user.id);
+        chargeCommission(ride).catch(reportError); // se descuenta del saldo del conductor; sin await para no retrasar la respuesta
+      }
       const view = await rideView(await getRide(rideId));
       io.to(room(ride.passenger_id)).to(room(user.id)).emit('ride:state', view);
       if (status === 'started') shareWithContacts(ride).catch(reportError);

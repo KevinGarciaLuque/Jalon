@@ -2,11 +2,15 @@
 import fs from 'fs';
 import path from 'path';
 import { pool } from '../src/db.js';
-const names = ['Test Driver', 'Test Pasajero', 'Exp', 'P3 Driver', 'P3 Pasajero', 'E2E Driver', 'E2E Pasajero', 'P4 Pasajero', 'P4 Formato', 'P4 Bloqueo', 'P4 Reset', 'P4 Driver', 'P5B Admin', 'P5B Soporte', 'P5B Pasajero', 'P5B Pasajero Editado', 'P5B Conductor', 'P5B Soporte UI', 'P6 Conductor', 'P6 Pasajero', 'P7 Conductor', 'P7 Pasajero', 'P7 Soporte', 'P7 Admin', 'P7C Pasajero', 'P7C Conductor', 'P7C Otro', 'P8 Pasajero', 'P8 Conductor', 'P8 Nuevo', 'P8B Pasajero', 'P8B Intruso', 'P8B Conductor', 'P8C Pasajero', 'P8C Otro', 'P8C Conductor', 'P8D Pasajera Lopez', 'P8D Conductor', 'P8D Otro', 'T Soporte', 'Hacker', 'T Superadmin', 'Cuenta eliminada'];
+const names = ['Test Driver', 'Test Pasajero', 'Exp', 'P3 Driver', 'P3 Pasajero', 'E2E Driver', 'E2E Pasajero', 'P4 Pasajero', 'P4 Formato', 'P4 Bloqueo', 'P4 Reset', 'P4 Driver', 'P5B Admin', 'P5B Soporte', 'P5B Pasajero', 'P5B Pasajero Editado', 'P5B Conductor', 'P5B Soporte UI', 'P6 Conductor', 'P6 Pasajero', 'P7 Conductor', 'P7 Pasajero', 'P7 Soporte', 'P7 Admin', 'P7C Pasajero', 'P7C Conductor', 'P7C Otro', 'P8 Pasajero', 'P8 Conductor', 'P8 Nuevo', 'P8B Pasajero', 'P8B Intruso', 'P8B Conductor', 'P8C Pasajero', 'P8C Otro', 'P8C Conductor', 'P8D Pasajera Lopez', 'P8D Conductor', 'P8D Otro', 'P9 Pasajero', 'P9 Antiguo', 'P9 Conductor', 'P9 Nuevo', 'T Admin', 'T Soporte', 'Hacker', 'T Superadmin', 'Cuenta eliminada'];
 const [u] = await pool.query('SELECT id, phone FROM users WHERE name IN (?) AND (role <> "superadmin" OR name = "T Superadmin")', [names]);
 const ids = u.map((x) => x.id);
 const phones = u.map((x) => x.phone);
 if (ids.length) {
+  const [rcp] = await pool.query('SELECT receipt_file FROM topups WHERE driver_id IN (?) AND receipt_file IS NOT NULL', [ids]);
+  for (const r of rcp) fs.rmSync(path.join(process.cwd(), 'uploads', r.receipt_file), { force: true });
+  await pool.query('DELETE FROM wallet_entries WHERE user_id IN (?) OR created_by IN (?)', [ids, ids]);
+  await pool.query('DELETE FROM topups WHERE driver_id IN (?) OR reviewed_by IN (?)', [ids, ids]);
   await pool.query('DELETE FROM push_subscriptions WHERE user_id IN (?)', [ids]);
   await pool.query('DELETE FROM favorite_places WHERE user_id IN (?)', [ids]);
   await pool.query('DELETE FROM trusted_contacts WHERE user_id IN (?)', [ids]);

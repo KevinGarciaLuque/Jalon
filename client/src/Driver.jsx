@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
-import { icons, useGeo, distanceKm, lempiras, minutes, useChat, useNow, wazeUrl, mapsUrl, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
+import { icons, useGeo, distanceKm, lempiras, minutes, useChat, useNow, wazeUrl, mapsUrl, apiGet, money2, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
+import DriverWallet from './DriverWallet.jsx';
 import { Chat, FitTo, PushToggle, Rate, SafetyBar, Stars } from './components.jsx';
 import ReportForm from './ReportForm.jsx';
 import DriverDocs from './DriverDocs.jsx';
@@ -38,9 +39,14 @@ export default function Driver({ socket, token, status, userId }) {
   const [ride, setRide] = useState(null);
   const chat = useChat(socket, ride, userId);
   const [reporting, setReporting] = useState(false);
+  const [wallet, setWallet] = useState(null); // saldo, datos para transferir y movimientos (solo si la comisión está activa)
+  const [showWallet, setShowWallet] = useState(false);
   const [notApproved, setNotApproved] = useState(false);
   const posRef = useRef(pos);
   posRef.current = pos;
+
+  const loadWallet = () => apiGet('driver/wallet', token).then(setWallet).catch(() => {});
+  useEffect(() => { if (status !== 'pending') loadWallet(); }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     socket.on('rides:open', setRequests);
@@ -51,8 +57,14 @@ export default function Driver({ socket, token, status, userId }) {
     socket.on('offer:expired', ({ rideId }) => setSent((cur) => { const { [rideId]: _gone, ...rest } = cur; return rest; }));
     socket.on('ride:eta', setEta);
     socket.on('ride:state', setRide);
-    socket.on('driver:denied', () => { setNotApproved(true); setOnline(false); });
-    return () => ['rides:open', 'ride:new', 'ride:closed', 'offer:sent', 'offer:expired', 'ride:eta', 'ride:state', 'driver:denied'].forEach((e) => socket.off(e));
+    // Sin saldo suficiente el servidor no lo deja ponerse disponible: se abre la pantalla para recargar
+    socket.on('driver:denied', (d) => {
+      setOnline(false);
+      if (d?.status === 'balance') { loadWallet(); setShowWallet(true); } else setNotApproved(true);
+    });
+    socket.on('wallet:update', loadWallet);
+    socket.on('wallet:low', () => { setOnline(false); loadWallet(); });
+    return () => ['rides:open', 'ride:new', 'ride:closed', 'offer:sent', 'offer:expired', 'ride:eta', 'ride:state', 'driver:denied', 'wallet:update', 'wallet:low'].forEach((e) => socket.off(e));
   }, [socket]);
 
   // Al reconectar, volver a ponerse en línea
@@ -131,6 +143,7 @@ export default function Driver({ socket, token, status, userId }) {
               <button onClick={chat.open ? chat.closeChat : chat.openChat}>💬 Chat con el pasajero{chat.unread ? ` (${chat.unread})` : ''}</button>
             )}
             {ride?.status === 'completed' && <button onClick={() => setReporting(true)}>⚠ Reportar un problema con este viaje</button>}
+            {showWallet && wallet && <DriverWallet token={token} wallet={wallet} reload={loadWallet} onClose={() => setShowWallet(false)} />}
             {reporting && ride && <ReportForm rideId={ride.id} token={token} onClose={() => setReporting(false)} />}
             {ride?.status === 'completed' && chat.open && <Chat chat={chat} meId={userId} quick={['Encontré tu objeto, ¿dónde nos vemos?']} />}
             {ride?.status === 'completed' && ride.passenger && (
@@ -143,6 +156,16 @@ export default function Driver({ socket, token, status, userId }) {
                 <DriverDocs token={token} socket={socket} />
               </>
             )}
+            {wallet?.enabled && status !== 'pending' && (
+              <div className="wallet-chip">
+                <div>
+                  <b>💰 Saldo: {money2(wallet.balance)}</b>
+                  <div className="muted small">Comisión {wallet.percent}% por viaje · mínimo {money2(wallet.minBalance)} para recibir viajes</div>
+                </div>
+                <button className={wallet.balance < wallet.minBalance ? 'primary sm' : 'sm'} onClick={() => setShowWallet(true)}>Recargar</button>
+              </div>
+            )}
+            {wallet?.enabled && wallet.balance < wallet.minBalance && <div className="hint danger">Tu saldo está por debajo del mínimo: recarga para volver a recibir viajes.</div>}
             {!online && status !== 'pending' && <PushToggle token={token} why="Activa las notificaciones para recibir viajes cercanos y avisos aunque cierres la app." />}
             <button className={online ? 'danger' : 'primary'} onClick={toggle} disabled={!pos || status === 'pending'}>
               {online ? 'Desconectarme' : 'Ponerme disponible'}
