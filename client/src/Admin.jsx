@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { API, lempiras } from './lib.js';
-import { Empty, PushToggle, Stars } from './components.jsx';
+import { Avatar, Empty, PushToggle, Stars } from './components.jsx';
 import DocsModal from './DocsModal.jsx';
 import Topups from './Topups.jsx';
 import Settings from './Settings.jsx';
@@ -272,9 +272,9 @@ export default function Admin({ token, onGate }) {
         </div>
       )}
 
-      <div className="seg tabs">
+      <div className="seg tabs" role="tablist" aria-label="Secciones del panel">
         {tabs.map(([key, label]) => (
-          <button key={key} className={tab === key ? 'on' : ''} onClick={() => setTab(key)}>{label}</button>
+          <button key={key} role="tab" aria-selected={tab === key} className={tab === key ? 'on' : ''} onClick={() => setTab(key)}>{label}</button>
         ))}
       </div>
 
@@ -286,10 +286,10 @@ export default function Admin({ token, onGate }) {
               {rides.map((r) => (
                 <tr key={r.id}>
                   <td>{r.id}</td>
-                  <td>{RIDE_STATUS[r.status]}{r.cancelled_by && ` (${CANCELLED_BY[r.cancelled_by]})`}</td>
+                  <td><span className={`pill ride-${r.status}`}>{RIDE_STATUS[r.status]}</span>{r.cancelled_by && <span className="muted small"> ({CANCELLED_BY[r.cancelled_by]})</span>}</td>
                   <td>{r.passenger}</td><td>{r.driver || '—'}</td>
-                  <td>{r.distance_km.toFixed(1)}</td><td>{lempiras(r.offered_price)}</td>
-                  <td>{r.final_price ? lempiras(r.final_price) : '—'}</td>
+                  <td className="num">{r.distance_km.toFixed(1)}</td><td className="num">{lempiras(r.offered_price)}</td>
+                  <td className="num">{r.final_price ? lempiras(r.final_price) : '—'}</td>
                   <td>{when(r.created_at)}</td>
                   <td>{isActive(r.status) && can('rides.cancel') && (
                     <button className="danger sm" onClick={() => act(`rides/${r.id}/cancel`, {}, `¿Cancelar el viaje #${r.id}?`)}>Cancelar</button>
@@ -307,9 +307,9 @@ export default function Admin({ token, onGate }) {
           {newPass && (
             <form className="req" onSubmit={createPassenger}>
               <b>Agregar un pasajero</b>
-              <input placeholder="Nombre" value={newPass.name} onChange={(e) => setNewPass({ ...newPass, name: e.target.value })} required />
-              <input placeholder="Teléfono (8 dígitos)" inputMode="tel" value={newPass.phone} onChange={(e) => setNewPass({ ...newPass, phone: e.target.value })} required />
-              <input placeholder="Correo electrónico (opcional)" type="email" inputMode="email" value={newPass.email} onChange={(e) => setNewPass({ ...newPass, email: e.target.value })} />
+              <input aria-label="Nombre" placeholder="Nombre" value={newPass.name} onChange={(e) => setNewPass({ ...newPass, name: e.target.value })} required />
+              <input aria-label="Teléfono (8 dígitos)" placeholder="Teléfono (8 dígitos)" inputMode="tel" value={newPass.phone} onChange={(e) => setNewPass({ ...newPass, phone: e.target.value })} required />
+              <input aria-label="Correo electrónico (opcional)" placeholder="Correo electrónico (opcional)" type="email" inputMode="email" value={newPass.email} onChange={(e) => setNewPass({ ...newPass, email: e.target.value })} />
               <p className="muted small">Se genera una contraseña temporal que verás una sola vez; la persona la cambiará al entrar. Con el correo podrá recuperar su contraseña sola.</p>
               <div className="row">
                 <button className="primary grow">Crear cuenta</button>
@@ -317,7 +317,7 @@ export default function Admin({ token, onGate }) {
               </div>
             </form>
           )}
-          <input placeholder="Buscar por nombre, teléfono o placa" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input aria-label="Buscar por nombre, teléfono o placa" placeholder="Buscar por nombre, teléfono o placa" value={q} onChange={(e) => setQ(e.target.value)} />
           <div className="chips">
             {[['all', 'Todos'], ['passenger', 'Pasajeros'], ['driver', 'Conductores'], ['blocked', 'Bloqueados']].map(([k, label]) => (
               <button key={k} className={filter === k ? 'on' : ''} onClick={() => setFilter(k)}>{label}</button>
@@ -326,8 +326,9 @@ export default function Admin({ token, onGate }) {
           {shown.length === 0 && <Empty title="No hay usuarios con ese filtro">Prueba con otro filtro o búsqueda.</Empty>}
           {shown.map((u) => (
             <button className="ucard click" key={u.id} onClick={() => setDetailId(u.id)}>
+              <Avatar name={u.name} />
               <div className="grow left-text">
-                <b>{u.name}</b> <span className="muted">· {u.phone}</span> {u.online && '🟢'}
+                <b>{u.name}</b> <span className="muted">· {u.phone}</span> {u.online && <span className="online" title="En línea" aria-label="En línea" />}
                 <div className="muted small">{ROLE_LABEL[u.role]}{u.vehicle ? ` · ${u.vehicle} ${u.plate}` : ''}</div>
               </div>
               <Stars rating={u.rating} />
@@ -373,9 +374,9 @@ export default function Admin({ token, onGate }) {
         <>
           <form className="req" onSubmit={createStaff}>
             <b>Agregar a una persona del personal</b>
-            <input placeholder="Nombre" value={staffForm.name} onChange={(e) => setStaffForm({ ...staffForm, name: e.target.value })} required />
-            <input placeholder="Teléfono (8 dígitos)" inputMode="tel" value={staffForm.phone} onChange={(e) => setStaffForm({ ...staffForm, phone: e.target.value })} required />
-            <select value={staffForm.role} onChange={(e) => setStaffForm({ ...staffForm, role: e.target.value })}>
+            <input aria-label="Nombre" placeholder="Nombre" value={staffForm.name} onChange={(e) => setStaffForm({ ...staffForm, name: e.target.value })} required />
+            <input aria-label="Teléfono (8 dígitos)" placeholder="Teléfono (8 dígitos)" inputMode="tel" value={staffForm.phone} onChange={(e) => setStaffForm({ ...staffForm, phone: e.target.value })} required />
+            <select aria-label="Rol" value={staffForm.role} onChange={(e) => setStaffForm({ ...staffForm, role: e.target.value })}>
               <option value="support">Soporte: ve usuarios y viajes y atiende emergencias</option>
               <option value="admin">Administrador: además aprueba, bloquea y revisa documentos</option>
             </select>
@@ -384,6 +385,7 @@ export default function Admin({ token, onGate }) {
           </form>
           {staff.filter((u) => !u.deleted_at).map((u) => (
             <button className="ucard click" key={u.id} onClick={() => setDetailId(u.id)}>
+              <Avatar name={u.name} />
               <div className="grow left-text">
                 <b>{u.name}</b> <span className="muted">· {u.phone}</span>
                 <div className="muted small">{ROLE_LABEL[u.role]}{u.must_change_password ? ' · aún no cambia su contraseña temporal' : ''}</div>

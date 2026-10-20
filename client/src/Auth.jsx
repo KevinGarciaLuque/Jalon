@@ -106,7 +106,7 @@ export default function Auth({ onAuth, notice }) {
               <button type="button" className={role === 'passenger' ? 'on' : ''} onClick={() => setRole('passenger')}>Soy pasajero</button>
               <button type="button" className={role === 'driver' ? 'on' : ''} onClick={() => setRole('driver')}>Soy conductor</button>
             </div>
-            <input placeholder="Nombre" value={f.name} onChange={set('name')} required />
+            <input aria-label="Nombre" placeholder="Nombre" value={f.name} onChange={set('name')} required />
           </>
         )}
 
@@ -115,7 +115,7 @@ export default function Auth({ onAuth, notice }) {
             <p className="muted">Escribe el código de 6 dígitos de tu app de autenticación. Si perdiste el teléfono, usa un código de respaldo (XXXX-XXXX).</p>
             <input
               className="code"
-              placeholder="Código"
+              aria-label="Código" placeholder="Código"
               autoComplete="one-time-code"
               maxLength={9}
               value={f.code}
@@ -129,12 +129,12 @@ export default function Auth({ onAuth, notice }) {
 
         {step === 1 && !challenge && (
           <>
-            <input placeholder="Teléfono (8 dígitos)" inputMode="tel" autoComplete="tel" value={f.phone} onChange={set('phone')} required />
+            <input aria-label="Teléfono (8 dígitos)" placeholder="Teléfono (8 dígitos)" inputMode="tel" autoComplete="tel" value={f.phone} onChange={set('phone')} required />
             {mode === 'register' && (
-              <input placeholder="Correo electrónico" type="email" inputMode="email" autoComplete="email" maxLength={160} value={f.email} onChange={set('email')} required />
+              <input aria-label="Correo electrónico" placeholder="Correo electrónico" type="email" inputMode="email" autoComplete="email" maxLength={160} value={f.email} onChange={set('email')} required />
             )}
             <PasswordInput
-              placeholder={mode === 'forgot' ? 'Nueva contraseña' : 'Contraseña'}
+              aria-label={mode === 'forgot' ? 'Nueva contraseña' : 'Contraseña'} placeholder={mode === 'forgot' ? 'Nueva contraseña' : 'Contraseña'}
               autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
               value={f.password}
               onChange={set('password')}
@@ -145,8 +145,8 @@ export default function Auth({ onAuth, notice }) {
 
         {mode === 'register' && step === 1 && role === 'driver' && (
           <>
-            <input placeholder="Vehículo (ej. Toyota Corolla blanco)" value={f.vehicle} onChange={set('vehicle')} required />
-            <input placeholder="Placa" value={f.plate} onChange={set('plate')} required />
+            <input aria-label="Vehículo (ej. Toyota Corolla blanco)" placeholder="Vehículo (ej. Toyota Corolla blanco)" value={f.vehicle} onChange={set('vehicle')} required />
+            <input aria-label="Placa" placeholder="Placa" value={f.plate} onChange={set('plate')} required />
             <p className="muted small">Después de registrarte subirás tu foto, licencia y matrícula para que revisemos tu cuenta.</p>
           </>
         )}
@@ -157,7 +157,7 @@ export default function Auth({ onAuth, notice }) {
             {devCode && <div className="hint">Modo desarrollo (sin correo real): tu código es <b>{devCode}</b></div>}
             <input
               className="code"
-              placeholder="Código de 6 dígitos"
+              aria-label="Código de 6 dígitos" placeholder="Código de 6 dígitos"
               inputMode="numeric"
               autoComplete="one-time-code"
               maxLength={6}

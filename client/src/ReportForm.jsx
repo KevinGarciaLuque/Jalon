@@ -49,7 +49,7 @@ export default function ReportForm({ rideId, token, defaultType = 'other', onClo
               {REPORT_TYPES.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
             </select>
             <textarea
-              placeholder="Cuéntanos qué pasó (viaje, hora, lo que pasó…)"
+              aria-label="Cuéntanos qué pasó (viaje, hora, lo que pasó…)" placeholder="Cuéntanos qué pasó (viaje, hora, lo que pasó…)"
               rows={5}
               maxLength={1000}
               value={text}

@@ -111,9 +111,9 @@ export default function Account({ user, token, onToken, onClose, onLogout, force
 
         <form className="req" onSubmit={changePassword}>
           <b>Cambiar contraseña</b>
-          <PasswordInput autoComplete="current-password" placeholder="Contraseña actual" value={f.current} onChange={set('current')} required />
-          <PasswordInput autoComplete="new-password" placeholder="Contraseña nueva" value={f.next} onChange={set('next')} required />
-          <PasswordInput autoComplete="new-password" placeholder="Repite la contraseña nueva" value={f.again} onChange={set('again')} required />
+          <PasswordInput autoComplete="current-password" aria-label="Contraseña actual" placeholder="Contraseña actual" value={f.current} onChange={set('current')} required />
+          <PasswordInput autoComplete="new-password" aria-label="Contraseña nueva" placeholder="Contraseña nueva" value={f.next} onChange={set('next')} required />
+          <PasswordInput autoComplete="new-password" aria-label="Repite la contraseña nueva" placeholder="Repite la contraseña nueva" value={f.again} onChange={set('again')} required />
           <p className="muted small">Mínimo {min} caracteres, no solo números ni algo muy común, y sin tu teléfono.</p>
           {msg.text && <div className={msg.ok ? 'hint ok' : 'error'}>{msg.text}</div>}
           <button className="primary" disabled={busy}>{busy ? 'Un momento…' : 'Cambiar contraseña'}</button>

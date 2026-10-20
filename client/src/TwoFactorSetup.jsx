@@ -75,7 +75,7 @@ export default function TwoFactorSetup({ token, onDone, onLogout }) {
                 <form className="req" onSubmit={confirm}>
                   <input
                     className="code"
-                    placeholder="Código de 6 dígitos"
+                    aria-label="Código de 6 dígitos" placeholder="Código de 6 dígitos"
                     inputMode="numeric"
                     autoComplete="one-time-code"
                     maxLength={6}

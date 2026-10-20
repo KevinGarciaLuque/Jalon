@@ -46,12 +46,16 @@ export default function History({ token, role, onClose }) {
             {data.rides.map((r) => (
               <div className="req" key={r.id}>
                 <div className="row between">
-                  <b>{r.dest_text || 'Destino en el mapa'}</b>
+                  <b>{dateText(r.created_at)}</b>
                   <span className="tag">{lempiras(r.final_price ?? r.offered_price)}</span>
                 </div>
-                <div className="muted">Desde {r.origin_text || 'Mi ubicación'}</div>
-                <div className="muted">
-                  {dateText(r.created_at)} · {r.distance_km.toFixed(1)} km · {STATUS[r.status]}
+                <div className="route-list muted">
+                  <div><i className="dot-o" />{r.origin_text || 'Mi ubicación'}</div>
+                  <div><i className="dot-d" />{r.dest_text || 'Destino en el mapa'}</div>
+                </div>
+                <div className="row wrap">
+                  <span className={`pill ride-${r.status}`}>{STATUS[r.status]}</span>
+                  <span className="muted small">{r.distance_km.toFixed(1)} km</span>
                 </div>
                 {r.other_name && <div className="muted">{other}: {r.other_name}</div>}
                 {r.status === 'completed' && (
@@ -62,8 +66,8 @@ export default function History({ token, role, onClose }) {
                 )}
                 {['completed', 'cancelled'].includes(r.status) && r.other_name && (
                   <div className="row wrap">
-                    {r.status === 'completed' && <button className="sm" onClick={() => setReceipt(r.id)}>🧾 Recibo</button>}
-                    <button className="sm" onClick={() => setReport(r.id)}>⚠ Reportar un problema</button>
+                    {r.status === 'completed' && <button className="sm" onClick={() => setReceipt(r.id)}>Ver recibo</button>}
+                    <button className="sm" onClick={() => setReport(r.id)}>Reportar un problema</button>
                   </div>
                 )}
               </div>

@@ -220,7 +220,7 @@ export default function UserDetail({ userId, me, perms, call, token, onClose, on
         {edit && (
           <div className="req">
             <b>Editar datos</b>
-            {fields.map((k) => <input key={k} placeholder={placeholder[k]} value={edit[k]} onChange={set(k)} />)}
+            {fields.map((k) => <input key={k} aria-label={placeholder[k]} placeholder={placeholder[k]} value={edit[k]} onChange={set(k)} />)}
             <div className="row">
               <button className="primary" disabled={busy} onClick={saveEdit}>Guardar</button>
               <button disabled={busy} onClick={() => setEdit(null)}>Cancelar</button>

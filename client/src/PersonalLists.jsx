@@ -38,8 +38,8 @@ export function TrustedContacts({ token }) {
       ))}
       {list.length < 3 && (
         <form className="row wrap" onSubmit={add}>
-          <input placeholder="Nombre (ej. Mamá)" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required />
-          <input placeholder="Teléfono (8 dígitos)" inputMode="tel" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} required />
+          <input aria-label="Nombre (ej. Mamá)" placeholder="Nombre (ej. Mamá)" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required />
+          <input aria-label="Teléfono (8 dígitos)" placeholder="Teléfono (8 dígitos)" inputMode="tel" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} required />
           <button className="primary sm">Agregar</button>
         </form>
       )}

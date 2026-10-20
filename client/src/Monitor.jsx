@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
-import { icons, lempiras, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
+import { icons, lempiras, CAR_SVG, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
 import { Empty, Loading } from './components.jsx';
 
 const REFRESH_MS = 5000;
@@ -13,11 +13,12 @@ const CANCEL_BY = { passenger: 'el pasajero', driver: 'el conductor', admin: 'un
 const driverIcon = (state, plate, selected) =>
   L.divIcon({
     className: '',
-    html: `<div class="mk ${state}${selected ? ' sel' : ''}"><span class="car">🚕</span><span class="plate">${String(plate || '').replace(/[<>&"]/g, '')}</span></div>`,
-    iconSize: [64, 46],
-    iconAnchor: [32, 40],
+    html: `<div class="mk ${state}${selected ? ' sel' : ''}"><span class="car">${CAR_SVG}</span><span class="plate">${String(plate || '').replace(/[<>&"]/g, '')}</span></div>`,
+    iconSize: [64, 58],
+    iconAnchor: [32, 22],
   });
-const waitIcon = L.divIcon({ className: '', html: '<div class="mk wait"><span class="car">🙋</span></div>', iconSize: [34, 34], iconAnchor: [17, 30] });
+// Solicitud que espera conductor: un punto mango que late
+const waitIcon = L.divIcon({ className: '', html: '<div class="mk wait"><span class="wait-dot"></span></div>', iconSize: [28, 28], iconAnchor: [14, 14] });
 
 const ago = (s) => (s == null ? '—' : s < 60 ? `hace ${s} s` : s < 3600 ? `hace ${Math.round(s / 60)} min` : `hace ${Math.round(s / 3600)} h`);
 const mins = (m) => (m == null ? '—' : m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`);

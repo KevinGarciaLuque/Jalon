@@ -3,6 +3,28 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-20-panel-nuevo',
+    date: '2026-10-20',
+    title: 'Panel con la nueva imagen',
+    for: ['staff'],
+    items: [
+      'Las pestañas del panel ahora son píldoras y el estado de cada viaje tiene su color (buscando, en camino, en viaje, terminado, cancelado).',
+      'En el mapa en vivo cada conductor es un carro dibujado con su placa; la placa dice si está libre, en viaje o sin conexión. Las solicitudes que esperan laten en mango.',
+      'Las tarjetas de usuarios muestran las iniciales y un punto verde si la persona está en línea.',
+    ],
+  },
+  {
+    id: '2026-10-20-historial-accesible',
+    date: '2026-10-20',
+    title: 'Historial más claro y app más accesible',
+    for: ['all'],
+    items: [
+      'En «Mis viajes» cada viaje muestra la fecha, de dónde a dónde y su estado con color.',
+      'Revisamos el contraste de todos los colores para que el texto se lea bien en modo claro y oscuro.',
+      'Todos los campos tienen su nombre para quienes usan lector de pantalla.',
+    ],
+  },
+  {
     id: '2026-10-20-rechazar-solicitud',
     date: '2026-10-20',
     title: 'Botón «Rechazar» y precio más fácil de ajustar',

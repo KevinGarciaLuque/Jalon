@@ -76,10 +76,10 @@ export default function DriverWallet({ token, wallet, reload, onClose }) {
 
         <form className="req" onSubmit={submit}>
           <b>2. Sube tu comprobante</b>
-          <input placeholder={`Monto transferido (L ${wallet.topupMin} a L ${wallet.topupMax})`} inputMode="decimal" value={f.amount} onChange={set('amount')} required />
-          <input list="bancos" placeholder="Banco desde el que transferiste" value={f.bank} onChange={set('bank')} required />
+          <input aria-label="Monto transferido en lempiras" placeholder={`Monto transferido (L ${wallet.topupMin} a L ${wallet.topupMax})`} inputMode="decimal" value={f.amount} onChange={set('amount')} required />
+          <input list="bancos" aria-label="Banco desde el que transferiste" placeholder="Banco desde el que transferiste" value={f.bank} onChange={set('bank')} required />
           <datalist id="bancos">{BANKS.map((b) => <option key={b} value={b} />)}</datalist>
-          <input placeholder="Número de referencia o de transacción" value={f.reference} onChange={set('reference')} required />
+          <input aria-label="Número de referencia o de transacción" placeholder="Número de referencia o de transacción" value={f.reference} onChange={set('reference')} required />
           <label className={`upload ${busy ? 'disabled' : ''}`}>
             {file ? `✓ ${file.name}` : '📷 Foto o captura del comprobante'}
             <input type="file" accept="image/*" disabled={busy} onChange={(e) => setFile(e.target.files[0] || null)} />

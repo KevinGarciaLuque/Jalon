@@ -3,7 +3,7 @@
 :root {
   --brand: #0a7d4f;
   --brand-dark: #075c3a;
-  --brand-soft: #e3f2ea;
+  --brand-soft: #e9f6ef;
   --on-brand: #fff; /* texto sobre el verde */
   --mango: #f0a020;
   --mango-soft: #fff2d6;
@@ -15,9 +15,10 @@
   --line: #dbe4df;
   --ok: #1f9d55;
   --warn: #c27a00;
-  --danger: #d03b3b;
+  --danger: #b83232;
+  --on-danger: #fff; /* texto sobre el rojo (botón de emergencia) */
   --danger-soft: #fbe9e9;
-  --info: #2563eb;
+  --info: #1d4ed8;
   --font-display: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
   --font-text: 'Figtree', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --r-1: 8px; /* botones y campos */
@@ -34,7 +35,7 @@
     --brand: #2fbf83; --brand-dark: #22a06c; --brand-soft: #12301f; --on-brand: #04170d;
     --mango: #f5b544; --mango-soft: #3a2a0c; --mango-ink: #ffd48a;
     --bg: #0b120e; --card: #131c17; --text: #e8f0eb; --muted: #95a89d; --line: #24322a;
-    --ok: #3ccf7d; --warn: #f0b13c; --danger: #ff6b6b; --danger-soft: #3a1717; --info: #6b9bff;
+    --ok: #3ccf7d; --warn: #f0b13c; --danger: #ff6b6b; --on-danger: #2a0606; --danger-soft: #3a1717; --info: #6b9bff;
     --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .35);
     --shadow-sheet: 0 -6px 24px rgba(0, 0, 0, .5);
     color-scheme: dark;
@@ -116,7 +117,9 @@ header span { flex: 1; color: var(--muted); font-size: 14px; }
 .tablewrap { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: var(--r-2); }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th, td { padding: 8px 12px; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--line); }
-th { color: var(--muted); font-weight: 600; }
+th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; background: var(--bg); }
+td.num, .num { font-variant-numeric: tabular-nums; }
+tbody tr:hover { background: var(--bg); }
 
 .stats .alert { border-color: var(--mango); background: var(--mango-soft); }
 .stats .alert b { color: var(--mango-ink); }
@@ -154,7 +157,7 @@ td.actions { display: flex; gap: 6px; }
 .starpick button.on { color: var(--mango); }
 .safety { display: flex; flex-direction: column; gap: 6px; }
 .safety .row button { flex: 1; }
-button.sos { background: var(--danger); color: #fff; border-color: var(--danger); }
+button.sos { background: var(--danger); color: var(--on-danger); border-color: var(--danger); }
 .overlay { position: fixed; inset: 0; z-index: 3000; background: var(--bg); display: flex; flex-direction: column; }
 .overlay-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--card); border-bottom: 1px solid var(--line); }
 .overlay-body { flex: 1; overflow: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; max-width: 640px; width: 100%; margin: 0 auto; }
@@ -322,13 +325,15 @@ header span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-spa
 .dotstate.away, .stats b.away { background: #9aa3ad; color: #9aa3ad; }
 .stats b.free, .stats b.busy, .stats b.away { background: none; }
 .mk { display: flex; flex-direction: column; align-items: center; line-height: 1; }
-.mk .car { font-size: 26px; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .5)); }
-.mk .plate { margin-top: 1px; padding: 2px 6px; border-radius: 6px; font: 700 11px system-ui, sans-serif; color: #fff; background: #6b7280; white-space: nowrap; }
-.mk.free .plate { background: #16a34a; }
+.mk .car svg { display: block; width: 18px; height: 31px; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .35)); }
+.mk .plate { margin-top: 2px; padding: 2px 6px; border-radius: 6px; font: 700 11px var(--font-text); color: #fff; background: #5b6b63; white-space: nowrap; }
+.mk.free .plate { background: #15803d; }
 .mk.busy .plate { background: #2563eb; }
 .mk.away { opacity: .65; }
-.mk.sel .plate { outline: 2px solid #f59e0b; }
-.mk.wait .car { font-size: 24px; }
+.mk.sel .plate { outline: 2px solid var(--mango); outline-offset: 1px; }
+.mk.wait { width: 28px; height: 28px; justify-content: center; }
+.wait-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--mango); border: 2px solid #fff; box-shadow: 0 0 0 0 rgba(240, 160, 32, .6); animation: ping 1.6s infinite; }
+@keyframes ping { 70% { box-shadow: 0 0 0 10px rgba(240, 160, 32, 0); } 100% { box-shadow: 0 0 0 0 rgba(240, 160, 32, 0); } }
 .ficha { gap: 10px; }
 @media (min-width: 900px) {
   .monlayout { grid-template-columns: 1fr 320px; }
@@ -399,3 +404,16 @@ header span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-spa
   /* Los créditos del mapa suben a la esquina de arriba para que la hoja no los tape */
   .screen .leaflet-bottom.leaflet-right { top: 0; bottom: auto; }
 }
+
+/* ---- Etapa 3, entrega 3: panel, historial y cuenta ---- */
+/* Estado de cada viaje: buscando (mango), en camino (verde), en viaje (azul), terminado (gris), cancelado (rojo) */
+.pill.ride-requested { background: var(--mango-soft); color: var(--mango-ink); }
+.pill.ride-accepted, .pill.ride-arrived { background: var(--brand-soft); color: var(--brand); }
+.pill.ride-started { background: color-mix(in srgb, var(--info) 14%, transparent); color: var(--info); }
+.pill.ride-completed { background: var(--line); color: var(--text); }
+.pill.ride-cancelled { background: var(--danger-soft); color: var(--danger); }
+.online { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 2px var(--card); vertical-align: middle; }
+/* Pestañas del panel: píldoras que se acomodan en varias filas */
+.seg.tabs { gap: 6px; }
+.seg.tabs button { min-height: 40px; border-radius: 999px; font-size: 14px; }
+.ucard .avatar { width: 36px; height: 36px; font-size: 13px; }

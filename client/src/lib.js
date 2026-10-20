@@ -74,7 +74,7 @@ export function useGeo() {
 const svgIcon = (html, size, anchor, cls) => L.divIcon({ html, className: `map-icon ${cls}`, iconSize: size, iconAnchor: anchor });
 
 // Carro visto desde arriba, con el frente hacia el norte (CarMarker lo gira según hacia dónde va)
-const CAR_SVG = `<svg viewBox="0 0 28 48" width="22" height="38" aria-hidden="true">
+export const CAR_SVG = `<svg viewBox="0 0 28 48" width="22" height="38" aria-hidden="true">
   <rect x="1" y="14" width="3.5" height="5" rx="1.6" fill="#086640"/><rect x="23.5" y="14" width="3.5" height="5" rx="1.6" fill="#086640"/>
   <rect x="3" y="2" width="22" height="44" rx="8" fill="#0a7d4f" stroke="#fff" stroke-width="1.6"/>
   <path d="M6.5 14.5Q14 9.5 21.5 14.5L20.5 20.5H7.5Z" fill="#0d1f17" opacity=".88"/>

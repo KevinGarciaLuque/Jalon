@@ -216,7 +216,7 @@ export function AddressSearch({ token, near, placeholder, value, onPick, icon })
       <div className="field">
         <span>{icon}</span>
         <input
-          placeholder={placeholder}
+          aria-label={placeholder} placeholder={placeholder}
           value={q}
           onChange={(e) => { typed.current = true; setQ(e.target.value); }}
           onFocus={(e) => e.target.select()}
@@ -266,7 +266,7 @@ export function Rate({ token, rideId, who }) {
       </div>
       {stars > 0 && (
         <>
-          <input placeholder="Comentario (opcional)" maxLength={200} value={comment} onChange={(e) => setComment(e.target.value)} />
+          <input aria-label="Comentario (opcional)" placeholder="Comentario (opcional)" maxLength={200} value={comment} onChange={(e) => setComment(e.target.value)} />
           {error && <div className="error">{error}</div>}
           <button className="primary" disabled={state === 'sending'} onClick={send}>Enviar calificación</button>
         </>
@@ -396,7 +396,7 @@ export function Chat({ chat, meId, quick = [] }) {
             {quick.map((q) => <button key={q} type="button" className="sm" disabled={busy} onClick={() => send(q)}>{q}</button>)}
           </div>
           <form className="chat-input" onSubmit={(e) => { e.preventDefault(); send(); }}>
-            <input value={text} maxLength={500} placeholder="Escribe un mensaje" onChange={(e) => setText(e.target.value)} />
+            <input value={text} maxLength={500} aria-label="Escribe un mensaje" placeholder="Escribe un mensaje" onChange={(e) => setText(e.target.value)} />
             <button className="primary sm" disabled={busy || !text.trim()}>Enviar</button>
           </form>
         </>
