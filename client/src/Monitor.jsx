@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
 import { icons, lempiras, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
+import { Empty, Loading } from './components.jsx';
 
 const REFRESH_MS = 5000;
 const STATE = { free: ['Libre', 'free'], busy: ['En viaje', 'busy'], away: ['Sin conexión', 'away'] };
@@ -68,7 +69,7 @@ export default function Monitor({ call, onError }) {
 
   useEffect(() => { if (ficha) fichaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, [ficha?.driver.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!snap) return <div className="pulse">Cargando mapa…</div>;
+  if (!snap) return <Loading label="Cargando mapa…" />;
   const drivers = snap.drivers.filter((d) => filter === 'all' || d.state === filter);
   const chosen = snap.drivers.find((d) => d.id === sel);
   const withPos = drivers.filter((d) => d.lat != null && d.lng != null);
@@ -115,7 +116,7 @@ export default function Monitor({ call, onError }) {
         </div>
 
         <div className="monside">
-          {drivers.length === 0 && <p className="muted">No hay conductores en esta lista.</p>}
+          {drivers.length === 0 && <Empty title="No hay conductores en esta lista" />}
           {drivers.map((d) => (
             <button key={d.id} className={`ucard click ${d.id === sel ? 'on' : ''}`} onClick={() => pick(d.id)}>
               <span className={`dotstate ${d.state}`} />
@@ -129,7 +130,7 @@ export default function Monitor({ call, onError }) {
         </div>
       </div>
 
-      {chosen && !ficha && <div className="pulse">Cargando ficha…</div>}
+      {chosen && !ficha && <Loading label="Cargando ficha…" />}
       {ficha && (
         <section className="req ficha" ref={fichaRef}>
           <div className="row between wrap">

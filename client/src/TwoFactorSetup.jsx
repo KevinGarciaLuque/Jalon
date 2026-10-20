@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { apiPost } from './lib.js';
+import { Loading } from './components.jsx';
 
 // Activación obligatoria de la verificación en dos pasos del personal: escanear el QR, confirmar con un código y guardar los códigos de respaldo
 export default function TwoFactorSetup({ token, onDone, onLogout }) {
@@ -65,7 +66,7 @@ export default function TwoFactorSetup({ token, onDone, onLogout }) {
               <li>Escanea este código QR con la app (o escribe la clave a mano).</li>
               <li>Escribe aquí el código de 6 dígitos que muestra la app.</li>
             </ol>
-            {!setup && !error && <div className="pulse">Preparando…</div>}
+            {!setup && !error && <Loading label="Preparando…" />}
             {setup && (
               <>
                 <img className="qr" src={setup.qr} alt="Código QR para la app de autenticación" />

@@ -3,6 +3,32 @@ import { Marker, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { apiGet, apiPost, pushState, enablePush, disablePush, icons } from './lib.js';
 
+// Mientras llegan los datos: líneas que brillan en lugar de un texto suelto. `label` lo leen los lectores de pantalla.
+export function Loading({ label = 'Cargando…' }) {
+  return (
+    <div className="loading" role="status" aria-live="polite">
+      <span className="sr">{label}</span>
+      <i /><i /><i />
+    </div>
+  );
+}
+
+// Lista vacía: qué falta y, si se puede, qué hacer para que aparezca algo
+export function Empty({ title, children }) {
+  return (
+    <div className="empty">
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <circle cx="32" cy="32" r="30" fill="var(--brand-soft)" />
+        <path d="M18 39h28l-3.5-11a3 3 0 0 0-2.9-2H24.4a3 3 0 0 0-2.9 2z" fill="var(--brand)" />
+        <circle cx="24" cy="41" r="3.5" fill="var(--text)" />
+        <circle cx="40" cy="41" r="3.5" fill="var(--text)" />
+      </svg>
+      <b>{title}</b>
+      {children && <span>{children}</span>}
+    </div>
+  );
+}
+
 // Rumbo en grados (0 = norte, 90 = este) para ir del punto a al b
 function bearing(a, b) {
   const r = Math.PI / 180;

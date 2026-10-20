@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { API, money2 } from './lib.js';
+import { Empty } from './components.jsx';
 
 const when = (d) => new Date(d).toLocaleString('es-HN', { dateStyle: 'medium', timeStyle: 'short' });
 
@@ -41,7 +42,7 @@ export default function Topups({ topups, status, setStatus, call, token, reload,
           <button key={k} className={status === k ? 'on' : ''} onClick={() => setStatus(k)}>{label}</button>
         ))}
       </div>
-      {topups.length === 0 && <p className="muted">No hay recargas {status === 'pending' ? 'por aprobar' : status === 'approved' ? 'aprobadas' : 'rechazadas'}.</p>}
+      {topups.length === 0 && <Empty title={`No hay recargas ${status === 'pending' ? 'por aprobar' : status === 'approved' ? 'aprobadas' : 'rechazadas'}`} />}
       {topups.map((t) => (
         <div className="req" key={t.id}>
           <div className="row between">

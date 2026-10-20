@@ -3,6 +3,19 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-20-diseno-base',
+    date: '2026-10-20',
+    title: 'Nueva imagen de Jalón',
+    for: ['all'],
+    items: [
+      'Letras propias de Jalón que se ven igual en cualquier celular.',
+      'Los precios ahora se destacan en color mango para encontrarlos de un vistazo.',
+      'Botones más grandes y fáciles de tocar, y campos que se marcan en verde al escribir.',
+      'Mensajes de aviso, de éxito y de error más claros, y nuevas pantallas para cuando todavía no hay nada que mostrar.',
+      'Mejor contraste en modo oscuro.',
+    ],
+  },
+  {
     id: '2026-10-20-servidor-modular',
     date: '2026-10-20',
     title: 'Servidor ordenado por partes',

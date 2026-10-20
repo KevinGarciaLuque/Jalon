@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { API, lempiras } from './lib.js';
-import { PushToggle, Stars } from './components.jsx';
+import { Empty, PushToggle, Stars } from './components.jsx';
 import DocsModal from './DocsModal.jsx';
 import Topups from './Topups.jsx';
 import Settings from './Settings.jsx';
@@ -323,7 +323,7 @@ export default function Admin({ token, onGate }) {
               <button key={k} className={filter === k ? 'on' : ''} onClick={() => setFilter(k)}>{label}</button>
             ))}
           </div>
-          {shown.length === 0 && <p className="muted">No hay usuarios con ese filtro.</p>}
+          {shown.length === 0 && <Empty title="No hay usuarios con ese filtro">Prueba con otro filtro o búsqueda.</Empty>}
           {shown.map((u) => (
             <button className="ucard click" key={u.id} onClick={() => setDetailId(u.id)}>
               <div className="grow left-text">
@@ -347,7 +347,7 @@ export default function Admin({ token, onGate }) {
             <button className={repStatus === 'open' ? 'on' : ''} onClick={() => setRepStatus('open')}>Abiertos</button>
             <button className={repStatus === 'resolved' ? 'on' : ''} onClick={() => setRepStatus('resolved')}>Resueltos</button>
           </div>
-          {reports.length === 0 && <p className="muted">No hay reportes {repStatus === 'open' ? 'abiertos' : 'resueltos'}.</p>}
+          {reports.length === 0 && <Empty title={`No hay reportes ${repStatus === 'open' ? 'abiertos' : 'resueltos'}`} />}
           {reports.map((rp) => (
             <div className="req" key={rp.id}>
               <div className="row between">
@@ -410,7 +410,7 @@ export default function Admin({ token, onGate }) {
               ))}
             </tbody>
           </table>
-          {audit.length === 0 && <p className="muted pad">Todavía no hay movimientos.</p>}
+          {audit.length === 0 && <Empty title="Todavía no hay movimientos" />}
         </div>
       )}
 

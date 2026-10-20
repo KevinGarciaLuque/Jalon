@@ -252,3 +252,11 @@ El servidor ya no es un solo archivo de 2000 líneas: cada tema vive en el suyo.
 | `jobs.js` | Tareas periódicas y recuperación de solicitudes al arrancar |
 
 Las piezas de más abajo no importan a las de más arriba (por ejemplo, `services/` no importa `routes/`), así no hay dependencias circulares.
+
+## Etapa 3: sistema de diseño
+
+Propuesta aprobada el 2026-10-20 (verde Jalón + mango para el dinero, letras Bricolage Grotesque y Figtree). Se aplica en tres entregas.
+
+- **Entrega 1 (base):** las variables están al inicio de `client/src/index.css` (colores con su versión oscura, letras, esquinas `--r-1/2/3`, sombras, tiempos de animación y `--tap`, el alto mínimo de lo que se toca). Usa siempre las variables, no colores sueltos. El precio va en `.tag` (mango). Mientras cargan los datos se usa `<Loading />` y las listas vacías usan `<Empty title="…">qué hacer</Empty>` (`client/src/components.jsx`). Las letras se cargan desde Google Fonts en `client/index.html`.
+- **Entrega 2:** pasajero y conductor (mapa a pantalla completa, precio con −5/+5, anillo de tiempo en las ofertas, botón Rechazar).
+- **Entrega 3:** panel del personal, historial, cuenta y revisión de accesibilidad.

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { lempiras } from './lib.js';
-import { Stars } from './components.jsx';
+import { Empty, Loading, Stars } from './components.jsx';
 import DocsModal from './DocsModal.jsx';
 
 export const ROLE_LABEL = { passenger: 'Pasajero', driver: 'Conductor', admin: 'Administrador', superadmin: 'Superadministrador', support: 'Soporte' };
@@ -112,7 +112,7 @@ export default function UserDetail({ userId, me, perms, call, token, onClose, on
     return (
       <div className="overlay top">
         <div className="overlay-head"><b>Usuario</b><button className="link" onClick={onClose}>Cerrar ✕</button></div>
-        <div className="overlay-body">{error ? <div className="error">{error}</div> : <div className="pulse">Cargando…</div>}</div>
+        <div className="overlay-body">{error ? <div className="error">{error}</div> : <Loading />}</div>
       </div>
     );
   }
@@ -244,7 +244,7 @@ export default function UserDetail({ userId, me, perms, call, token, onClose, on
         )}
 
         <b>Últimos viajes</b>
-        {rides.length === 0 && <p className="muted">Todavía no tiene viajes.</p>}
+        {rides.length === 0 && <Empty title="Todavía no tiene viajes" />}
         {rides.map((r) => (
           <div className="req" key={r.id}>
             <div className="row between"><b>#{r.id} · {r.dest_text || 'Destino en el mapa'}</b><span className="tag">{lempiras(r.final_price ?? r.offered_price)}</span></div>

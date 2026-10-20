@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { apiGet, lempiras } from './lib.js';
+import { Loading } from './components.jsx';
 
 const when = (d) => new Date(d).toLocaleString('es-HN', { dateStyle: 'long', timeStyle: 'short' });
 
@@ -17,7 +18,7 @@ export default function Receipt({ rideId, token, onClose }) {
       </div>
       <div className="overlay-body">
         {error && <div className="error">{error}</div>}
-        {!r && !error && <div className="pulse">Cargando…</div>}
+        {!r && !error && <Loading />}
         {r && (
           <>
             <div className="receipt" data-testid="receipt">

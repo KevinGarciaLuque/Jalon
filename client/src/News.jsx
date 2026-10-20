@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { newsFor } from './changelog.js';
+import { Empty } from './components.jsx';
 
 // Recuerda en este dispositivo cuál fue la última novedad vista (para el punto de «hay algo nuevo»)
 const SEEN_KEY = 'jalon:news-seen';
@@ -25,7 +26,7 @@ export default function News({ news, onClose }) {
         <button className="link" onClick={onClose}>Cerrar ✕</button>
       </div>
       <div className="overlay-body">
-        {!news.length && <p className="muted">Todavía no hay novedades.</p>}
+        {!news.length && <Empty title="Todavía no hay novedades" />}
         {news.map((n) => (
           <div key={n.id} className="req news">
             <span className="muted small">{dateText(n.date)}</span>

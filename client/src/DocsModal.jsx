@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { API } from './lib.js';
+import { Loading } from './components.jsx';
 
 export const DOC_LABEL = { photo: 'Foto del conductor', license: 'Licencia', registration: 'Matrícula' };
 
@@ -51,7 +52,7 @@ export default function DocsModal({ user, call, token, canManage, onClose, onApp
       </div>
       <div className="overlay-body wide">
         {error && <div className="error">{error}</div>}
-        {!docs && !error && <div className="pulse">Cargando…</div>}
+        {!docs && !error && <Loading />}
         <div className="docgrid">
           {Object.entries(DOC_LABEL).map(([type, label]) => {
             const d = byType[type];

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { apiGet, lempiras } from './lib.js';
-import { Stars } from './components.jsx';
+import { Empty, Loading, Stars } from './components.jsx';
 import Receipt from './Receipt.jsx';
 import ReportForm, { REPORT_LABEL } from './ReportForm.jsx';
 
@@ -34,7 +34,7 @@ export default function History({ token, role, onClose }) {
       </div>
       <div className="overlay-body">
         {error && <div className="error">{error}</div>}
-        {!data && !error && <div className="pulse">Cargando…</div>}
+        {!data && !error && <Loading />}
         {data && (
           <>
             <div className="stats">
@@ -42,7 +42,7 @@ export default function History({ token, role, onClose }) {
               <div><b>{lempiras(total)}</b><span>{role === 'driver' ? 'Ganado' : 'Gastado'}</span></div>
               <div><b><Stars rating={data.rating} /></b><span>Mi calificación</span></div>
             </div>
-            {data.rides.length === 0 && <p className="muted">Todavía no tienes viajes.</p>}
+            {data.rides.length === 0 && <Empty title="Todavía no tienes viajes">Cuando hagas tu primer viaje aparecerá aquí con su recibo.</Empty>}
             {data.rides.map((r) => (
               <div className="req" key={r.id}>
                 <div className="row between">

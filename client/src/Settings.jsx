@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Loading } from './components.jsx';
 
 // Ajustes de la comisión y de la cuenta bancaria a la que transfieren los conductores (solo superadmin)
 export default function Settings({ call, onError }) {
@@ -6,7 +7,7 @@ export default function Settings({ call, onError }) {
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
   useEffect(() => { call('settings').then(setS).catch((e) => onError(e.message)); }, [call, onError]);
-  if (!s) return <div className="pulse">Cargando…</div>;
+  if (!s) return <Loading />;
   const set = (k) => (e) => { setSaved(false); setS({ ...s, [k]: e.target.type === 'checkbox' ? (e.target.checked ? '1' : '0') : e.target.value }); };
 
   async function save(e) {
