@@ -49,6 +49,17 @@ async function request(method, path, token, body) {
 }
 export const apiGet = (path, token) => request('GET', path, token);
 export const apiPost = (path, token, body) => request('POST', path, token, body || {});
+export const apiPut = (path, token, body) => request('PUT', path, token, body || {});
+
+// Alquiler de carros por días: estados, forma de pago y cómo se nombra el vehículo
+export const RENTAL_STATUS = { requested: 'Pedido', confirmed: 'Confirmado', active: 'En curso', completed: 'Terminado', cancelled: 'Cancelado', rejected: 'No aceptado' };
+export const RENTAL_PILL = { requested: 'ride-requested', confirmed: 'ride-accepted', active: 'ride-started', completed: 'ride-completed', cancelled: 'ride-cancelled', rejected: 'ride-cancelled' };
+export const PAYMENT_LABEL = { cash: 'Efectivo al empezar', transfer: 'Transferencia' };
+export const PAYMENT_STATUS = { none: 'Falta el comprobante', pending: 'Revisando el pago', approved: 'Pago aprobado', rejected: 'Pago rechazado' };
+export const vehicleText = (v) => [v.make, v.model, v.color, v.year].filter(Boolean).join(' ');
+export const dateHN = (d) => new Date(`${d}T12:00:00`).toLocaleDateString('es-HN', { weekday: 'short', day: 'numeric', month: 'short' });
+// Hoy en Honduras (AAAA-MM-DD), para el calendario
+export const todayHN = () => new Date(Date.now() - 6 * 3600e3).toISOString().slice(0, 10);
 
 export const minutes = (n) => (n < 1 ? '<1 min' : `${Math.round(n)} min`);
 export const lempiras = (n) => `L ${Number(n).toFixed(0)}`;

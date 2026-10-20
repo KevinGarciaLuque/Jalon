@@ -49,8 +49,8 @@ export const STAFF = ['superadmin', 'admin', 'support'];
 export const isStaff = (role) => STAFF.includes(role);
 // Qué puede hacer cada rol: el superadmin todo; el administrador opera la plataforma; soporte mira y atiende emergencias
 export const PERMS = {
-  superadmin: ['view', 'alerts', 'rides.cancel', 'users.manage', 'users.create', 'docs', 'audit', 'staff.manage', 'wallet', 'wallet.adjust', 'settings'],
-  admin: ['view', 'alerts', 'rides.cancel', 'users.manage', 'docs', 'audit', 'wallet'],
+  superadmin: ['view', 'alerts', 'rides.cancel', 'users.manage', 'users.create', 'docs', 'audit', 'staff.manage', 'wallet', 'wallet.adjust', 'settings', 'rentals', 'fleet'],
+  admin: ['view', 'alerts', 'rides.cancel', 'users.manage', 'docs', 'audit', 'wallet', 'rentals'],
   support: ['view', 'alerts', 'rides.cancel'],
 };
 

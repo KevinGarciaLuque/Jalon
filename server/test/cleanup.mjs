@@ -11,6 +11,11 @@ if (ids.length) {
   for (const r of rcp) fs.rmSync(path.join(process.cwd(), 'uploads', r.receipt_file), { force: true });
   await pool.query('DELETE FROM wallet_entries WHERE user_id IN (?) OR created_by IN (?)', [ids, ids]);
   await pool.query('DELETE FROM topups WHERE driver_id IN (?) OR reviewed_by IN (?)', [ids, ids]);
+  // Alquileres de prueba (y sus comprobantes), y los carros de la flota que crearon las pruebas
+  const [rentalFiles] = await pool.query('SELECT receipt_file FROM rental_bookings WHERE (renter_id IN (?) OR owner_driver_id IN (?)) AND receipt_file IS NOT NULL', [ids, ids]);
+  for (const r of rentalFiles) fs.rmSync(path.join(process.cwd(), 'uploads', r.receipt_file), { force: true });
+  await pool.query('DELETE FROM rental_bookings WHERE renter_id IN (?) OR owner_driver_id IN (?) OR vehicle_id IN (SELECT id FROM vehicles WHERE driver_id IN (?))', [ids, ids, ids]);
+  await pool.query("DELETE v FROM vehicles v LEFT JOIN rental_bookings b ON b.vehicle_id = v.id WHERE v.driver_id IS NULL AND v.model = 'Hiace' AND v.plate LIKE 'F%' AND b.id IS NULL");
   await pool.query('DELETE FROM push_subscriptions WHERE user_id IN (?)', [ids]);
   await pool.query('DELETE FROM favorite_places WHERE user_id IN (?)', [ids]);
   await pool.query('DELETE FROM trusted_contacts WHERE user_id IN (?)', [ids]);

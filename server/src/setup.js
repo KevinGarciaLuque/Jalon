@@ -412,5 +412,80 @@ await conn.query(`
   if (copied) console.log(`Se copiaron ${copied} vehículo(s) de conductores existentes.`);
 }
 
+// ---- Etapa 4B: alquiler de carros por días ----
+// Qué carros se alquilan y a qué precio por día. El carro puede ser de un conductor (lo maneja él) o de la flota de Jalón (vehicles.driver_id NULL).
+// self_drive y deposit quedan listos para el alquiler sin conductor.
+await conn.query(`
+  CREATE TABLE IF NOT EXISTS rental_listings (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    vehicle_id INT NOT NULL,
+    with_driver TINYINT(1) NOT NULL DEFAULT 1,
+    self_drive TINYINT(1) NOT NULL DEFAULT 0,
+    price_with_driver DECIMAL(10,2) NULL,
+    price_self_drive DECIMAL(10,2) NULL,
+    deposit DECIMAL(10,2) NULL,
+    active TINYINT(1) NOT NULL DEFAULT 1,
+    notes VARCHAR(300) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY one_per_vehicle (vehicle_id),
+    FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE CASCADE
+  )
+`);
+// Cada reserva: fechas (inclusive), precio, cómo paga (efectivo o transferencia con comprobante) y en qué va
+await conn.query(`
+  CREATE TABLE IF NOT EXISTS rental_bookings (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    listing_id INT NOT NULL,
+    vehicle_id INT NOT NULL,
+    renter_id INT NOT NULL,
+    owner_driver_id INT NULL,
+    mode ENUM('with_driver','self_drive') NOT NULL DEFAULT 'with_driver',
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    days INT NOT NULL,
+    price_day DECIMAL(10,2) NOT NULL,
+    total DECIMAL(10,2) NOT NULL,
+    deposit DECIMAL(10,2) NULL,
+    payment ENUM('cash','transfer') NOT NULL,
+    status ENUM('requested','confirmed','active','completed','cancelled','rejected') NOT NULL DEFAULT 'requested',
+    pickup_text VARCHAR(200) NULL,
+    note VARCHAR(300) NULL,
+    assigned_driver VARCHAR(120) NULL,
+    payment_status ENUM('none','pending','approved','rejected') NOT NULL DEFAULT 'none',
+    bank VARCHAR(60) NULL,
+    reference VARCHAR(60) NULL,
+    reference_key VARCHAR(140) NULL,
+    receipt_file VARCHAR(100) NULL,
+    receipt_hash CHAR(64) NULL,
+    payment_note VARCHAR(300) NULL,
+    payment_reviewed_by INT NULL,
+    payment_reviewed_at TIMESTAMP NULL,
+    decided_by INT NULL,
+    decided_at TIMESTAMP NULL,
+    decline_note VARCHAR(300) NULL,
+    cancelled_by ENUM('renter','owner','admin','system') NULL,
+    started_at TIMESTAMP NULL,
+    ended_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY by_vehicle_dates (vehicle_id, start_date, end_date),
+    KEY by_renter (renter_id, id),
+    KEY by_owner (owner_driver_id, id),
+    KEY by_status (status),
+    FOREIGN KEY (listing_id) REFERENCES rental_listings(id),
+    FOREIGN KEY (vehicle_id) REFERENCES vehicles(id),
+    FOREIGN KEY (renter_id) REFERENCES users(id)
+  )
+`);
+// En el libro de cuentas: la comisión de un alquiler cobrado en efectivo, y lo que se le acredita al conductor por uno pagado por transferencia.
+// Nunca dos veces por el mismo alquiler.
+await conn.query("ALTER TABLE wallet_entries MODIFY kind ENUM('topup','commission','bonus','adjustment','rental_commission','rental_payout') NOT NULL");
+await addColumn('wallet_entries', 'rental_id', 'INT NULL');
+{
+  const [ix] = await conn.query("SELECT 1 FROM information_schema.statistics WHERE table_schema = ? AND table_name = 'wallet_entries' AND index_name = 'one_rental'", [DB_NAME]);
+  if (!ix.length) await conn.query('ALTER TABLE wallet_entries ADD UNIQUE KEY one_rental (kind, rental_id)');
+}
+
 console.log(`Base de datos "${DB_NAME}" lista.`);
 await conn.end();

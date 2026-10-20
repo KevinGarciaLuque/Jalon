@@ -22,7 +22,7 @@ app.use(helmet({
 }));
 app.use(cors({ origin: allowOrigin }));
 const smallJson = express.json({ limit: '10kb' });
-app.use((req, res, next) => (/^\/api\/driver\/(documents|topups)/.test(req.path) ? next() : smallJson(req, res, next)));
+app.use((req, res, next) => (/^\/api\/(driver\/(documents|topups)|rentals\/\d+\/receipt)/.test(req.path) ? next() : smallJson(req, res, next)));
 
 // Una línea JSON por petición a la API (método, ruta, estado y milisegundos), útil en los registros de Railway. Sin teléfonos ni contraseñas.
 if (isProd || process.env.LOG_REQUESTS === 'true') {

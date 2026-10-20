@@ -21,7 +21,19 @@ export async function anonymizeUser(t) {
   await pool.query("UPDATE messages SET text = '[mensaje eliminado]' WHERE sender_id = ?", [t.id]);
   await pool.query('DELETE FROM favorite_places WHERE user_id = ?', [t.id]);
   await pool.query('DELETE FROM trusted_contacts WHERE user_id = ?', [t.id]);
-  await pool.query('DELETE FROM vehicles WHERE driver_id = ?', [t.id]); // libera la placa
+  // Alquileres: los pendientes se cancelan y se borran sus datos personales (recogida, notas y comprobantes); los montos se conservan
+  await pool.query("UPDATE rental_bookings SET status = 'cancelled', cancelled_by = 'admin' WHERE (renter_id = ? OR owner_driver_id = ?) AND status IN ('requested','confirmed')", [t.id, t.id]);
+  const [rentalReceipts] = await pool.query('SELECT receipt_file FROM rental_bookings WHERE renter_id = ? AND receipt_file IS NOT NULL', [t.id]);
+  for (const r of rentalReceipts) await fs.rm(path.join(UPLOADS, r.receipt_file), { force: true });
+  await pool.query("UPDATE rental_bookings SET pickup_text = NULL, note = NULL, receipt_file = NULL, receipt_hash = NULL, reference = '[eliminado]', reference_key = NULL WHERE renter_id = ?", [t.id]);
+  // Su vehículo se borra y la placa queda libre. Si ya aparece en alquileres, se conserva sin datos para no romper ese historial.
+  const [[rented]] = await pool.query('SELECT COUNT(*) AS n FROM rental_bookings b JOIN vehicles v ON v.id = b.vehicle_id WHERE v.driver_id = ?', [t.id]);
+  if (rented.n) {
+    await pool.query("UPDATE rental_listings l JOIN vehicles v ON v.id = l.vehicle_id SET l.active = 0 WHERE v.driver_id = ?", [t.id]);
+    await pool.query("UPDATE vehicles SET plate = CONCAT('DEL', id), make = NULL, model = NULL, color = NULL, year = NULL WHERE driver_id = ?", [t.id]);
+  } else {
+    await pool.query('DELETE FROM vehicles WHERE driver_id = ?', [t.id]);
+  }
   // Los comprobantes de transferencia se borran; los montos del libro de cuentas se conservan (son registros contables)
   const [receipts] = await pool.query('SELECT receipt_file FROM topups WHERE driver_id = ? AND receipt_file IS NOT NULL', [t.id]);
   for (const r of receipts) await fs.rm(path.join(UPLOADS, r.receipt_file), { force: true });

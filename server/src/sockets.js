@@ -15,6 +15,7 @@ import { getRide, activeRideFor, ratingsOf, rideView, nearbyDrivers, openRidesNe
 import { walletGate, chargeCommission } from './services/balance.js';
 import { shareWithContacts } from './services/accounts.js';
 import { notifySos } from './services/sos.js';
+import { rentingNow } from './services/rentals.js';
 
 // ---------- Sockets ----------
 io.use(async (socket, next) => {
@@ -66,6 +67,8 @@ io.on('connection', async (socket) => {
       if (!busy) {
         const gate = await walletGate(user.id);
         if (gate.blocked) return socket.emit('driver:denied', { status: 'balance', balance: gate.balance, min: gate.min });
+        // Con un alquiler en curso (su carro está alquilado con él) no recibe viajes
+        if (await rentingNow(user.id)) return socket.emit('driver:denied', { status: 'rental' });
       }
       // Solo recibe solicitudes de la categoría de su vehículo (sin vehículo registrado cuenta como carro)
       const [[veh]] = await pool.query('SELECT category FROM vehicles WHERE driver_id = ?', [user.id]);

@@ -3,6 +3,39 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-20-alquiler-pasajero',
+    date: '2026-10-20',
+    title: 'Alquila un carro con conductor por días',
+    for: ['passenger'],
+    items: [
+      'Elige la fecha y cuántos días, mira los carros libres con su precio total y resérvalo.',
+      'Pagas en efectivo al empezar o por transferencia a Jalón (subes el comprobante y el equipo lo aprueba).',
+      'Cuando te confirman ves el teléfono del conductor y la placa. Lo encuentras en «¿Necesitas un carro todo el día?».',
+    ],
+  },
+  {
+    id: '2026-10-20-alquiler-conductor',
+    date: '2026-10-20',
+    title: 'Gana alquilando tu carro por días',
+    for: ['driver'],
+    items: [
+      'En «Alquiler de mi carro» publicas tu carro, contigo como conductor, con tu precio por día.',
+      'Aceptas o rechazas cada reserva, y la inicias y terminas desde ahí. Mientras dura un alquiler no recibes viajes.',
+      'En efectivo cobras tú y Jalón descuenta su comisión del saldo; por transferencia, te acreditamos el total menos la comisión.',
+    ],
+  },
+  {
+    id: '2026-10-20-alquiler-panel',
+    date: '2026-10-20',
+    title: 'Alquileres en el panel',
+    for: ['staff'],
+    items: [
+      'Pestaña «Alquileres»: pagos por transferencia por revisar (con el comprobante), y las reservas por estado.',
+      'Flota de Jalón: el superadmin agrega carros de la empresa con su precio; el equipo confirma esas reservas indicando quién maneja.',
+      'Se activa en Ajustes → Alquiler de carros por días (precio mínimo y máximo, días máximos y anticipación).',
+    ],
+  },
+  {
     id: '2026-10-20-categorias',
     date: '2026-10-20',
     title: 'Moto, Carro o Carro amplio',

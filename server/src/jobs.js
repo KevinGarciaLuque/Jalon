@@ -6,6 +6,7 @@ import { io } from './app.js';
 import { drivers, passengers, openRides, room } from './live.js';
 import { rideView, nearbyDrivers, expireOffers, expireStaleRides } from './services/rides.js';
 import { remindOpenAlerts } from './services/sos.js';
+import { expireRentals } from './services/rentals.js';
 
 // Las ofertas vencidas se revisan cada OFFER_SWEEP_MS (5 s por defecto)
 setInterval(() => expireOffers().catch(reportError), Number(process.env.OFFER_SWEEP_MS || 5000)).unref();
@@ -40,3 +41,8 @@ setInterval(() => expireStaleRides().catch(console.error), 30000);
   if (pending.length) console.log(`Se recuperaron ${pending.length} solicitud(es) abiertas tras el reinicio`);
   await expireStaleRides();
 }
+
+// Alquileres: los pedidos sin respuesta cuya fecha pasó y los confirmados que nunca empezaron se cancelan solos
+const expireRentalsNow = () => expireRentals().then((n) => n && console.log(`Se cancelaron ${n} alquiler(es) vencidos`)).catch(reportError);
+expireRentalsNow();
+setInterval(expireRentalsNow, 10 * 60 * 1000).unref();

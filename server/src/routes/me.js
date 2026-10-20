@@ -39,6 +39,7 @@ app.get('/api/me/export', authUser, async (req, res) => {
   const [reps] = await pool.query('SELECT ride_id, type, text, status, resolution, created_at FROM reports WHERE user_id = ? ORDER BY id', [id]);
   const [moves] = await pool.query('SELECT amount, kind, ride_id, note, created_at FROM wallet_entries WHERE user_id = ? ORDER BY id', [id]);
   const [tops] = await pool.query('SELECT amount, bank, reference, status, approved_amount, review_note, created_at FROM topups WHERE driver_id = ? ORDER BY id', [id]);
+  const [rentals] = await pool.query("SELECT id, IF(renter_id = ?, 'alquilé', 'alquilaron mi carro') AS rol, DATE_FORMAT(start_date, '%Y-%m-%d') AS desde, DATE_FORMAT(end_date, '%Y-%m-%d') AS hasta, days AS dias, total, payment AS pago, status AS estado, pickup_text AS recogida, created_at AS fecha FROM rental_bookings WHERE renter_id = ? OR owner_driver_id = ? ORDER BY id", [id, id, id]);
   res.set('Content-Disposition', 'attachment; filename="mis-datos-jalon.json"');
   res.json({
     generadoEl: new Date().toISOString(),
@@ -48,6 +49,7 @@ app.get('/api/me/export', authUser, async (req, res) => {
     mensajesQueEnvie: msgs.map((m) => ({ viaje: m.ride_id, texto: m.text, enviadoEl: m.created_at })),
     saldo: Number(u.balance || 0),
     movimientosDeSaldo: moves.map((m) => ({ monto: Number(m.amount), tipo: m.kind, viaje: m.ride_id, nota: m.note, fecha: m.created_at })),
+    alquileres: rentals.map((r) => ({ ...r, total: Number(r.total) })),
     recargas: tops.map((t) => ({ monto: Number(t.amount), banco: t.bank, referencia: t.reference, estado: t.status, montoAprobado: t.approved_amount == null ? null : Number(t.approved_amount), nota: t.review_note, fecha: t.created_at })),
     lugaresFavoritos: favs,
     contactosDeConfianza: contacts,

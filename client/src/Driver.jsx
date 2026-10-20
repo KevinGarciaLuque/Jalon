@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import { icons, useGeo, distanceKm, lempiras, minutes, useChat, useNow, wazeUrl, mapsUrl, apiGet, money2, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
 import DriverWallet from './DriverWallet.jsx';
+import DriverRental from './DriverRental.jsx';
 import { Avatar, CarMarker, Chat, FitTo, PriceStepper, PushToggle, Rate, RouteLine, SafetyBar, Stars, TimeRing } from './components.jsx';
 import ReportForm from './ReportForm.jsx';
 import DriverDocs from './DriverDocs.jsx';
@@ -44,6 +45,8 @@ export default function Driver({ socket, token, status, userId }) {
   const [previewId, setPreviewId] = useState(null); // solicitud que el conductor está mirando en el mapa (origen, destino y ruta)
   const [notApproved, setNotApproved] = useState(false);
   const [compact, setCompact] = useState(false); // en el celular, la hoja de abajo se puede achicar para ver más mapa
+  const [showRental, setShowRental] = useState(false); // alquiler de su carro por días
+  const [renting, setRenting] = useState(false); // tiene un alquiler en curso: no recibe viajes
   const posRef = useRef(pos);
   posRef.current = pos;
 
@@ -62,7 +65,7 @@ export default function Driver({ socket, token, status, userId }) {
     // Sin saldo suficiente el servidor no lo deja ponerse disponible: se abre la pantalla para recargar
     socket.on('driver:denied', (d) => {
       setOnline(false);
-      if (d?.status === 'balance') { loadWallet(); setShowWallet(true); } else setNotApproved(true);
+      if (d?.status === 'balance') { loadWallet(); setShowWallet(true); } else if (d?.status === 'rental') setRenting(true); else setNotApproved(true);
     });
     socket.on('wallet:update', loadWallet);
     socket.on('wallet:low', () => { setOnline(false); loadWallet(); });
@@ -163,6 +166,8 @@ export default function Driver({ socket, token, status, userId }) {
             )}
             {ride?.status === 'completed' && <button onClick={() => setReporting(true)}>⚠ Reportar un problema con este viaje</button>}
             {showWallet && wallet && <DriverWallet token={token} wallet={wallet} reload={loadWallet} onClose={() => setShowWallet(false)} />}
+            {showRental && <DriverRental token={token} socket={socket} onClose={() => { setShowRental(false); setRenting(false); }} />}
+            {renting && <div className="hint">Tienes un alquiler en curso: no recibes viajes hasta terminarlo en «Alquiler de mi carro».</div>}
             {reporting && ride && <ReportForm rideId={ride.id} token={token} onClose={() => setReporting(false)} />}
             {ride?.status === 'completed' && chat.open && <Chat chat={chat} meId={userId} quick={['Encontré tu objeto, ¿dónde nos vemos?']} />}
             {ride?.status === 'completed' && ride.passenger && (
@@ -185,6 +190,7 @@ export default function Driver({ socket, token, status, userId }) {
               </div>
             )}
             {wallet?.enabled && wallet.balance < wallet.minBalance && <div className="hint danger">Tu saldo está por debajo del mínimo: recarga para volver a recibir viajes.</div>}
+            {status === 'active' && !online && <button className="sm left" onClick={() => setShowRental(true)}>Alquiler de mi carro por días</button>}
             {!online && status !== 'pending' && <PushToggle token={token} why="Activa las notificaciones para recibir viajes cercanos y avisos aunque cierres la app." />}
             <button className={online ? 'danger' : 'primary'} onClick={toggle} disabled={!pos || status === 'pending'}>
               {online ? 'Desconectarme' : 'Ponerme disponible'}

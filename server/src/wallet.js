@@ -17,6 +17,12 @@ export const SETTING_DEFAULTS = {
   bank_note: '',
   staff_2fa_required: '1', // el personal debe usar la verificación en dos pasos; el superadmin puede apagarla
   ...FARE_DEFAULTS, // tarifas por categoría (fares.js)
+  // Alquiler de carros por días (apagado hasta que el superadmin lo active)
+  rental_enabled: '0',
+  rental_price_min: '300', // precio por día que puede poner un conductor
+  rental_price_max: '5000',
+  rental_max_days: '7',
+  rental_advance_days: '30', // con cuántos días de anticipación se puede reservar
 };
 
 export const money = (n) => Math.round(Number(n) * 100) / 100;
@@ -63,6 +69,11 @@ export function validateSettings(input, current) {
     bank_holder: () => text('bank_holder', 100),
     bank_note: () => text('bank_note', 400),
     staff_2fa_required: () => { values.staff_2fa_required = [false, '0', 0].includes(input.staff_2fa_required) ? '0' : '1'; return null; },
+    rental_enabled: () => { values.rental_enabled = [true, '1', 1].includes(input.rental_enabled) ? '1' : '0'; return null; },
+    rental_price_min: () => num('rental_price_min', 1, 50000, 'El precio mínimo por día'),
+    rental_price_max: () => num('rental_price_max', 1, 50000, 'El precio máximo por día'),
+    rental_max_days: () => num('rental_max_days', 1, 30, 'Los días máximos de un alquiler'),
+    rental_advance_days: () => num('rental_advance_days', 0, 180, 'Los días de anticipación'),
     // Tarifas: base, por km, por minuto y mínima de cada categoría
     ...Object.fromEntries(CATEGORIES.flatMap((c) => [
       [`fare_${c}_base`, () => num(`fare_${c}_base`, 0, 1000, `La tarifa base de ${CATEGORY_LABEL[c]}`)],
@@ -78,6 +89,7 @@ export function validateSettings(input, current) {
   }
   const next = { ...current, ...values };
   if (Number(next.topup_max) < Number(next.topup_min)) return { error: 'La recarga máxima no puede ser menor que la mínima' };
+  if (Number(next.rental_price_max) < Number(next.rental_price_min)) return { error: 'El precio máximo por día no puede ser menor que el mínimo' };
   // Con la comisión activa los conductores tienen que saber a dónde transferir
   if (next.commission_enabled === '1' && !(next.bank_name && next.bank_account && next.bank_holder))
     return { error: 'Antes de activar la comisión completa los datos de la cuenta de Jalón (banco, número y titular)' };
@@ -86,12 +98,12 @@ export function validateSettings(input, current) {
 
 // Mueve el saldo de un conductor dentro de una transacción: escribe el movimiento y actualiza el saldo juntos o ninguno.
 // Devuelve el saldo nuevo, o null si ese movimiento ya existía (la comisión de un viaje o la recarga de una solicitud no se cobran dos veces).
-export async function postEntry(pool, { userId, amount, kind, rideId = null, topupId = null, note = null, by = null }) {
+export async function postEntry(pool, { userId, amount, kind, rideId = null, topupId = null, rentalId = null, note = null, by = null }) {
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
     try {
-      await conn.query('INSERT INTO wallet_entries (user_id, amount, kind, ride_id, topup_id, note, created_by) VALUES (?,?,?,?,?,?,?)', [userId, money(amount), kind, rideId, topupId, note, by]);
+      await conn.query('INSERT INTO wallet_entries (user_id, amount, kind, ride_id, topup_id, rental_id, note, created_by) VALUES (?,?,?,?,?,?,?,?)', [userId, money(amount), kind, rideId, topupId, rentalId, note, by]);
     } catch (e) {
       await conn.rollback();
       if (e.code === 'ER_DUP_ENTRY') return null;

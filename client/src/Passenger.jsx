@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import { icons, useGeo, apiGet, apiPost, lempiras, minutes, useChat, useNow, CATEGORIES, CATEGORY_LABEL, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
 import ReportForm from './ReportForm.jsx';
+import Rentals from './Rentals.jsx';
 import { AddressSearch, Avatar, CarMarker, Chat, FitTo, PriceStepper, Rate, RouteLine, SafetyBar, Stars, TimeRing } from './components.jsx';
 
 function Recenter({ pos }) {
@@ -52,6 +53,7 @@ export default function Passenger({ socket, token, userId }) {
   const [driverPos, setDriverPos] = useState(null);
   const [error, setError] = useState('');
   const [compact, setCompact] = useState(false); // en el celular, la hoja de abajo se puede achicar para ver más mapa
+  const [renting, setRenting] = useState(false); // pantalla de alquilar un carro por días
 
   const chat = useChat(socket, ride, userId);
   const active = ride && ['requested', 'accepted', 'arrived', 'started'].includes(ride.status);
@@ -212,6 +214,7 @@ export default function Passenger({ socket, token, userId }) {
               <button className="link left" onClick={saveFav}>⭐ Guardar este lugar</button>
             )}
 
+            {!dest && <button className="link left" onClick={() => setRenting(true)}>¿Necesitas un carro todo el día? Alquila uno con conductor</button>}
             {dest && !preview && !previewError && <div className="pulse">Calculando ruta…</div>}
             {previewError && <div className="error">{previewError}</div>}
             {dest && preview && (
@@ -323,6 +326,7 @@ export default function Passenger({ socket, token, userId }) {
           </>
         )}
       </div>
+      {renting && <Rentals token={token} socket={socket} onClose={() => setRenting(false)} />}
     </div>
   );
 }

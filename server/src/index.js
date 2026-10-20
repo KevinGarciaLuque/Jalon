@@ -13,6 +13,7 @@ import './routes/me.js';
 import './routes/driver.js';
 import './routes/admin-users.js';
 import './routes/admin-ops.js';
+import './routes/rentals.js';
 import './sockets.js';
 import './jobs.js';
 
