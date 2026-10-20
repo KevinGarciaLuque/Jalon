@@ -3,6 +3,16 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-20-servidor-modular',
+    date: '2026-10-20',
+    title: 'Servidor ordenado por partes',
+    for: ['staff'],
+    items: [
+      'El servidor se dividió en archivos por tema (ingreso, viajes, panel, billetera, tiempo real…). Para pasajeros y conductores todo funciona igual.',
+      'Los próximos cambios (vehículos, ganancias, reportes por fecha) serán más rápidos y con menos riesgo de romper otra cosa.',
+    ],
+  },
+  {
     id: '2026-10-20-mapa-carro',
     date: '2026-10-20',
     title: 'Mapa más bonito: el carro se mueve y gira',

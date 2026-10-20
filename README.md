@@ -83,7 +83,7 @@ El servicio mantiene en memoria las posiciones de los conductores, así que debe
 ## App instalable (PWA) y páginas legales
 
 - La web se puede instalar en el celular ("Instalar la app" en Mi cuenta y en la pantalla de entrada; en iPhone: Compartir → Agregar a inicio). Usa `client/public/manifest.webmanifest`, los íconos de `client/public/icons/` y un service worker mínimo (`client/public/sw.js`) que nunca guarda la API ni los sockets.
-- `/terminos` y `/privacidad` son las páginas legales (`client/src/Legal.jsx`). Al registrarse hay que aceptarlas y el servidor guarda cuándo y qué versión (`users.terms_accepted_at` y `terms_version`). Si cambias el texto de forma importante, sube `TERMS_VERSION` en `server/src/index.js`.
+- `/terminos` y `/privacidad` son las páginas legales (`client/src/Legal.jsx`). Al registrarse hay que aceptarlas y el servidor guarda cuándo y qué versión (`users.terms_accepted_at` y `terms_version`). Si cambias el texto de forma importante, sube `TERMS_VERSION` en `server/src/legal.js`.
 - **Antes de lanzar:** define la variable `VITE_CONTACT_EMAIL` en Railway (se usa al compilar la web) con el correo de soporte que aparece en las páginas legales, y haz que un abogado revise los textos.
 - En Railway, Settings → Healthcheck Path: `/api/health` (responde 503 si no hay base de datos).
 
@@ -225,3 +225,30 @@ El botón **Novedades** (arriba, junto a Cuenta) muestra un resumen corto de cad
 - **Tope de eventos por conexión.** Máximo 30 mensajes por evento cada 10 s (60 para la ubicación). Los de más se descartan y, si piden respuesta, reciben «Demasiadas acciones seguidas».
 - **Índice `idx_status_created`** en `rides (status, created_at)` para el panel, las solicitudes abiertas y los vencimientos (se crea solo al arrancar).
 - Pruebas: `test/phase12.mjs` simula las aceptaciones simultáneas y el exceso de eventos.
+
+## Etapa 2: estructura del servidor
+
+El servidor ya no es un solo archivo de 2000 líneas: cada tema vive en el suyo. El comportamiento es el mismo (las 652 comprobaciones de `npm test` pasan igual que antes).
+
+| Archivo | Qué tiene |
+|---|---|
+| `server/src/index.js` | Arranque: carga las partes en orden, entrega la web compilada, maneja errores y cierra con orden |
+| `config.js` | Variables de entorno, constantes y el reporte de errores (Sentry) |
+| `app.js` | Express (seguridad, CORS, registros, límites de intentos), el servidor HTTP y Socket.IO |
+| `live.js` | Lo que vive en memoria: conductores, pasajeros y solicitudes abiertas (por eso una sola instancia) |
+| `access.js` | Sesiones, contraseñas, roles y permisos del personal, auditoría |
+| `notify.js` | Notificaciones al celular |
+| `util.js` | Validaciones pequeñas compartidas |
+| `routes/auth.js` | Registro, ingreso, códigos, contraseñas y verificación en dos pasos |
+| `routes/me.js` | Datos de la persona, lugares, contactos, viajes, reportes, notificaciones y mapa |
+| `routes/driver.js` | Saldo, recargas y documentos del conductor |
+| `routes/admin-users.js` | Panel: indicadores, usuarios, personal, documentos, registro |
+| `routes/admin-ops.js` | Panel: mapa en vivo, recargas y saldo, ajustes, reportes, emergencias |
+| `services/rides.js` | Reglas del viaje: vista, cercanos, tiempo de llegada, vencimientos, cancelar |
+| `services/balance.js` | Saldo en vivo: comisión y crédito de bienvenida |
+| `services/accounts.js` | Eliminar (anonimizar) cuentas y avisar a contactos de confianza |
+| `services/sos.js` | SMS de emergencia y recordatorios |
+| `sockets.js` | Tiempo real: conductor, pasajero, chat y botón de emergencia |
+| `jobs.js` | Tareas periódicas y recuperación de solicitudes al arrancar |
+
+Las piezas de más abajo no importan a las de más arriba (por ejemplo, `services/` no importa `routes/`), así no hay dependencias circulares.
