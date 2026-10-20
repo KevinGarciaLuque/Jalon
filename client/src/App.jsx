@@ -6,6 +6,7 @@ import Admin from './Admin.jsx';
 import History from './History.jsx';
 import Account from './Account.jsx';
 import TwoFactorSetup from './TwoFactorSetup.jsx';
+import News, { useNews } from './News.jsx';
 import { connectSocket } from './lib.js';
 
 const STAFF = ['superadmin', 'admin', 'support'];
@@ -22,6 +23,8 @@ export default function App() {
   const [notice, setNotice] = useState('');
   const [showHistory, setShowHistory] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
+  const [showNews, setShowNews] = useState(false);
+  const { news, unseen, markSeen } = useNews(session?.user.role);
   const [accountStatus, setAccountStatus] = useState(() => loadSession()?.user.status);
 
   useEffect(() => {
@@ -80,6 +83,9 @@ export default function App() {
         <b>Jalón</b>
         <span>{session.user.name} · {ROLE_NAME[session.user.role]}</span>
         {!STAFF.includes(session.user.role) && !session.user.mustChangePassword && <button className="link" onClick={() => setShowHistory(true)}>Historial</button>}
+        <button className="link news-btn" aria-label={unseen ? 'Novedades (hay algo nuevo)' : 'Novedades'} onClick={() => { setShowNews(true); markSeen(); }}>
+          <span className="news-icon" aria-hidden="true">✨</span><span className="news-label">Novedades</span>{unseen && <i className="news-dot" />}
+        </button>
         <button className="link" onClick={() => setShowAccount(true)}>Cuenta</button>
         <button className="link" onClick={() => logout()}>Salir</button>
       </header>
@@ -105,6 +111,7 @@ export default function App() {
           onDone={() => save({ ...session, user: { ...session.user, mustEnrollTwoFactor: false, twoFactorEnabled: true } })}
         />
       )}
+      {showNews && <News news={news} onClose={() => setShowNews(false)} />}
       {showHistory && <History token={session.token} role={session.user.role} onClose={() => setShowHistory(false)} />}
     </div>
   );

@@ -129,7 +129,7 @@ Esto mide el servidor y la base de datos, no redes móviles ni la distancia a Ra
 
 ## Fase 7: seguridad y privacidad
 
-**Verificación en dos pasos (obligatoria para el personal).** Superadmin, administrador y soporte deben activarla antes de usar el panel: escanean un QR con Google Authenticator (o Microsoft Authenticator, Authy, 1Password), confirman con un código y guardan 10 códigos de respaldo (de un solo uso). Al entrar, la contraseña sola no da sesión; falta el código. Cinco códigos incorrectos bloquean la verificación 15 minutos, un mismo código no sirve dos veces, y el secreto se guarda cifrado.
+**Verificación en dos pasos (obligatoria para el personal, salvo que el superadmin la apague).** El superadmin puede apagarla o encenderla en el panel → **Ajustes → Seguridad del personal**: apagada, el personal entra solo con su contraseña; al encenderla de nuevo, quien ya la tenía configurada vuelve a necesitar el código. Viene encendida. Mientras esté encendida, superadmin, administrador y soporte deben activarla antes de usar el panel: escanean un QR con Google Authenticator (o Microsoft Authenticator, Authy, 1Password), confirman con un código y guardan 10 códigos de respaldo (de un solo uso). Al entrar, la contraseña sola no da sesión; falta el código. Cinco códigos incorrectos bloquean la verificación 15 minutos, un mismo código no sirve dos veces, y el secreto se guarda cifrado.
 - Si alguien pierde el teléfono: usa un código de respaldo, o el superadmin abre su ficha y pulsa **Restablecer verificación en dos pasos**.
 - Si el **superadmin** pierde el teléfono *y* los códigos: define en Railway `RESET_2FA_FOR=<su teléfono>`, reinicia, entra y vuelve a activarla; **después quita la variable**.
 
@@ -213,3 +213,15 @@ Pestaña **Mapa en vivo** del panel. Muestra a los conductores conectados en un 
 - **Si el superadmin olvida la suya:** en Railway define `RESET_PASSWORD_FOR=<su teléfono>` y `RESET_PASSWORD_TO=<contraseña nueva>`, reinicia el servicio, entra, y **borra las dos variables**. Solo funciona con cuentas del personal. (Para perder el teléfono del autenticador existe `RESET_2FA_FOR`.)
 
 **Agregar un pasajero (solo superadmin):** en Usuarios, «➕ Agregar pasajero» (nombre, teléfono y correo opcional). Se genera una contraseña temporal que se muestra una sola vez; la persona debe cambiarla al entrar. No repite teléfono ni correo y queda en el Registro. Esa cuenta nace sin aceptación de términos registrada.
+
+## Novedades
+
+El botón **Novedades** (arriba, junto a Cuenta) muestra un resumen corto de cada cambio del sistema; un punto verde avisa cuando hay algo que la persona no ha visto. Las entradas están en `client/src/changelog.js`, la más nueva primero, y cada una dice quién la ve (`all`, `passenger`, `driver` o `staff`). **Cada cambio que se publique debe agregar su entrada ahí.**
+
+## Etapa 1: estabilización
+
+- **Sin asignaciones dobles.** Aceptar una oferta, avanzar el estado del viaje y cancelar solo cambian el viaje si sigue en el estado esperado (la condición va en el `UPDATE`), y el conductor se reserva antes de cualquier espera. Así, un doble toque o dos pasajeros aceptando a la vez al mismo conductor dejan un solo conductor por viaje y un solo viaje por conductor; una cancelación que llega justo cuando el viaje inicia no lo deja cancelado ya empezado.
+- **Los despliegues no cancelan solicitudes.** Al arrancar, el servidor vuelve a cargar las solicitudes que seguían buscando conductor (de los últimos 10 minutos); los conductores las reciben al reconectarse. Las ofertas hechas antes del reinicio ya no se pueden aceptar (el conductor tiene que volver a ofertar).
+- **Tope de eventos por conexión.** Máximo 30 mensajes por evento cada 10 s (60 para la ubicación). Los de más se descartan y, si piden respuesta, reciben «Demasiadas acciones seguidas».
+- **Índice `idx_status_created`** en `rides (status, created_at)` para el panel, las solicitudes abiertas y los vencimientos (se crea solo al arrancar).
+- Pruebas: `test/phase12.mjs` simula las aceptaciones simultáneas y el exceso de eventos.

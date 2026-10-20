@@ -88,6 +88,13 @@ const [idx] = await conn.query(
 );
 if (!idx.length) await conn.query('CREATE INDEX idx_share_token ON rides (share_token)');
 
+// Para buscar viajes por estado (solicitudes abiertas, viajes activos del panel, vencimientos) sin recorrer toda la tabla
+const [statusIdx] = await conn.query(
+  "SELECT 1 FROM information_schema.statistics WHERE table_schema = ? AND table_name = 'rides' AND index_name = 'idx_status_created'",
+  [DB_NAME]
+);
+if (!statusIdx.length) await conn.query('CREATE INDEX idx_status_created ON rides (status, created_at)');
+
 await conn.query(`
   CREATE TABLE IF NOT EXISTS ratings (
     id INT AUTO_INCREMENT PRIMARY KEY,

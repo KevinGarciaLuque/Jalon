@@ -1479,6 +1479,10 @@ const room = (id) => `user:${id}`;
 
 const MAX_PRICE = 5000; // L
 const REQUEST_TTL_MIN = 10; // un viaje sin conductor se cancela solo
+// Máximo de mensajes por evento y por conexión cada 10 s. Una persona real queda muy por debajo (el GPS manda ~1 por segundo).
+const SOCKET_WINDOW_MS = 10000;
+const SOCKET_LIMIT_DEFAULT = 30;
+const SOCKET_LIMITS = { 'driver:location': 60, 'passenger:location': 60 };
 const isNum = (n) => typeof n === 'number' && Number.isFinite(n);
 const isPoint = (p) => p && isNum(p.lat) && isNum(p.lng) && Math.abs(p.lat) <= 90 && Math.abs(p.lng) <= 180;
 const isPrice = (n) => isNum(n) && n >= 1 && n <= MAX_PRICE;
@@ -1594,10 +1598,13 @@ async function expireOffers() {
 setInterval(() => expireOffers().catch(reportError), Number(process.env.OFFER_SWEEP_MS || 5000)).unref();
 
 // Cancela un viaje activo (by: passenger | driver | admin | system) y avisa a las dos partes
-async function cancelRide(rideId, by) {
+// `from`: estados desde los que esta persona puede cancelar. La condición va en el UPDATE para que una cancelación
+// que llega a la vez que el conductor inicia (o completa) el viaje no lo deje cancelado ya empezado.
+async function cancelRide(rideId, by, from = ['requested', 'accepted', 'arrived', 'started']) {
   const ride = await getRide(rideId);
-  if (!ride || !['requested', 'accepted', 'arrived', 'started'].includes(ride.status)) return null;
-  await pool.query('UPDATE rides SET status = "cancelled", cancelled_by = ? WHERE id = ?', [by, rideId]);
+  if (!ride || !from.includes(ride.status)) return null;
+  const [r] = await pool.query('UPDATE rides SET status = "cancelled", cancelled_by = ? WHERE id = ? AND status IN (?)', [by, rideId, from]);
+  if (r.affectedRows !== 1) return null;
   closeOpenRide(rideId);
   if (ride.driver_id) releaseDriver(ride.driver_id);
   const view = await rideView(await getRide(rideId));
@@ -1640,7 +1647,20 @@ io.use(async (socket, next) => {
 io.on('connection', async (socket) => {
   const user = socket.user;
   // Un error dentro de un manejador no debe tumbar el servidor
-  const on = (ev, fn) => socket.on(ev, (...args) => Promise.resolve(fn(...args)).catch((e) => reportError(Object.assign(e, { event: ev }))));
+  // Y ningún evento se acepta sin tope: una app modificada podría inundar el servidor (los excedentes se descartan)
+  const counts = new Map(); // evento -> { n, since }
+  const allowed = (ev) => {
+    const c = counts.get(ev);
+    if (!c || Date.now() - c.since > SOCKET_WINDOW_MS) return counts.set(ev, { n: 1, since: Date.now() }) && true;
+    return ++c.n <= (SOCKET_LIMITS[ev] || SOCKET_LIMIT_DEFAULT);
+  };
+  const on = (ev, fn) => socket.on(ev, (...args) => {
+    if (!allowed(ev)) {
+      const ack = args[args.length - 1];
+      return typeof ack === 'function' && ack({ error: 'Demasiadas acciones seguidas. Espera un momento.' });
+    }
+    return Promise.resolve(fn(...args)).catch((e) => reportError(Object.assign(e, { event: ev })));
+  });
   socket.join(room(user.id));
   if (user.role === 'driver') socket.join('drivers');
   socket.emit('account:status', { status: user.status });
@@ -1708,14 +1728,16 @@ io.on('connection', async (socket) => {
     on('ride:driver_cancel', async ({ rideId }) => {
       const ride = await getRide(rideId);
       if (!ride || ride.driver_id !== user.id || !['accepted', 'arrived'].includes(ride.status)) return;
-      await cancelRide(rideId, 'driver');
+      await cancelRide(rideId, 'driver', ['accepted', 'arrived']);
     });
 
     on('ride:status', async ({ rideId, status }) => {
       const order = { arrived: 'accepted', started: 'arrived', completed: 'started' };
       const ride = await getRide(rideId);
       if (!ride || ride.driver_id !== user.id || order[status] !== ride.status) return;
-      await pool.query('UPDATE rides SET status = ? WHERE id = ?', [status, rideId]);
+      // Solo avanza desde el estado anterior: si justo lo cancelaron (o llegó un doble toque), no se pisa
+      const [moved] = await pool.query('UPDATE rides SET status = ? WHERE id = ? AND driver_id = ? AND status = ?', [status, rideId, user.id, order[status]]);
+      if (moved.affectedRows !== 1) return socket.emit('ride:state', await rideView(await getRide(rideId)));
       if (status === 'completed') {
         releaseDriver(user.id);
         chargeCommission(ride).catch(reportError); // se descuenta del saldo del conductor; sin await para no retrasar la respuesta
@@ -1781,10 +1803,16 @@ io.on('connection', async (socket) => {
         await pool.query('UPDATE offers SET status = "rejected" WHERE id = ?', [offer.id]);
         return socket.emit('offer:invalid', { offerId: offer.id });
       }
-
-      await pool.query('UPDATE rides SET driver_id = ?, final_price = ?, status = "accepted" WHERE id = ?', [offer.driver_id, offer.price, ride.id]);
-      await pool.query('UPDATE offers SET status = IF(id = ?, "accepted", "rejected") WHERE ride_id = ?', [offer.id, ride.id]);
+      // El conductor se reserva antes de cualquier espera: si dos pasajeros aceptan a la vez ofertas suyas, solo uno se lo lleva
       d.available = false;
+
+      // El viaje solo se asigna si sigue buscando conductor (doble toque, o dos ofertas aceptadas a la vez)
+      const [assigned] = await pool.query('UPDATE rides SET driver_id = ?, final_price = ?, status = "accepted" WHERE id = ? AND status = "requested"', [offer.driver_id, offer.price, ride.id]);
+      if (assigned.affectedRows !== 1) {
+        releaseDriver(offer.driver_id);
+        return socket.emit('offer:invalid', { offerId: offer.id });
+      }
+      await pool.query('UPDATE offers SET status = IF(id = ?, "accepted", "rejected") WHERE ride_id = ?', [offer.id, ride.id]);
       closeOpenRide(ride.id);
 
       const view = await rideView(await getRide(ride.id));
@@ -1817,7 +1845,7 @@ io.on('connection', async (socket) => {
     on('ride:cancel', async ({ rideId }) => {
       const ride = await getRide(rideId);
       if (!ride || ride.passenger_id !== user.id || !['requested', 'accepted', 'arrived'].includes(ride.status)) return;
-      await cancelRide(rideId, 'passenger');
+      await cancelRide(rideId, 'passenger', ['requested', 'accepted', 'arrived']);
     });
   }
 
@@ -1946,12 +1974,19 @@ async function expireStaleRides() {
     `SELECT id, passenger_id FROM rides WHERE status = 'requested' AND created_at < NOW() - INTERVAL ? MINUTE`,
     [REQUEST_TTL_MIN]
   );
-  for (const r of stale) await cancelRide(r.id, 'system');
+  for (const r of stale) await cancelRide(r.id, 'system', ['requested']);
 }
 setInterval(() => expireStaleRides().catch(console.error), 30000);
 
-// Al reiniciar, las solicitudes abiertas se pierden de memoria: se cancelan para no dejar viajes huérfanos
-await pool.query("UPDATE rides SET status = 'cancelled', cancelled_by = 'system' WHERE status = 'requested'");
+// Al reiniciar (p. ej. en cada despliegue) las solicitudes que siguen buscando conductor se vuelven a cargar en memoria:
+// los conductores las reciben al reconectarse y el vencimiento normal (REQUEST_TTL_MIN) cancela las que ya eran viejas.
+// Las ofertas pendientes de antes del reinicio no se pueden aceptar (el conductor aún no se reconectó) y la pantalla las quita.
+{
+  const [pending] = await pool.query("SELECT * FROM rides WHERE status = 'requested' AND created_at > NOW() - INTERVAL ? MINUTE", [REQUEST_TTL_MIN]);
+  for (const r of pending) openRides.set(r.id, await rideView(r));
+  if (pending.length) console.log(`Se recuperaron ${pending.length} solicitud(es) abiertas tras el reinicio`);
+  await expireStaleRides();
+}
 
 // En producción el mismo servidor entrega la web ya compilada (client/dist), incluida /t/<código> del seguimiento
 const DIST = path.join(HERE, '..', '..', 'client', 'dist');
