@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import { icons, useGeo, distanceKm, lempiras, minutes, useChat, useNow, wazeUrl, mapsUrl, apiGet, money2, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
 import DriverWallet from './DriverWallet.jsx';
-import { Chat, FitTo, PushToggle, Rate, SafetyBar, Stars } from './components.jsx';
+import { CarMarker, Chat, FitTo, PushToggle, Rate, RouteLine, SafetyBar, Stars } from './components.jsx';
 import ReportForm from './ReportForm.jsx';
 import DriverDocs from './DriverDocs.jsx';
 
@@ -111,9 +111,9 @@ export default function Driver({ socket, token, status, userId }) {
           <MapContainer center={[pos.lat, pos.lng]} zoom={15} style={{ height: '100%' }}>
             <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
             <Recenter pos={pos} />
-            <Marker
-              position={[pos.lat, pos.lng]}
-              icon={icons.car}
+            <CarMarker
+              position={pos}
+              duration={900}
               draggable={denied}
               eventHandlers={{ dragend: (e) => setPos({ lat: e.target.getLatLng().lat, lng: e.target.getLatLng().lng }) }}
             />
@@ -123,21 +123,21 @@ export default function Driver({ socket, token, status, userId }) {
             {!active && online && preview && (
               <>
                 <Marker position={[preview.dest_lat, preview.dest_lng]} icon={icons.dest} />
-                {preview.route?.length > 1 && <Polyline positions={preview.route} pathOptions={{ color: '#f59e0b', weight: 5, opacity: 0.9 }} />}
+                {preview.route?.length > 1 && <RouteLine positions={preview.route} color="#f59e0b" />}
                 <FitTo points={preview.route?.length > 1 ? preview.route : [[preview.origin_lat, preview.origin_lng], [preview.dest_lat, preview.dest_lng]]} />
               </>
             )}
             {active && <Marker position={[ride.origin_lat, ride.origin_lng]} icon={icons.me} />}
             {active && <Marker position={[ride.dest_lat, ride.dest_lng]} icon={icons.dest} />}
-            {active && ride.route && <Polyline positions={ride.route} pathOptions={{ color: '#0a7d4f', weight: 5, opacity: 0.85 }} />}
-            {active && ride.status === 'accepted' && eta?.rideId === ride.id && eta.coords && <Polyline positions={eta.coords} pathOptions={{ color: '#2563eb', weight: 5, dashArray: '8 8' }} />}
+            {active && ride.route && <RouteLine positions={ride.route} />}
+            {active && ride.status === 'accepted' && eta?.rideId === ride.id && eta.coords && <RouteLine positions={eta.coords} color="#2563eb" dashed />}
             {active && <FitTo points={ride.route?.length > 1 ? ride.route : [[ride.origin_lat, ride.origin_lng], [ride.dest_lat, ride.dest_lng]]} />}
           </MapContainer>
         )}
       </div>
 
       <div className="sheet">
-        {denied && <div className="hint">Sin GPS: arrastra tu 🚕 para simular tu posición.</div>}
+        {denied && <div className="hint">Sin GPS: arrastra tu carro para simular tu posición.</div>}
 
         {!active && (
           <>

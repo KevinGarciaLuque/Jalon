@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Polyline, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import { icons, useGeo, apiGet, apiPost, lempiras, minutes, useChat, useNow, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
 import ReportForm from './ReportForm.jsx';
-import { AddressSearch, Chat, FitTo, Rate, SafetyBar, Stars } from './components.jsx';
+import { AddressSearch, CarMarker, Chat, FitTo, Rate, RouteLine, SafetyBar, Stars } from './components.jsx';
 
 function Recenter({ pos }) {
   const map = useMap();
@@ -30,8 +30,6 @@ const CANCELLED = {
   admin: 'El viaje fue cancelado por soporte',
   system: 'Nadie tomó tu viaje a tiempo. Intenta con un precio un poco mayor.',
 };
-
-const ROUTE_STYLE = { color: '#0a7d4f', weight: 5, opacity: 0.85 };
 
 const QUICK = ['Ya salgo', 'Dame 2 minutos', 'Estoy en la esquina', '¿Dónde estás?'];
 
@@ -171,12 +169,12 @@ export default function Passenger({ socket, token, userId }) {
                 eventHandlers={{ dragend: (e) => setPos({ lat: e.target.getLatLng().lat, lng: e.target.getLatLng().lng }) }}
               />
             )}
-            {showDrivers && drivers.map((d) => <Marker key={d.id} position={[d.lat, d.lng]} icon={icons.car} />)}
+            {showDrivers && drivers.map((d) => <CarMarker key={d.id} position={d} />)}
             {(dest || active) && (
               <Marker position={active ? [ride.dest_lat, ride.dest_lng] : [dest.lat, dest.lng]} icon={icons.dest} />
             )}
-            {active && driverPos && ride.status !== 'requested' && <Marker position={[driverPos.lat, driverPos.lng]} icon={icons.car} />}
-            {routeLine && <Polyline positions={routeLine} pathOptions={ROUTE_STYLE} />}
+            {routeLine && <RouteLine positions={routeLine} />}
+            {active && driverPos && ride.status !== 'requested' && <CarMarker position={driverPos} />}
           </MapContainer>
         )}
       </div>

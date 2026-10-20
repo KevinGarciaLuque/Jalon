@@ -3,6 +3,18 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-20-mapa-carro',
+    date: '2026-10-20',
+    title: 'Mapa más bonito: el carro se mueve y gira',
+    for: ['all'],
+    items: [
+      'El conductor ahora es un carro dibujado visto desde arriba, en el verde de Jalón, que se ve igual en cualquier celular.',
+      'El carro se desliza por el mapa en vez de saltar, y gira hacia la dirección en la que va.',
+      'Nuevos pines para el punto de recogida (verde) y el destino (bandera de cuadros).',
+      'La ruta tiene borde y sombra para que resalte sobre las calles.',
+    ],
+  },
+  {
     id: '2026-10-20-novedades',
     date: '2026-10-20',
     title: 'Nueva sección de Novedades',

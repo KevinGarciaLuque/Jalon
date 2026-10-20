@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import { apiGet, icons, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
-import { FitTo } from './components.jsx';
+import { CarMarker, FitTo, RouteLine } from './components.jsx';
 
 const STATUS = {
   accepted: 'El conductor va en camino a recoger al pasajero',
@@ -45,10 +45,10 @@ export default function Track({ token }) {
           <MapContainer center={points[0]} zoom={14} style={{ height: '100%' }}>
             <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
             <FitTo points={points} />
-            <Polyline positions={points} pathOptions={{ color: '#0a7d4f', weight: 5, opacity: 0.85 }} />
+            <RouteLine positions={points} />
             <Marker position={[data.origin.lat, data.origin.lng]} icon={icons.me} />
             <Marker position={[data.dest.lat, data.dest.lng]} icon={icons.dest} />
-            {data.driverPos && <Marker position={[data.driverPos.lat, data.driverPos.lng]} icon={icons.car} />}
+            {data.driverPos && <CarMarker position={data.driverPos} duration={3800} />}
           </MapContainer>
         </div>
         <div className="sheet">
