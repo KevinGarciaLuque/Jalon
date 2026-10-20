@@ -4,5 +4,6 @@
 export const drivers = new Map(); // userId -> { id, name, vehicle, plate, lat, lng, available }
 export const passengers = new Map(); // userId -> { id, lat, lng }
 export const openRides = new Map(); // rideId -> ride listo para enviar a conductores
+export const declined = new Map(); // rideId -> Set de conductores que la rechazaron (no se les vuelve a mostrar, salvo que suba el precio)
 
 export const room = (id) => `user:${id}`;

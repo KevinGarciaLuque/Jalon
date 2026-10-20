@@ -182,7 +182,7 @@ try {
   await shot(driver, '2-conductor-solicitud');
   await click(driver, 'Aceptar L');
   check('pasajero recibe la oferta con datos del conductor', await see(pass, 'Toyota Corolla blanco'));
-  check('la oferta muestra cuánto tiempo vale (cuenta regresiva)', await see(pass, 'vence en'));
+  check('la oferta muestra cuánto tiempo vale (anillo de cuenta regresiva)', !!(await pass.waitForSelector('.offer svg.ring[aria-label^="Quedan"]', { timeout: 8000 }).catch(() => null)));
   await shot(pass, '3-pasajero-oferta');
   await pass.evaluate(() => [...document.querySelectorAll('.offer button.primary')][0].click());
 

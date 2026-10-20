@@ -4,7 +4,7 @@ import { distanceKm } from '../geo.js';
 import { getRoute } from '../maps.js';
 import { NEARBY_KM, ETA_EVERY_MS, SHOW_PARTNER_PHONES, REQUEST_TTL_MIN } from '../config.js';
 import { io } from '../app.js';
-import { drivers, passengers, openRides, room } from '../live.js';
+import { drivers, passengers, openRides, declined, room } from '../live.js';
 import { push } from '../notify.js';
 
 export async function getRide(id) {
@@ -61,12 +61,13 @@ export function nearbyDrivers(lat, lng) {
     .map(({ d }) => ({ id: d.id, name: d.name, vehicle: d.vehicle, lat: d.lat, lng: d.lng }));
 }
 
-export function openRidesNear(lat, lng) {
-  return [...openRides.values()].filter((r) => distanceKm(lat, lng, r.origin_lat, r.origin_lng) <= NEARBY_KM);
+export function openRidesNear(lat, lng, driverId) {
+  return [...openRides.values()].filter((r) => distanceKm(lat, lng, r.origin_lat, r.origin_lng) <= NEARBY_KM && !declined.get(r.id)?.has(driverId));
 }
 
 export function closeOpenRide(rideId) {
   openRides.delete(rideId);
+  declined.delete(rideId);
   io.to('drivers').emit('ride:closed', { rideId });
 }
 

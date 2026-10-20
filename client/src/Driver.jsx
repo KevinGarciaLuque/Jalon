@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import { icons, useGeo, distanceKm, lempiras, minutes, useChat, useNow, wazeUrl, mapsUrl, apiGet, money2, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
 import DriverWallet from './DriverWallet.jsx';
-import { CarMarker, Chat, FitTo, PushToggle, Rate, RouteLine, SafetyBar, Stars } from './components.jsx';
+import { Avatar, CarMarker, Chat, FitTo, PriceStepper, PushToggle, Rate, RouteLine, SafetyBar, Stars, TimeRing } from './components.jsx';
 import ReportForm from './ReportForm.jsx';
 import DriverDocs from './DriverDocs.jsx';
 
@@ -43,6 +43,7 @@ export default function Driver({ socket, token, status, userId }) {
   const [showWallet, setShowWallet] = useState(false);
   const [previewId, setPreviewId] = useState(null); // solicitud que el conductor está mirando en el mapa (origen, destino y ruta)
   const [notApproved, setNotApproved] = useState(false);
+  const [compact, setCompact] = useState(false); // en el celular, la hoja de abajo se puede achicar para ver más mapa
   const posRef = useRef(pos);
   posRef.current = pos;
 
@@ -53,7 +54,7 @@ export default function Driver({ socket, token, status, userId }) {
     socket.on('rides:open', setRequests);
     socket.on('ride:new', (r) => setRequests((cur) => [...cur.filter((x) => x.id !== r.id), r]));
     socket.on('ride:closed', ({ rideId }) => setRequests((cur) => cur.filter((x) => x.id !== rideId)));
-    socket.on('offer:sent', ({ rideId, price, ttl }) => setSent((cur) => ({ ...cur, [rideId]: { price, until: Date.now() + (ttl || 90) * 1000 } })));
+    socket.on('offer:sent', ({ rideId, price, ttl }) => setSent((cur) => ({ ...cur, [rideId]: { price, ttl: ttl || 90, until: Date.now() + (ttl || 90) * 1000 } })));
     // Si la oferta venció sin respuesta, puede volver a ofertar
     socket.on('offer:expired', ({ rideId }) => setSent((cur) => { const { [rideId]: _gone, ...rest } = cur; return rest; }));
     socket.on('ride:eta', setEta);
@@ -103,6 +104,12 @@ export default function Driver({ socket, token, status, userId }) {
   useEffect(() => { if (active) setOnline(true); }, [active]);
 
   const offer = (r, price) => socket.emit('offer:make', { rideId: r.id, price: Number(price) });
+  // Rechazar: deja de verla (el servidor la vuelve a mandar si el pasajero sube el precio)
+  const decline = (r) => {
+    socket.emit('ride:decline', { rideId: r.id });
+    setRequests((cur) => cur.filter((x) => x.id !== r.id));
+    if (previewId === r.id) setPreviewId(null);
+  };
 
   return (
     <div className="screen">
@@ -136,7 +143,8 @@ export default function Driver({ socket, token, status, userId }) {
         )}
       </div>
 
-      <div className="sheet">
+      <div className={`sheet${compact ? ' compact' : ''}`}>
+        <button type="button" className="grab" aria-label={compact ? 'Mostrar más' : 'Ver más mapa'} aria-expanded={!compact} onClick={() => setCompact(!compact)} />
         {denied && <div className="hint">Sin GPS: arrastra tu carro para simular tu posición.</div>}
 
         {!active && (
@@ -189,31 +197,37 @@ export default function Driver({ socket, token, status, userId }) {
                 {requests.map((r) => {
                   const away = pos ? distanceKm(pos, { lat: r.origin_lat, lng: r.origin_lng }) : 0;
                   const c = counter[r.id] ?? String(Math.round(r.offered_price));
+                  // Con el mismo precio del pasajero es aceptar; con otro, una contraoferta
+                  const same = Number(c) === Math.round(r.offered_price);
+                  const waiting = sent[r.id] && sent[r.id].until > now;
                   return (
                     <div className={`req ${r.id === previewId ? 'picked' : ''}`} key={r.id}>
                       <div className="row between">
-                        <span><b>{r.passenger?.name}</b> <Stars rating={r.passenger?.rating} /></span>
+                        <span className="row"><Avatar name={r.passenger?.name} /><span><b>{r.passenger?.name}</b> <Stars rating={r.passenger?.rating} /></span></span>
                         <span className="tag">{lempiras(r.offered_price)}</span>
                       </div>
-                      <div className="muted">Recogida a {away.toFixed(1)} km · viaje de {r.distance_km.toFixed(1)} km{r.duration_min ? ` (${minutes(r.duration_min)})` : ''}</div>
-                      <div className="muted">Recoger en: {r.origin_text || 'el punto marcado en el mapa'}</div>
-                      <div className="muted">Destino: {r.dest_text || 'el punto marcado en el mapa'}</div>
+                      <div className="route-list">
+                        <div><i className="dot-o" />{r.origin_text || 'Punto marcado en el mapa'} <span className="muted small">· a {away.toFixed(1)} km</span></div>
+                        <div><i className="dot-d" />{r.dest_text || 'Punto marcado en el mapa'} <span className="muted small">· {r.distance_km.toFixed(1)} km{r.duration_min ? `, ${minutes(r.duration_min)}` : ''}</span></div>
+                      </div>
                       <button className="sm" onClick={() => setPreviewId(r.id === previewId ? null : r.id)}>
-                        {r.id === previewId ? 'Ocultar ruta' : '🗺 Ver ruta en el mapa'}
+                        {r.id === previewId ? 'Ocultar ruta' : 'Ver ruta en el mapa'}
                       </button>
-                      {sent[r.id] && sent[r.id].until > now ? (
-                        <div className="pulse">Ofertaste {lempiras(sent[r.id].price)}. Esperando respuesta… ({Math.max(0, Math.ceil((sent[r.id].until - now) / 1000))} s)</div>
-                      ) : (
+                      {waiting ? (
                         <div className="row">
-                          <button className="primary sm" onClick={() => offer(r, r.offered_price)}>Aceptar {lempiras(r.offered_price)}</button>
-                          <input
-                            className="mini"
-                            inputMode="numeric"
-                            value={c}
-                            onChange={(e) => setCounter({ ...counter, [r.id]: e.target.value.replace(/\D/g, '') })}
-                          />
-                          <button className="sm" onClick={() => offer(r, c)}>Contraofertar</button>
+                          <TimeRing left={(sent[r.id].until - now) / 1000} total={sent[r.id].ttl} />
+                          <span className="muted">Ofertaste <b>{lempiras(sent[r.id].price)}</b>. Esperando respuesta del pasajero…</span>
                         </div>
+                      ) : (
+                        <>
+                          <PriceStepper value={c} label="Tu precio en lempiras" onChange={(v) => setCounter({ ...counter, [r.id]: v })} />
+                          <div className="row">
+                            <button onClick={() => decline(r)}>Rechazar</button>
+                            <button className="primary grow" disabled={!Number(c)} onClick={() => offer(r, same ? r.offered_price : c)}>
+                              {same ? `Aceptar ${lempiras(r.offered_price)}` : `Ofertar ${lempiras(c)}`}
+                            </button>
+                          </div>
+                        </>
                       )}
                     </div>
                   );
@@ -230,9 +244,10 @@ export default function Driver({ socket, token, status, userId }) {
               <span className="tag">{lempiras(ride.final_price)}</span>
             </div>
             <div className="offer">
-              <div>
-                <b>{ride.passenger?.name}</b> <Stars rating={ride.passenger?.rating} />
-                <div className="muted">{ride.dest_text ? `${ride.dest_text} · ` : ''}{ride.distance_km.toFixed(1)} km · efectivo</div>
+              <Avatar name={ride.passenger?.name} />
+              <div className="who">
+                <span><b>{ride.passenger?.name}</b> <Stars rating={ride.passenger?.rating} /></span>
+                <span className="muted small">{ride.dest_text ? `${ride.dest_text} · ` : ''}{ride.distance_km.toFixed(1)} km · efectivo</span>
               </div>
               <div className="row">
                 {ride.passenger?.phone && <a className="sm" href={`tel:${ride.passenger.phone}`}>Llamar</a>}

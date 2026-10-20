@@ -3,6 +3,28 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-20-rechazar-solicitud',
+    date: '2026-10-20',
+    title: 'Botón «Rechazar» y precio más fácil de ajustar',
+    for: ['driver'],
+    items: [
+      'Puedes rechazar una solicitud que no te interesa: deja de aparecerte, y si ya habías ofertado tu oferta se retira. Si el pasajero sube su precio, te vuelve a llegar.',
+      'Para contraofertar ajusta el precio con −5 / +5; el botón te dice si estás aceptando o mandando otro precio.',
+      'Un anillo te muestra cuánto tiempo le queda a tu oferta.',
+    ],
+  },
+  {
+    id: '2026-10-20-mapa-pantalla-completa',
+    date: '2026-10-20',
+    title: 'Mapa a pantalla completa',
+    for: ['passenger', 'driver'],
+    items: [
+      'En el celular el mapa ocupa toda la pantalla y la información sube en una hoja desde abajo. Toca la rayita de arriba de la hoja para achicarla y ver más mapa.',
+      'El mapa se acomoda solo para que la ruta no quede tapada por la hoja.',
+      'Cada oferta muestra con un anillo cuánto tiempo le queda, y el precio se ajusta de 5 en 5.',
+    ],
+  },
+  {
     id: '2026-10-20-diseno-base',
     date: '2026-10-20',
     title: 'Nueva imagen de Jalón',

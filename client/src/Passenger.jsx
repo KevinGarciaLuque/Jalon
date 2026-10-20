@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import { icons, useGeo, apiGet, apiPost, lempiras, minutes, useChat, useNow, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
 import ReportForm from './ReportForm.jsx';
-import { AddressSearch, CarMarker, Chat, FitTo, Rate, RouteLine, SafetyBar, Stars } from './components.jsx';
+import { AddressSearch, Avatar, CarMarker, Chat, FitTo, PriceStepper, Rate, RouteLine, SafetyBar, Stars, TimeRing } from './components.jsx';
 
 function Recenter({ pos }) {
   const map = useMap();
@@ -50,6 +50,7 @@ export default function Passenger({ socket, token, userId }) {
   const now = useNow();
   const [driverPos, setDriverPos] = useState(null);
   const [error, setError] = useState('');
+  const [compact, setCompact] = useState(false); // en el celular, la hoja de abajo se puede achicar para ver más mapa
 
   const chat = useChat(socket, ride, userId);
   const active = ride && ['requested', 'accepted', 'arrived', 'started'].includes(ride.status);
@@ -179,8 +180,9 @@ export default function Passenger({ socket, token, userId }) {
         )}
       </div>
 
-      <div className="sheet">
-        {denied && <div className="hint">Sin GPS: arrastra el pin 📍 para fijar tu posición, o busca tu dirección.</div>}
+      <div className={`sheet${compact ? ' compact' : ''}`}>
+        <button type="button" className="grab" aria-label={compact ? 'Mostrar más' : 'Ver más mapa'} aria-expanded={!compact} onClick={() => setCompact(!compact)} />
+        {denied && <div className="hint">Sin GPS: arrastra el pin verde para fijar tu posición, o busca tu dirección.</div>}
 
         {!active && !ended && (
           <>
@@ -189,14 +191,14 @@ export default function Passenger({ socket, token, userId }) {
               <span className="dot" />
             </div>
 
-            <AddressSearch icon="🟢" token={token} near={pos} placeholder="¿Dónde te recogemos?" value={origin ? origin.text : 'Mi ubicación'} onPick={setOrigin} />
+            <AddressSearch icon={<i className="dot-o" />} token={token} near={pos} placeholder="¿Dónde te recogemos?" value={origin ? origin.text : 'Mi ubicación'} onPick={setOrigin} />
             {origin && <button className="link left" onClick={() => setOrigin(null)}>📍 Usar mi ubicación</button>}
             {favs.length > 0 && !dest && (
               <div className="quick">
                 {favs.map((f) => <button key={f.id} className="sm" onClick={() => pickDest({ lat: f.lat, lng: f.lng, text: f.text })}>⭐ {f.label}</button>)}
               </div>
             )}
-            <AddressSearch icon="🏁" token={token} near={from} placeholder="¿A dónde vas? (o toca el mapa)" value={dest?.text || ''} onPick={pickDest} />
+            <AddressSearch icon={<i className="dot-d" />} token={token} near={from} placeholder="¿A dónde vas? (o toca el mapa)" value={dest?.text || ''} onPick={pickDest} />
             {dest && !favs.some((f) => Math.abs(f.lat - dest.lat) < 1e-4 && Math.abs(f.lng - dest.lng) < 1e-4) && (
               <button className="link left" onClick={saveFav}>⭐ Guardar este lugar</button>
             )}
@@ -205,19 +207,11 @@ export default function Passenger({ socket, token, userId }) {
             {previewError && <div className="error">{previewError}</div>}
             {dest && preview && (
               <>
-                <p className="muted">
-                  {preview.distanceKm.toFixed(1)} km · {minutes(preview.durationMin)}
-                  {preview.estimated && ' (estimado)'} · sugerido {lempiras(preview.suggestedPrice)}
-                </p>
-                <div className="price">
-                  <button onClick={() => { priceEdited.current = true; setPrice(String(Math.max(10, Number(price) - 5))); }}>−</button>
-                  <input
-                    value={price}
-                    inputMode="numeric"
-                    onChange={(e) => { priceEdited.current = true; setPrice(e.target.value.replace(/\D/g, '')); }}
-                  />
-                  <button onClick={() => { priceEdited.current = true; setPrice(String(Number(price) + 5)); }}>+</button>
+                <div className="row between">
+                  <span className="muted">{preview.distanceKm.toFixed(1)} km · {minutes(preview.durationMin)}{preview.estimated && ' (estimado)'}</span>
+                  <span className="muted">Sugerido <b>{lempiras(preview.suggestedPrice)}</b></span>
                 </div>
+                <PriceStepper value={price} label="Tu oferta en lempiras" onChange={(v) => { priceEdited.current = true; setPrice(v); }} />
                 {error && <div className="error">{error}</div>}
                 <button className="primary" disabled={!price} onClick={request}>Pedir Jalón por {lempiras(price || 0)}</button>
               </>
@@ -258,12 +252,13 @@ export default function Passenger({ socket, token, userId }) {
                 </div>
                 {liveOffers.map((o) => (
                   <div className="offer" key={o.id}>
-                    <div>
-                      <b>{o.driver.name}</b> <Stars rating={o.driver.rating} />
-                      <div className="muted">{o.driver.vehicle} · {o.driver.plate}{o.distanceToPickupKm != null && ` · a ${o.distanceToPickupKm.toFixed(1)} km`}</div>
-                      <div className="muted small">vence en {Math.max(0, Math.ceil((o.expiresAt - now) / 1000))} s</div>
+                    <Avatar name={o.driver.name} />
+                    <div className="who">
+                      <span><b>{o.driver.name}</b> <Stars rating={o.driver.rating} /></span>
+                      <span className="muted small">{o.driver.vehicle} · {o.driver.plate}{o.distanceToPickupKm != null && ` · a ${o.distanceToPickupKm.toFixed(1)} km`}</span>
                     </div>
-                    <button className="primary sm" onClick={() => socket.emit('offer:accept', { offerId: o.id })}>{lempiras(o.price)}</button>
+                    <TimeRing left={(o.expiresAt - now) / 1000} total={o.ttl || 90} />
+                    <button className="primary sm" aria-label={`Aceptar a ${o.driver.name} por ${lempiras(o.price)}`} onClick={() => socket.emit('offer:accept', { offerId: o.id })}>{lempiras(o.price)}</button>
                   </div>
                 ))}
               </>
@@ -271,9 +266,10 @@ export default function Passenger({ socket, token, userId }) {
 
             {ride.driver && (
               <div className="offer">
-                <div>
-                  <b>{ride.driver.name}</b> <Stars rating={ride.driver.rating} />
-                  <div className="muted">{ride.driver.vehicle} · {ride.driver.plate}</div>
+                <Avatar name={ride.driver.name} />
+                <div className="who">
+                  <span><b>{ride.driver.name}</b> <Stars rating={ride.driver.rating} /></span>
+                  <span className="muted small">{ride.driver.vehicle} · {ride.driver.plate}</span>
                 </div>
                 <div className="row">
                   {ride.driver.phone && <a className="sm" href={`tel:${ride.driver.phone}`}>Llamar</a>}

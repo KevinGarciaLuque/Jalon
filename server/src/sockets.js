@@ -6,7 +6,7 @@ import { getRoute } from './maps.js';
 import { chatOpen, chatAllowed, CHAT_MAX } from './chat.js';
 import { reportError, JWT_SECRET, NEARBY_KM, OFFER_TTL_SECONDS, RAISE_COOLDOWN_MS, MAX_PRICE, SOCKET_WINDOW_MS, SOCKET_LIMIT_DEFAULT, SOCKET_LIMITS } from './config.js';
 import { io } from './app.js';
-import { drivers, passengers, openRides, room } from './live.js';
+import { drivers, passengers, openRides, declined, room } from './live.js';
 import { isPoint, isPrice, serial, clean } from './util.js';
 import { push, pushStaff, hasPushSub } from './notify.js';
 import { getRide, activeRideFor, ratingsOf, rideView, nearbyDrivers, openRidesNear, closeOpenRide, releaseDriver, sendEta, cancelRide } from './services/rides.js';
@@ -69,10 +69,25 @@ io.on('connection', async (socket) => {
         id: user.id, name: user.name, vehicle: user.vehicle, plate: user.plate,
         lat, lng, available: !busy, since: Date.now(), seenAt: Date.now(),
       });
-      socket.emit('rides:open', openRidesNear(lat, lng));
+      socket.emit('rides:open', openRidesNear(lat, lng, user.id));
     });
 
     on('driver:offline', () => drivers.delete(user.id));
+
+    // El conductor rechaza una solicitud: deja de verla (en todas sus pestañas) y, si había ofertado, su oferta se retira.
+    // Si el pasajero sube el precio, se le vuelve a mostrar.
+    on('ride:decline', async (data) => {
+      const rideId = Number(data?.rideId);
+      const ride = openRides.get(rideId);
+      if (!ride) return;
+      if (!declined.has(rideId)) declined.set(rideId, new Set());
+      declined.get(rideId).add(user.id);
+      io.to(room(user.id)).emit('ride:closed', { rideId });
+      const [mine] = await pool.query('SELECT id FROM offers WHERE ride_id = ? AND driver_id = ? AND status = "pending"', [rideId, user.id]);
+      if (!mine[0]) return;
+      await pool.query('UPDATE offers SET status = "rejected" WHERE id = ? AND status = "pending"', [mine[0].id]);
+      io.to(room(ride.passenger_id)).emit('offer:expired', { offerId: mine[0].id, rideId });
+    });
 
     on('driver:location', async (pos) => {
       if (!isPoint(pos)) return;
@@ -220,6 +235,7 @@ io.on('connection', async (socket) => {
       await pool.query('UPDATE rides SET offered_price = ? WHERE id = ? AND status = "requested"', [price, ride.id]);
       const view = await rideView(await getRide(ride.id));
       openRides.set(ride.id, view);
+      declined.delete(ride.id); // con el precio nuevo, quienes la rechazaron la vuelven a ver
       for (const d of drivers.values()) {
         if (!d.available || distanceKm(d.lat, d.lng, ride.origin_lat, ride.origin_lng) > NEARBY_KM) continue;
         if (!d.disconnected) io.to(room(d.id)).emit('ride:new', view); // el cliente reemplaza la solicitud por la del precio nuevo

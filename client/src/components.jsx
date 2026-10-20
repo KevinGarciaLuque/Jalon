@@ -115,13 +115,71 @@ export function Stars({ rating }) {
   return <span className="stars">★ {rating.avg.toFixed(1)} <span className="muted">({rating.count})</span></span>;
 }
 
-// Ajusta el mapa para que se vean todos los puntos indicados
+// Iniciales para el círculo de cada persona (no guardamos fotos de pasajeros)
+const initials = (name = '') => name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+export function Avatar({ name }) {
+  return <span className="avatar" aria-hidden="true">{initials(name)}</span>;
+}
+
+// Cuánto le queda a una oferta: un anillo que se vacía (rojo en los últimos 15 s) en lugar de un número que cambia
+export function TimeRing({ left, total }) {
+  const r = 15;
+  const len = 2 * Math.PI * r;
+  const k = Math.max(0, Math.min(1, left / total));
+  const secs = Math.max(0, Math.ceil(left));
+  return (
+    <svg className={`ring${secs <= 15 ? ' late' : ''}`} viewBox="0 0 38 38" role="img" aria-label={`Quedan ${secs} segundos`}>
+      <circle className="bg" cx="19" cy="19" r={r} />
+      <circle className="fg" cx="19" cy="19" r={r} strokeDasharray={len} strokeDashoffset={len * (1 - k)} />
+      <text x="19" y="23" textAnchor="middle">{secs}</text>
+    </svg>
+  );
+}
+
+// Precio en lempiras: se ajusta de 5 en 5 con los botones (o se escribe) y se ve grande en mango
+export function PriceStepper({ value, onChange, step = 5, min = 10, label = 'Precio en lempiras' }) {
+  const n = Number(value) || 0;
+  return (
+    <div className="price">
+      <button type="button" aria-label={`Bajar ${step} lempiras`} onClick={() => onChange(String(Math.max(min, n - step)))}>−{step}</button>
+      <label className="amt">
+        <span aria-hidden="true">L</span>
+        <input aria-label={label} inputMode="numeric" value={value} style={{ width: `${Math.max(2, String(value).length) + 0.6}ch` }} onChange={(e) => onChange(e.target.value.replace(/\D/g, ''))} />
+      </label>
+      <button type="button" aria-label={`Subir ${step} lempiras`} onClick={() => onChange(String(n + step))}>+{step}</button>
+    </div>
+  );
+}
+
+// Ajusta el mapa para que se vean todos los puntos indicados.
+// En el celular la hoja de abajo tapa parte del mapa: se deja ese espacio libre para que la ruta no quede debajo.
 export function FitTo({ points }) {
   const map = useMap();
   const key = points.map((p) => `${p[0].toFixed(4)},${p[1].toFixed(4)}`).join('|');
   useEffect(() => {
-    if (points.length > 1) map.fitBounds(points, { padding: [40, 40], maxZoom: 16 });
-    else if (points.length === 1) map.setView(points[0], Math.max(map.getZoom(), 15));
+    const sheet = map.getContainer().closest('.screen')?.querySelector('.sheet');
+    const fit = () => {
+      const covered = sheet && getComputedStyle(sheet).position === 'absolute' ? sheet.offsetHeight : 0;
+      // Arriba hay más margen: el pin se dibuja hacia arriba desde su punto
+      if (points.length > 1) map.fitBounds(points, { paddingTopLeft: [40, 64], paddingBottomRight: [40, 40 + covered], maxZoom: 16 });
+      else if (points.length === 1) map.setView(points[0], Math.max(map.getZoom(), 15));
+    };
+    fit();
+    if (!sheet || points.length < 2 || typeof ResizeObserver === 'undefined') return;
+    // Si la hoja cambia de alto (aparece un aviso, se achica o se agranda) se vuelve a encuadrar, salvo que la persona ya haya movido el mapa
+    let moved = false;
+    let lastHeight = sheet.offsetHeight;
+    let timer;
+    const onDrag = () => { moved = true; };
+    map.on('dragstart', onDrag);
+    const observer = new ResizeObserver(() => {
+      if (moved || Math.abs(sheet.offsetHeight - lastHeight) < 24) return;
+      lastHeight = sheet.offsetHeight;
+      clearTimeout(timer);
+      timer = setTimeout(fit, 150);
+    });
+    observer.observe(sheet);
+    return () => { observer.disconnect(); map.off('dragstart', onDrag); clearTimeout(timer); };
   }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
   return null;
 }
