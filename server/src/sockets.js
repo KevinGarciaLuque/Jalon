@@ -1,7 +1,9 @@
 // Tiempo real (Socket.IO): conductor, pasajero, chat del viaje y botón de emergencia
 import jwt from 'jsonwebtoken';
 import { pool } from './db.js';
-import { distanceKm, suggestedPrice } from './geo.js';
+import { distanceKm } from './geo.js';
+import { getSettings } from './wallet.js';
+import { fareFor, isCategory } from './fares.js';
 import { getRoute } from './maps.js';
 import { chatOpen, chatAllowed, CHAT_MAX } from './chat.js';
 import { reportError, JWT_SECRET, NEARBY_KM, OFFER_TTL_SECONDS, RAISE_COOLDOWN_MS, MAX_PRICE, SOCKET_WINDOW_MS, SOCKET_LIMIT_DEFAULT, SOCKET_LIMITS } from './config.js';
@@ -65,11 +67,14 @@ io.on('connection', async (socket) => {
         const gate = await walletGate(user.id);
         if (gate.blocked) return socket.emit('driver:denied', { status: 'balance', balance: gate.balance, min: gate.min });
       }
+      // Solo recibe solicitudes de la categoría de su vehículo (sin vehículo registrado cuenta como carro)
+      const [[veh]] = await pool.query('SELECT category FROM vehicles WHERE driver_id = ?', [user.id]);
+      const category = veh?.category || 'car';
       drivers.set(user.id, {
-        id: user.id, name: user.name, vehicle: user.vehicle, plate: user.plate,
+        id: user.id, name: user.name, vehicle: user.vehicle, plate: user.plate, category,
         lat, lng, available: !busy, since: Date.now(), seenAt: Date.now(),
       });
-      socket.emit('rides:open', openRidesNear(lat, lng, user.id));
+      socket.emit('rides:open', openRidesNear(lat, lng, user.id, category));
     });
 
     on('driver:offline', () => drivers.delete(user.id));
@@ -160,7 +165,7 @@ io.on('connection', async (socket) => {
       socket.emit('drivers:nearby', nearbyDrivers(lat, lng));
     });
 
-    on('ride:request', async ({ origin, dest, price }, ack) => {
+    on('ride:request', async ({ origin, dest, price, category: cat }, ack) => {
       try {
         if (!isPoint(origin) || !isPoint(dest)) return ack?.({ error: 'Ubicación inválida' });
         if (await activeRideFor(user)) return ack?.({ error: 'Ya tienes un viaje activo' });
@@ -170,18 +175,19 @@ io.on('connection', async (socket) => {
         // La distancia y la ruta las calcula el servidor, no la app (no se pueden falsear)
         const route = await getRoute(origin, dest);
         const km = route.distanceKm;
-        const offered = price == null || price === '' ? suggestedPrice(km) : Number(price);
+        const category = isCategory(cat) ? cat : 'car';
+        const offered = price == null || price === '' ? fareFor(await getSettings(pool), category, km, route.durationMin) : Number(price);
         if (!isPrice(offered)) return ack?.({ error: `El precio debe estar entre L 1 y L ${MAX_PRICE}` });
         const [r] = await pool.query(
-          `INSERT INTO rides (passenger_id, origin_lat, origin_lng, origin_text, dest_lat, dest_lng, dest_text, distance_km, duration_min, route_json, offered_price)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-          [user.id, origin.lat, origin.lng, clean(origin.text), dest.lat, dest.lng, clean(dest.text), km, route.durationMin, JSON.stringify(route.coords), offered]
+          `INSERT INTO rides (passenger_id, origin_lat, origin_lng, origin_text, dest_lat, dest_lng, dest_text, distance_km, duration_min, route_json, offered_price, category)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [user.id, origin.lat, origin.lng, clean(origin.text), dest.lat, dest.lng, clean(dest.text), km, route.durationMin, JSON.stringify(route.coords), offered, category]
         );
         const ride = await rideView(await getRide(r.insertId));
         openRides.set(ride.id, ride);
-        // Avisar a conductores libres cercanos
+        // Avisar a conductores libres cercanos de la misma categoría
         for (const d of drivers.values()) {
-          if (!d.available || distanceKm(d.lat, d.lng, origin.lat, origin.lng) > NEARBY_KM) continue;
+          if (!d.available || (d.category || 'car') !== category || distanceKm(d.lat, d.lng, origin.lat, origin.lng) > NEARBY_KM) continue;
           if (!d.disconnected) io.to(room(d.id)).emit('ride:new', ride);
           else push(d.id, { title: 'Nuevo viaje cerca de ti', body: `${ride.dest_text ? `A ${ride.dest_text}` : 'Viaje disponible'} · L ${Math.round(ride.offered_price)}`, tag: `ride-${ride.id}`, url: '/' });
         }
@@ -237,7 +243,7 @@ io.on('connection', async (socket) => {
       openRides.set(ride.id, view);
       declined.delete(ride.id); // con el precio nuevo, quienes la rechazaron la vuelven a ver
       for (const d of drivers.values()) {
-        if (!d.available || distanceKm(d.lat, d.lng, ride.origin_lat, ride.origin_lng) > NEARBY_KM) continue;
+        if (!d.available || (d.category || 'car') !== ride.category || distanceKm(d.lat, d.lng, ride.origin_lat, ride.origin_lng) > NEARBY_KM) continue;
         if (!d.disconnected) io.to(room(d.id)).emit('ride:new', view); // el cliente reemplaza la solicitud por la del precio nuevo
         else push(d.id, { title: 'El pasajero subió su oferta', body: `${ride.dest_text ? `A ${ride.dest_text}` : 'Viaje cercano'} · L ${Math.round(price)}`, tag: `ride-${ride.id}`, url: '/' });
       }

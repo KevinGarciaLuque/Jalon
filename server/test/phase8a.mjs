@@ -180,7 +180,7 @@ check('el pasajero ausente recibe el aviso de cancelación', pDev.messages().sli
 check('el dispositivo que respondió 410 se borra solo; el que funciona se conserva', (await pool.query('SELECT COUNT(*) AS n FROM push_subscriptions WHERE user_id = ?', [P.user.id]))[0][0].n === 1);
 
 // ---- Un conductor completa sus documentos: avisa a quien puede aprobarlo ----
-const newbie = await registerUser({ name: 'P8 Nuevo', phone: phone('84'), password: 'Cielo-azul-77', role: 'driver', vehicle: 'X', plate: 'Y' });
+const newbie = await registerUser({ name: 'P8 Nuevo', phone: phone('84'), password: 'Cielo-azul-77', role: 'driver', vehicle: 'X', plate: 'P8A001' });
 const rootBefore = rootDev.messages().length;
 const supBefore = supDev.messages().length;
 await uploadDocs(newbie.token);

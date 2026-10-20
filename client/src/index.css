@@ -417,3 +417,15 @@ header span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-spa
 .seg.tabs { gap: 6px; }
 .seg.tabs button { min-height: 40px; border-radius: 999px; font-size: 14px; }
 .ucard .avatar { width: 36px; height: 36px; font-size: 13px; }
+
+/* ---- Etapa 4: categorías y tarifas ---- */
+/* Tipo de vehículo al pedir: tres tarjetas con su precio sugerido */
+.cats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.cats button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 6px; border-radius: var(--r-2); }
+.cats button span { font-size: 13px; color: var(--muted); font-weight: 600; }
+.cats button b { font-family: var(--font-display); font-weight: 800; font-size: 18px; color: var(--mango-ink); font-variant-numeric: tabular-nums; }
+.cats button.on { border: 2px solid var(--brand); background: var(--brand-soft); padding: 9px 5px; }
+.cats button.on span { color: var(--brand); }
+table.fares td { padding: 6px 8px; }
+table.fares input { width: 84px; padding: 8px 10px; text-align: right; font-variant-numeric: tabular-nums; }
+table.fares th[scope=row] { text-transform: none; letter-spacing: 0; font-size: 14px; color: var(--text); background: none; }

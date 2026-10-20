@@ -143,7 +143,7 @@ check('las tablas siguen ahí', stillUsers.n > 0);
 const escalate = await http('POST', 'otp/send', null, { phone: phone('79') });
 check('no se puede registrar a alguien como superadministrador', (await http('POST', 'register', null, { name: 'Hacker', phone: phone('79'), password: 'Cielo-azul-77', role: 'superadmin', acceptTerms: true, code: escalate.devCode })).status === 400);
 const sneaky = await http('POST', 'otp/send', null, { phone: phone('78') });
-const sneakyReg = await http('POST', 'register', null, { name: 'P7 Conductor', phone: phone('78'), password: 'Cielo-azul-77', role: 'driver', vehicle: 'X', plate: 'Y', status: 'active', acceptTerms: true, code: sneaky.devCode });
+const sneakyReg = await http('POST', 'register', null, { name: 'P7 Conductor', phone: phone('78'), password: 'Cielo-azul-77', role: 'driver', vehicle: 'X', plate: 'P7Y001', status: 'active', acceptTerms: true, code: sneaky.devCode });
 check('un conductor no puede registrarse ya aprobado (el estado se ignora)', sneakyReg.user?.status === 'pending');
 const patched = await http('PATCH', `admin/users/${P.user.id}`, SA, { name: 'P7 Pasajero', phone: P.user.phone, role: 'superadmin', status: 'blocked' });
 const [[roleNow]] = await pool.query('SELECT role, status FROM users WHERE id = ?', [P.user.id]);

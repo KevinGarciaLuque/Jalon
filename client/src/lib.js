@@ -9,6 +9,10 @@ export const TILE_URL = import.meta.env.VITE_TILE_URL || 'https://{s}.tile.opens
 export const TILE_ATTRIBUTION = import.meta.env.VITE_TILE_ATTRIBUTION || '&copy; OpenStreetMap';
 export const DEFAULT_POS = { lat: 14.0723, lng: -87.1921 }; // Tegucigalpa
 
+// Categorías de servicio (las mismas que server/src/fares.js)
+export const CATEGORIES = [['moto', 'Moto'], ['car', 'Carro'], ['xl', 'Carro amplio']];
+export const CATEGORY_LABEL = Object.fromEntries(CATEGORIES);
+
 export async function api(path, body) {
   const res = await fetch(`${API}/api/${path}`, {
     method: 'POST',
@@ -31,11 +35,6 @@ export function distanceKm(a, b) {
   const dLng = rad(b.lng - a.lng);
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
-}
-
-// Respaldo si el servidor no responde; el precio sugerido real viene de /api/route (km por calle)
-export function suggestedPrice(km) {
-  return Math.max(30, Math.round((25 + km * 12) / 5) * 5);
 }
 
 async function request(method, path, token, body) {

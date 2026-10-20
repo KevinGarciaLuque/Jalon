@@ -21,6 +21,7 @@ export async function anonymizeUser(t) {
   await pool.query("UPDATE messages SET text = '[mensaje eliminado]' WHERE sender_id = ?", [t.id]);
   await pool.query('DELETE FROM favorite_places WHERE user_id = ?', [t.id]);
   await pool.query('DELETE FROM trusted_contacts WHERE user_id = ?', [t.id]);
+  await pool.query('DELETE FROM vehicles WHERE driver_id = ?', [t.id]); // libera la placa
   // Los comprobantes de transferencia se borran; los montos del libro de cuentas se conservan (son registros contables)
   const [receipts] = await pool.query('SELECT receipt_file FROM topups WHERE driver_id = ? AND receipt_file IS NOT NULL', [t.id]);
   for (const r of receipts) await fs.rm(path.join(UPLOADS, r.receipt_file), { force: true });

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, useInstall } from './lib.js';
-import { PasswordInput } from './components.jsx';
+import { PasswordInput, VehicleFields } from './components.jsx';
 
 const RESEND_SECONDS = 60;
 const friendly = (e) => (e.message === 'Failed to fetch' ? 'No se pudo conectar con el servidor' : e.message);
@@ -9,7 +9,7 @@ export default function Auth({ onAuth, notice }) {
   const [mode, setMode] = useState('login'); // login | register | forgot
   const [step, setStep] = useState(1); // 1: datos · 2: código recibido por correo
   const [role, setRole] = useState('passenger');
-  const [f, setF] = useState({ name: '', phone: '', email: '', password: '', vehicle: '', plate: '', code: '' });
+  const [f, setF] = useState({ name: '', phone: '', email: '', password: '', code: '', category: 'car', make: '', model: '', color: '', year: '', plate: '' });
   const [error, setError] = useState('');
   const [info, setInfo] = useState(notice || '');
   const [devCode, setDevCode] = useState('');
@@ -145,8 +145,8 @@ export default function Auth({ onAuth, notice }) {
 
         {mode === 'register' && step === 1 && role === 'driver' && (
           <>
-            <input aria-label="Vehículo (ej. Toyota Corolla blanco)" placeholder="Vehículo (ej. Toyota Corolla blanco)" value={f.vehicle} onChange={set('vehicle')} required />
-            <input aria-label="Placa" placeholder="Placa" value={f.plate} onChange={set('plate')} required />
+            <b className="small">Tu vehículo</b>
+            <VehicleFields value={f} onChange={(v) => setF({ ...f, ...v })} />
             <p className="muted small">Después de registrarte subirás tu foto, licencia y matrícula para que revisemos tu cuenta.</p>
           </>
         )}

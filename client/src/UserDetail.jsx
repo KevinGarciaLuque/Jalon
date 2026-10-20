@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { lempiras } from './lib.js';
-import { Empty, Loading, Stars } from './components.jsx';
+import { lempiras, CATEGORY_LABEL } from './lib.js';
+import { Empty, Loading, Stars, VehicleFields } from './components.jsx';
 import DocsModal from './DocsModal.jsx';
 
 export const ROLE_LABEL = { passenger: 'Pasajero', driver: 'Conductor', admin: 'Administrador', superadmin: 'Superadministrador', support: 'Soporte' };
@@ -15,6 +15,7 @@ export const ACTION_LABEL = {
   'user.block': 'Bloqueó la cuenta',
   'user.unblock': 'Desbloqueó la cuenta',
   'user.edit': 'Editó los datos',
+  'user.vehicle': 'Editó el vehículo',
   'user.reset_password': 'Restableció la contraseña',
   'user.delete': 'Eliminó la cuenta',
   'doc.reject': 'Rechazó un documento',
@@ -86,6 +87,7 @@ export default function UserDetail({ userId, me, perms, call, token, onClose, on
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [edit, setEdit] = useState(null);
+  const [vEdit, setVEdit] = useState(null); // formulario del vehículo (solo conductores)
   const [temp, setTemp] = useState(null);
   const [showDocs, setShowDocs] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -123,8 +125,10 @@ export default function UserDetail({ userId, me, perms, call, token, onClose, on
   // Lo mismo que valida el servidor: no se toca a un superadmin ni a uno mismo, y el personal solo lo gestiona el superadmin
   const touchable = !u.deleted_at && u.id !== me.id && u.role !== 'superadmin' && (!staffTarget || can('staff.manage'));
   const set = (k) => (e) => setEdit({ ...edit, [k]: e.target.value });
-  const fields = u.role === 'driver' ? ['name', 'phone', 'vehicle', 'plate'] : ['name', 'phone'];
-  const placeholder = { name: 'Nombre', phone: 'Teléfono (8 dígitos)', vehicle: 'Vehículo', plate: 'Placa' };
+  const fields = ['name', 'phone']; // el vehículo se edita en su propia tarjeta
+  const placeholder = { name: 'Nombre', phone: 'Teléfono (8 dígitos)' };
+  const v = data.vehicle;
+  const saveVehicle = () => run(() => call(`users/${u.id}/vehicle`, vEdit, 'PUT'), () => setVEdit(null));
 
   const status = (s) => run(() => call(`users/${u.id}/status`, { status: s }));
   const saveEdit = () => {
@@ -169,7 +173,6 @@ export default function UserDetail({ userId, me, perms, call, token, onClose, on
             <Stars rating={rating} />
           </div>
           <div>📞 {u.phone}{u.online && ' · 🟢 en línea'}</div>
-          {u.vehicle && <div className="muted">🚕 {u.vehicle} · {u.plate}</div>}
           <div className="muted small">
             Registrado el {when(u.created_at)}
             {u.terms_accepted_at && ` · aceptó los términos v${u.terms_version} el ${when(u.terms_accepted_at)}`}
@@ -225,6 +228,31 @@ export default function UserDetail({ userId, me, perms, call, token, onClose, on
               <button className="primary" disabled={busy} onClick={saveEdit}>Guardar</button>
               <button disabled={busy} onClick={() => setEdit(null)}>Cancelar</button>
             </div>
+          </div>
+        )}
+
+        {u.role === 'driver' && (
+          <div className="req">
+            <div className="row between">
+              <b>Vehículo</b>
+              {touchable && can('users.manage') && !vEdit && (
+                <button className="sm" disabled={busy} onClick={() => setVEdit({ category: 'car', make: '', model: u.vehicle || '', color: '', plate: u.plate || '', ...v, year: v?.year ?? '' })}>Editar vehículo</button>
+              )}
+            </div>
+            {v ? (
+              <div>{CATEGORY_LABEL[v.category]} · {[v.make, v.model, v.color, v.year].filter(Boolean).join(' ')} · placa <b>{v.plate}</b></div>
+            ) : (
+              <div className="hint">No tiene vehículo registrado (por ejemplo, porque su placa coincidía con la de otro conductor). Agrégalo con «Editar vehículo».</div>
+            )}
+            {vEdit && (
+              <>
+                <VehicleFields value={vEdit} onChange={setVEdit} />
+                <div className="row">
+                  <button className="primary" disabled={busy} onClick={saveVehicle}>Guardar vehículo</button>
+                  <button disabled={busy} onClick={() => setVEdit(null)}>Cancelar</button>
+                </div>
+              </>
+            )}
           </div>
         )}
 

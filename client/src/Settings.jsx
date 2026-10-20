@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Loading } from './components.jsx';
+import { CATEGORIES } from './lib.js';
 
 // Ajustes de la comisión y de la cuenta bancaria a la que transfieren los conductores (solo superadmin)
 export default function Settings({ call, onError }) {
@@ -37,6 +38,24 @@ export default function Settings({ call, onError }) {
       <div className="row">
         <label className="grow">Recarga mínima (L)<input inputMode="decimal" value={s.topup_min} onChange={set('topup_min')} /></label>
         <label className="grow">Recarga máxima (L)<input inputMode="decimal" value={s.topup_max} onChange={set('topup_max')} /></label>
+      </div>
+
+      <b>Tarifas sugeridas por tipo de vehículo</b>
+      <p className="muted small">Precio sugerido = base + por km + por minuto, redondeado de 5 en 5 y nunca menos que la mínima. El pasajero puede ofrecer otro precio.</p>
+      <div className="tablewrap">
+        <table className="fares">
+          <thead><tr><th>Tipo</th><th>Base (L)</th><th>Por km (L)</th><th>Por minuto (L)</th><th>Mínima (L)</th></tr></thead>
+          <tbody>
+            {CATEGORIES.map(([c, label]) => (
+              <tr key={c}>
+                <th scope="row">{label}</th>
+                {['base', 'km', 'min', 'minimum'].map((k) => (
+                  <td key={k}><input aria-label={`${label}: ${{ base: 'tarifa base', km: 'por km', min: 'por minuto', minimum: 'tarifa mínima' }[k]}`} inputMode="decimal" value={s[`fare_${c}_${k}`]} onChange={set(`fare_${c}_${k}`)} /></td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       <b>Cuenta de Jalón para recibir las transferencias</b>

@@ -58,11 +58,11 @@ export function nearbyDrivers(lat, lng) {
   return near
     .sort((a, b) => a.km - b.km)
     .slice(0, MAX_NEARBY)
-    .map(({ d }) => ({ id: d.id, name: d.name, vehicle: d.vehicle, lat: d.lat, lng: d.lng }));
+    .map(({ d }) => ({ id: d.id, name: d.name, vehicle: d.vehicle, category: d.category || 'car', lat: d.lat, lng: d.lng }));
 }
 
-export function openRidesNear(lat, lng, driverId) {
-  return [...openRides.values()].filter((r) => distanceKm(lat, lng, r.origin_lat, r.origin_lng) <= NEARBY_KM && !declined.get(r.id)?.has(driverId));
+export function openRidesNear(lat, lng, driverId, category = 'car') {
+  return [...openRides.values()].filter((r) => (r.category || 'car') === category && distanceKm(lat, lng, r.origin_lat, r.origin_lng) <= NEARBY_KM && !declined.get(r.id)?.has(driverId));
 }
 
 export function closeOpenRide(rideId) {

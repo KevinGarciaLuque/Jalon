@@ -14,6 +14,7 @@ import { isStaff, permsOf, staffOnly, audit, auditOnce, actOn } from '../access.
 import { ratingsOf, kickUser } from '../services/rides.js';
 import { grantWelcome } from '../services/balance.js';
 import { anonymizeUser } from '../services/accounts.js';
+import { readVehicle, saveVehicle, vehicleOf, vehicleLabel, isPlateDup } from '../services/vehicles.js';
 
 app.get('/api/admin/stats', staffOnly('view'), async (_req, res) => {
   const [[u]] = await pool.query(
@@ -98,6 +99,7 @@ app.get('/api/admin/users/:id', staffOnly('view'), async (req, res) => {
   }
   res.json({
     user: { ...u, online: drivers.has(id) },
+    vehicle: u.role === 'driver' ? await vehicleOf(pool, id) : null,
     wallet,
     stats: { ...stats, money: Number(stats.money) },
     rating: (await ratingsOf([id])).get(id) || null,
@@ -132,14 +134,49 @@ app.patch('/api/admin/users/:id', staffOnly('users.manage'), async (req, res) =>
   }
   const keys = Object.keys(fields).filter((k) => fields[k] !== t[k]);
   if (!keys.length) return res.status(400).json({ error: 'No hay cambios que guardar' });
+  const userKeys = keys.filter((k) => k !== 'vehicle' && k !== 'plate');
   try {
-    await pool.query(`UPDATE users SET ${keys.map((k) => `${k} = ?`).join(', ')} WHERE id = ?`, [...keys.map((k) => fields[k]), t.id]);
+    if (userKeys.length) await pool.query(`UPDATE users SET ${userKeys.map((k) => `${k} = ?`).join(', ')} WHERE id = ?`, [...userKeys.map((k) => fields[k]), t.id]);
+    // El texto del vehículo y la placa van a su vehículo (formato anterior: el texto pasa a ser el modelo)
+    if (userKeys.length < keys.length) {
+      const cur = (await vehicleOf(pool, t.id)) || { category: 'car', plate: t.plate, model: t.vehicle };
+      const next = fields.vehicle ? { ...cur, make: null, color: null, year: null, model: fields.vehicle } : cur;
+      const { vehicle: v, error } = readVehicle({ ...next, plate: fields.plate ?? cur.plate });
+      if (error) return res.status(400).json({ error });
+      await saveVehicle(pool, t.id, v);
+      liveVehicle(t.id, v);
+    }
   } catch (e) {
+    if (isPlateDup(e)) return res.status(409).json({ error: 'Esa placa ya está registrada en otro vehículo' });
     if (e.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'Ese teléfono ya pertenece a otra cuenta' });
     throw e;
   }
   await audit(req.staff, 'user.edit', { target: t.id, details: { changed: keys } });
   res.json({ ok: true });
+});
+
+// Si el conductor está conectado, su categoría y su vehículo cambian también en memoria (para las próximas solicitudes)
+function liveVehicle(driverId, v) {
+  const d = drivers.get(driverId);
+  if (d) Object.assign(d, { category: v.category, vehicle: vehicleLabel(v), plate: v.plate });
+}
+
+// Vehículo de un conductor: categoría, marca, modelo, color, año y placa
+app.put('/api/admin/users/:id/vehicle', staffOnly('users.manage'), async (req, res) => {
+  const t = await actOn(req, res);
+  if (!t) return;
+  if (t.role !== 'driver') return res.status(400).json({ error: 'Solo los conductores tienen vehículo' });
+  const { vehicle: v, error } = readVehicle(req.body);
+  if (error) return res.status(400).json({ error });
+  try {
+    await saveVehicle(pool, t.id, v);
+  } catch (e) {
+    if (isPlateDup(e)) return res.status(409).json({ error: 'Esa placa ya está registrada en otro vehículo' });
+    throw e;
+  }
+  liveVehicle(t.id, v);
+  await audit(req.staff, 'user.vehicle', { target: t.id, details: { category: v.category, plate: v.plate } });
+  res.json({ ok: true, vehicle: v });
 });
 
 // Restablecer la contraseña: se genera una temporal que se muestra una sola vez y el usuario debe cambiarla al entrar

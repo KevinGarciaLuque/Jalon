@@ -2,7 +2,9 @@
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { pool } from '../db.js';
-import { distanceKm, suggestedPrice } from '../geo.js';
+import { distanceKm } from '../geo.js';
+import { getSettings } from '../wallet.js';
+import { faresFor } from '../fares.js';
 import { searchPlaces, reversePlace, getRoute } from '../maps.js';
 import { normalizePhone } from '../phone.js';
 import { validEndpoint, publicKey as vapidPublicKey } from '../push.js';
@@ -230,7 +232,9 @@ app.get('/api/route', authUser, mapsLimiter, async (req, res) => {
   if (!isPoint(from) || !isPoint(to)) return res.status(400).json({ error: 'Ubicación inválida' });
   if (distanceKm(from.lat, from.lng, to.lat, to.lng) > 100) return res.status(400).json({ error: 'El destino está demasiado lejos' });
   const r = await getRoute(from, to);
-  res.json({ ...r, suggestedPrice: suggestedPrice(r.distanceKm) });
+  // Precio sugerido de cada categoría; suggestedPrice (carro) se mantiene para versiones anteriores de la app
+  const prices = faresFor(await getSettings(pool), r.distanceKm, r.durationMin);
+  res.json({ ...r, prices, suggestedPrice: prices.car });
 });
 
 // Historial de viajes del usuario

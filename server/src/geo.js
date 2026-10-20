@@ -10,7 +10,3 @@ export function distanceKm(lat1, lng1, lat2, lng2) {
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
-// Precio sugerido en Lempiras a partir de los km por calle: base + por km
-export function suggestedPrice(km) {
-  return Math.max(30, Math.round((25 + km * 12) / 5) * 5);
-}

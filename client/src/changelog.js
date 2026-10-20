@@ -3,6 +3,38 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-20-categorias',
+    date: '2026-10-20',
+    title: 'Moto, Carro o Carro amplio',
+    for: ['passenger'],
+    items: [
+      'Al pedir un viaje eliges el tipo de vehículo y ves el precio sugerido de cada uno.',
+      'Tu solicitud solo les llega a los conductores de ese tipo, y en el mapa ves los que están cerca.',
+    ],
+  },
+  {
+    id: '2026-10-20-vehiculo-conductor',
+    date: '2026-10-20',
+    title: 'Tu vehículo con todos sus datos',
+    for: ['driver'],
+    items: [
+      'Al registrarte indicas si es moto, carro o carro amplio, con marca, modelo, color, año y placa.',
+      'Solo te llegan solicitudes del tipo de tu vehículo. Si tu vehículo cambia, pide al equipo que lo actualice.',
+      'Si ya estabas registrado, tu vehículo quedó como «Carro».',
+    ],
+  },
+  {
+    id: '2026-10-20-tarifas',
+    date: '2026-10-20',
+    title: 'Tarifas por tipo de vehículo y vehículos en la ficha',
+    for: ['staff'],
+    items: [
+      'En Ajustes el superadmin cambia la tarifa de cada tipo: base, por km, por minuto y mínima. El carro quedó igual que antes.',
+      'En la ficha de cada conductor se ve y se edita su vehículo. La placa no se puede repetir entre conductores.',
+      'Los conductores que ya existían quedaron como «Carro»; si alguno no tiene vehículo (placa repetida), la ficha lo avisa.',
+    ],
+  },
+  {
     id: '2026-10-20-panel-nuevo',
     date: '2026-10-20',
     title: 'Panel con la nueva imagen',

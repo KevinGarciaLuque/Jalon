@@ -1,6 +1,7 @@
 // Saldo de los conductores y comisión por viaje (estilo inDrive, sin pasarela de pago).
 // El conductor recarga transfiriendo a la cuenta de Jalón y subiendo el comprobante; el personal lo autoriza y se acredita el saldo.
 // De ese saldo se descuenta la comisión de cada viaje cobrado en efectivo. Todo movimiento queda en un libro de cuentas que nunca se edita.
+import { CATEGORIES, CATEGORY_LABEL, FARE_DEFAULTS } from './fares.js';
 
 export const SETTING_DEFAULTS = {
   commission_enabled: '0', // apagado hasta que el superadmin lo active
@@ -15,6 +16,7 @@ export const SETTING_DEFAULTS = {
   bank_holder: '',
   bank_note: '',
   staff_2fa_required: '1', // el personal debe usar la verificación en dos pasos; el superadmin puede apagarla
+  ...FARE_DEFAULTS, // tarifas por categoría (fares.js)
 };
 
 export const money = (n) => Math.round(Number(n) * 100) / 100;
@@ -61,6 +63,13 @@ export function validateSettings(input, current) {
     bank_holder: () => text('bank_holder', 100),
     bank_note: () => text('bank_note', 400),
     staff_2fa_required: () => { values.staff_2fa_required = [false, '0', 0].includes(input.staff_2fa_required) ? '0' : '1'; return null; },
+    // Tarifas: base, por km, por minuto y mínima de cada categoría
+    ...Object.fromEntries(CATEGORIES.flatMap((c) => [
+      [`fare_${c}_base`, () => num(`fare_${c}_base`, 0, 1000, `La tarifa base de ${CATEGORY_LABEL[c]}`)],
+      [`fare_${c}_km`, () => num(`fare_${c}_km`, 0, 200, `El precio por km de ${CATEGORY_LABEL[c]}`)],
+      [`fare_${c}_min`, () => num(`fare_${c}_min`, 0, 100, `El precio por minuto de ${CATEGORY_LABEL[c]}`)],
+      [`fare_${c}_minimum`, () => num(`fare_${c}_minimum`, 0, 2000, `La tarifa mínima de ${CATEGORY_LABEL[c]}`)],
+    ])),
   };
   for (const key of Object.keys(input)) {
     if (!checks[key]) return { error: `Ajuste desconocido: ${key}` };

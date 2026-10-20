@@ -12,6 +12,7 @@ import { generateSecret, verifyTotp, otpauthUrl, generateBackupCodes, hashBackup
 import { JWT_SECRET, OTP_CHANNELS, echoCode } from '../config.js';
 import { app, loginLimiter, registerLimiter, otpLimiter } from '../app.js';
 import { sign, checkPassword, twoFactorRequired, publicUser, authUser, isStaff, audit } from '../access.js';
+import { readVehicle, plateTaken, saveVehicle, vehicleLabel, isPlateDup } from '../services/vehicles.js';
 
 // ---------- Auth ----------
 app.post('/api/register', registerLimiter, async (req, res) => {
@@ -20,10 +21,18 @@ app.post('/api/register', registerLimiter, async (req, res) => {
     const email = normalizeEmail(req.body?.email);
     if ([name, phone, password].some((v) => typeof v !== 'string' || !v.trim()) || !['passenger', 'driver'].includes(role))
       return res.status(400).json({ error: 'Datos incompletos' });
-    if ([vehicle, plate].some((v) => v != null && typeof v !== 'string'))
+    if ([vehicle, plate, req.body?.make, req.body?.model, req.body?.color].some((v) => v != null && typeof v !== 'string'))
       return res.status(400).json({ error: 'Datos inválidos' });
-    if (role === 'driver' && (!vehicle || !plate))
+    if (role === 'driver' && (!(vehicle || req.body?.model) || !plate))
       return res.status(400).json({ error: 'El conductor debe indicar vehículo y placa' });
+    // El conductor registra su vehículo (categoría, marca, modelo, color, año y placa); la placa no puede repetirse
+    let veh = null;
+    if (role === 'driver') {
+      const { vehicle: v, error } = readVehicle(req.body);
+      if (error) return res.status(400).json({ error });
+      if (await plateTaken(pool, v.plate)) return res.status(409).json({ error: 'Esa placa ya está registrada' });
+      veh = v;
+    }
     const phoneN = normalizePhone(phone);
     if (!phoneN) return res.status(400).json({ error: 'Teléfono inválido (8 dígitos de Honduras)' });
     if (!email) return res.status(400).json({ error: 'Escribe un correo electrónico válido' });
@@ -38,13 +47,27 @@ app.post('/api/register', registerLimiter, async (req, res) => {
     const hash = await bcrypt.hash(password, 10);
     // Los conductores quedan pendientes hasta que un administrador los apruebe
     const status = role === 'driver' ? 'pending' : 'active';
-    const [r] = await pool.query(
-      'INSERT INTO users (name, phone, email, password_hash, role, status, vehicle, plate, terms_accepted_at, terms_version) VALUES (?,?,?,?,?,?,?,?,NOW(),?)',
-      [name.trim(), phoneN, email, hash, role, status, vehicle?.trim() || null, plate?.trim() || null, TERMS_VERSION]
-    );
-    const user = { id: r.insertId, name: name.trim(), phone: phoneN, email, role, status, vehicle, plate };
+    // La cuenta y el vehículo se guardan juntos o ninguno (si la placa se registró justo antes, no queda una cuenta a medias)
+    const conn = await pool.getConnection();
+    let user;
+    try {
+      await conn.beginTransaction();
+      const [r] = await conn.query(
+        'INSERT INTO users (name, phone, email, password_hash, role, status, terms_accepted_at, terms_version) VALUES (?,?,?,?,?,?,NOW(),?)',
+        [name.trim(), phoneN, email, hash, role, status, TERMS_VERSION]
+      );
+      if (veh) await saveVehicle(conn, r.insertId, veh);
+      await conn.commit();
+      user = { id: r.insertId, name: name.trim(), phone: phoneN, email, role, status, vehicle: veh ? vehicleLabel(veh) : null, plate: veh?.plate || null };
+    } catch (e) {
+      await conn.rollback().catch(() => {});
+      throw e;
+    } finally {
+      conn.release();
+    }
     res.json({ token: sign(user), user: publicUser(user) });
   } catch (e) {
+    if (isPlateDup(e)) return res.status(409).json({ error: 'Esa placa ya está registrada' });
     if (e.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: /email/.test(e.message) ? 'Ese correo ya está registrado' : 'Ese teléfono ya está registrado' });
     console.error(e);
     res.status(500).json({ error: 'Error del servidor' });

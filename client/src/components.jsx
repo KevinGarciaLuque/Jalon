@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Marker, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { apiGet, apiPost, pushState, enablePush, disablePush, icons } from './lib.js';
+import { apiGet, apiPost, pushState, enablePush, disablePush, icons, CATEGORIES } from './lib.js';
 
 // Mientras llegan los datos: líneas que brillan en lugar de un texto suelto. `label` lo leen los lectores de pantalla.
 export function Loading({ label = 'Cargando…' }) {
@@ -113,6 +113,29 @@ export function PasswordInput(props) {
 export function Stars({ rating }) {
   if (!rating || !rating.count) return <span className="muted">Nuevo</span>;
   return <span className="stars">★ {rating.avg.toFixed(1)} <span className="muted">({rating.count})</span></span>;
+}
+
+// Datos del vehículo: categoría, marca, modelo, color, año y placa. `value` es un objeto con esos campos.
+export function VehicleFields({ value, onChange }) {
+  const set = (k) => (e) => onChange({ ...value, [k]: e.target.value });
+  return (
+    <>
+      <div className="seg" role="radiogroup" aria-label="Tipo de vehículo">
+        {CATEGORIES.map(([k, label]) => (
+          <button type="button" key={k} role="radio" aria-checked={value.category === k} className={value.category === k ? 'on' : ''} onClick={() => onChange({ ...value, category: k })}>{label}</button>
+        ))}
+      </div>
+      <div className="row">
+        <input aria-label="Marca" placeholder="Marca" maxLength={40} value={value.make || ''} onChange={set('make')} />
+        <input aria-label="Modelo" placeholder="Modelo" maxLength={100} value={value.model || ''} onChange={set('model')} required />
+      </div>
+      <div className="row">
+        <input aria-label="Color" placeholder="Color" maxLength={30} value={value.color || ''} onChange={set('color')} />
+        <input aria-label="Año" placeholder="Año" inputMode="numeric" maxLength={4} value={value.year || ''} onChange={(e) => onChange({ ...value, year: e.target.value.replace(/\D/g, '') })} />
+      </div>
+      <input aria-label="Placa" placeholder="Placa (ej. HAA 1234)" maxLength={20} value={value.plate || ''} onChange={set('plate')} required />
+    </>
+  );
 }
 
 // Iniciales para el círculo de cada persona (no guardamos fotos de pasajeros)

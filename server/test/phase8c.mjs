@@ -23,7 +23,7 @@ const ask = (s, ev, data) => new Promise((res) => s.emit(ev, data, res));
 
 const P = await registerUser({ name: 'P8C Pasajero', phone: phone('88'), password: 'Cielo-azul-77', role: 'passenger' });
 const X = await registerUser({ name: 'P8C Otro', phone: phone('87'), password: 'Cielo-azul-77', role: 'passenger' });
-const D = await registerUser({ name: 'P8C Conductor', phone: phone('86'), password: 'Cielo-azul-77', role: 'driver', vehicle: 'Hilux', plate: 'HMM0001' });
+const D = await registerUser({ name: 'P8C Conductor', phone: phone('86'), password: 'Cielo-azul-77', role: 'driver', vehicle: 'Hilux', plate: 'HMM0002' });
 await uploadDocs(D.token);
 await pool.query("UPDATE users SET status = 'active' WHERE id = ?", [D.user.id]);
 const ps = await connect(P.token);

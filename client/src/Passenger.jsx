@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
-import { icons, useGeo, apiGet, apiPost, lempiras, minutes, useChat, useNow, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
+import { icons, useGeo, apiGet, apiPost, lempiras, minutes, useChat, useNow, CATEGORIES, CATEGORY_LABEL, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
 import ReportForm from './ReportForm.jsx';
 import { AddressSearch, Avatar, CarMarker, Chat, FitTo, PriceStepper, Rate, RouteLine, SafetyBar, Stars, TimeRing } from './components.jsx';
 
@@ -41,6 +41,7 @@ export default function Passenger({ socket, token, userId }) {
   const [preview, setPreview] = useState(null); // ruta, km, minutos y precio sugerido
   const [previewError, setPreviewError] = useState('');
   const [price, setPrice] = useState('');
+  const [category, setCategory] = useState('car'); // moto, carro o carro amplio
   const priceEdited = useRef(false);
   const [ride, setRide] = useState(null);
   const [offers, setOffers] = useState([]);
@@ -97,7 +98,7 @@ export default function Passenger({ socket, token, userId }) {
       .then((r) => {
         if (stale) return;
         setPreview(r);
-        if (!priceEdited.current) setPrice(String(r.suggestedPrice));
+        if (!priceEdited.current) setPrice(String(r.prices?.[category] ?? r.suggestedPrice));
       })
       .catch((e) => !stale && setPreviewError(e.message));
     return () => { stale = true; };
@@ -130,7 +131,7 @@ export default function Passenger({ socket, token, userId }) {
     setError('');
     socket.emit(
       'ride:request',
-      { origin: { lat: from.lat, lng: from.lng, text: from.text }, dest: { lat: dest.lat, lng: dest.lng, text: dest.text }, price: Number(price) },
+      { origin: { lat: from.lat, lng: from.lng, text: from.text }, dest: { lat: dest.lat, lng: dest.lng, text: dest.text }, price: Number(price), category },
       (res) => res?.error && setError(res.error)
     );
   }
@@ -146,6 +147,14 @@ export default function Passenger({ socket, token, userId }) {
   }
 
   const showDrivers = !active || ride?.status === 'requested';
+  // Solo cuentan (y se ven) los conductores de la categoría elegida
+  const wanted = active ? ride.category || 'car' : category;
+  const near = drivers.filter((d) => (d.category || 'car') === wanted);
+  // Al cambiar de categoría, el precio pasa al sugerido de esa categoría (si la persona no lo había cambiado a mano)
+  const pickCategory = (c) => {
+    setCategory(c);
+    if (!priceEdited.current && preview?.prices) setPrice(String(preview.prices[c]));
+  };
   const liveOffers = offers.filter((o) => o.expiresAt > now);
   // Mientras nadie acepta, se puede subir la oferta: los conductores cercanos ven el precio nuevo
   const raise = (inc) => socket.emit('ride:raise', { rideId: ride.id, price: Number(ride.offered_price) + inc }, (res) => setError(res?.error || ''));
@@ -170,7 +179,7 @@ export default function Passenger({ socket, token, userId }) {
                 eventHandlers={{ dragend: (e) => setPos({ lat: e.target.getLatLng().lat, lng: e.target.getLatLng().lng }) }}
               />
             )}
-            {showDrivers && drivers.map((d) => <CarMarker key={d.id} position={d} />)}
+            {showDrivers && near.map((d) => <CarMarker key={d.id} position={d} />)}
             {(dest || active) && (
               <Marker position={active ? [ride.dest_lat, ride.dest_lng] : [dest.lat, dest.lng]} icon={icons.dest} />
             )}
@@ -187,7 +196,7 @@ export default function Passenger({ socket, token, userId }) {
         {!active && !ended && (
           <>
             <div className="row between">
-              <b>{drivers.length}{drivers.length >= 25 ? '+' : ''} conductor{drivers.length === 1 ? '' : 'es'} libre{drivers.length === 1 ? '' : 's'} cerca</b>
+              <b>{near.length}{drivers.length >= 25 ? '+' : ''} conductor{near.length === 1 ? '' : 'es'} de {CATEGORY_LABEL[category].toLowerCase()} cerca</b>
               <span className="dot" />
             </div>
 
@@ -209,7 +218,15 @@ export default function Passenger({ socket, token, userId }) {
               <>
                 <div className="row between">
                   <span className="muted">{preview.distanceKm.toFixed(1)} km · {minutes(preview.durationMin)}{preview.estimated && ' (estimado)'}</span>
-                  <span className="muted">Sugerido <b>{lempiras(preview.suggestedPrice)}</b></span>
+                  <span className="muted">Sugerido <b>{lempiras(preview.prices?.[category] ?? preview.suggestedPrice)}</b></span>
+                </div>
+                <div className="cats" role="radiogroup" aria-label="Tipo de vehículo">
+                  {CATEGORIES.map(([k, label]) => (
+                    <button type="button" key={k} role="radio" aria-checked={category === k} className={category === k ? 'on' : ''} onClick={() => pickCategory(k)}>
+                      <span>{label}</span>
+                      <b>{lempiras(preview.prices?.[k] ?? preview.suggestedPrice)}</b>
+                    </button>
+                  ))}
                 </div>
                 <PriceStepper value={price} label="Tu oferta en lempiras" onChange={(v) => { priceEdited.current = true; setPrice(v); }} />
                 {error && <div className="error">{error}</div>}
@@ -226,7 +243,7 @@ export default function Passenger({ socket, token, userId }) {
               <span className="tag">{lempiras(ride.final_price ?? ride.offered_price)}</span>
             </div>
             <p className="muted">
-              {ride.dest_text || 'Destino'} · {ride.distance_km.toFixed(1)} km{ride.duration_min ? ` · ${minutes(ride.duration_min)}` : ''}
+              {CATEGORY_LABEL[ride.category || 'car']} · {ride.dest_text || 'Destino'} · {ride.distance_km.toFixed(1)} km{ride.duration_min ? ` · ${minutes(ride.duration_min)}` : ''}
             </p>
             {eta && eta.rideId === ride.id && ['accepted', 'started'].includes(ride.status) && (
               <p className="eta">

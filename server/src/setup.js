@@ -367,5 +367,50 @@ await conn.query(`
   )
 `);
 
+// ---- Etapa 4: categorías de servicio y vehículos ----
+// Cada viaje es de una categoría (moto, carro o carro amplio). Los viajes anteriores quedan como carro.
+await addColumn('rides', 'category', "ENUM('moto','car','xl') NOT NULL DEFAULT 'car'");
+// El vehículo como dato propio. driver_id NULL = carro de la flota de Jalón (para el alquiler).
+// users.vehicle y users.plate se siguen llenando con el texto que muestran las pantallas.
+await conn.query(`
+  CREATE TABLE IF NOT EXISTS vehicles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    driver_id INT NULL,
+    category ENUM('moto','car','xl') NOT NULL DEFAULT 'car',
+    make VARCHAR(40) NULL,
+    model VARCHAR(100) NULL,
+    color VARCHAR(30) NULL,
+    year SMALLINT NULL,
+    plate VARCHAR(20) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_plate (plate),
+    UNIQUE KEY one_per_driver (driver_id),
+    FOREIGN KEY (driver_id) REFERENCES users(id) ON DELETE CASCADE
+  )
+`);
+// Los conductores que ya existían reciben su vehículo como "carro", con su texto actual como modelo.
+// La placa se guarda sin espacios ni guiones y en mayúsculas (así "HAA 1234" y "haa-1234" son la misma).
+// Si dos conductores tienen la misma placa, el segundo queda sin vehículo y se avisa para corregirlo en el panel.
+{
+  const [pending] = await conn.query(
+    `SELECT u.id, u.vehicle, u.plate FROM users u LEFT JOIN vehicles v ON v.driver_id = u.id
+     WHERE u.role = 'driver' AND u.deleted_at IS NULL AND u.plate IS NOT NULL AND v.id IS NULL`
+  );
+  let copied = 0;
+  for (const u of pending) {
+    const plate = String(u.plate).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
+    if (!plate) continue;
+    try {
+      await conn.query('INSERT INTO vehicles (driver_id, category, model, plate) VALUES (?, ?, ?, ?)', [u.id, 'car', (u.vehicle || '').slice(0, 100) || null, plate]);
+      copied++;
+    } catch (e) {
+      if (e.code !== 'ER_DUP_ENTRY') throw e;
+      console.warn(`⚠ El conductor #${u.id} tiene la placa ${plate}, que ya usa otro conductor: no se le copió el vehículo. Corrígelo en el panel.`);
+    }
+  }
+  if (copied) console.log(`Se copiaron ${copied} vehículo(s) de conductores existentes.`);
+}
+
 console.log(`Base de datos "${DB_NAME}" lista.`);
 await conn.end();
