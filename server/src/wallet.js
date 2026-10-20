@@ -14,6 +14,7 @@ export const SETTING_DEFAULTS = {
   bank_account: '',
   bank_holder: '',
   bank_note: '',
+  staff_2fa_required: '1', // el personal debe usar la verificación en dos pasos; el superadmin puede apagarla
 };
 
 export const money = (n) => Math.round(Number(n) * 100) / 100;
@@ -59,6 +60,7 @@ export function validateSettings(input, current) {
     bank_account: () => text('bank_account', 60),
     bank_holder: () => text('bank_holder', 100),
     bank_note: () => text('bank_note', 400),
+    staff_2fa_required: () => { values.staff_2fa_required = [false, '0', 0].includes(input.staff_2fa_required) ? '0' : '1'; return null; },
   };
   for (const key of Object.keys(input)) {
     if (!checks[key]) return { error: `Ajuste desconocido: ${key}` };

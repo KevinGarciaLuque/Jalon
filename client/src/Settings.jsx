@@ -45,6 +45,12 @@ export default function Settings({ call, onError }) {
       <label>A nombre de<input value={s.bank_holder} onChange={set('bank_holder')} placeholder="Nombre de la empresa" /></label>
       <label>Indicaciones para el conductor (opcional)<textarea rows={3} maxLength={400} value={s.bank_note} onChange={set('bank_note')} placeholder="Ej. Escribe tu nombre completo en la referencia" /></label>
 
+      <b>Seguridad del personal</b>
+      <label className="check">
+        <input type="checkbox" checked={s.staff_2fa_required !== '0'} onChange={set('staff_2fa_required')} />
+        <span><b>Exigir verificación en dos pasos</b> al superadmin, administradores y soporte. Si la apagas, entran solo con su contraseña (quien ya la tenía configurada la vuelve a usar si la enciendes de nuevo).</span>
+      </label>
+
       <button className="primary" disabled={busy}>{busy ? 'Guardando…' : 'Guardar ajustes'}</button>
       {saved && <div className="hint ok">Ajustes guardados. Los conductores ya ven los cambios.</div>}
     </form>

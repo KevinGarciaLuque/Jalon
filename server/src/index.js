@@ -172,9 +172,11 @@ function checkPassword(password, { phone = '', role = 'passenger' } = {}) {
   if (digits.length === 8 && password.includes(digits)) return 'La contraseña no puede contener tu teléfono';
   return null;
 }
-const publicUser = (u) => ({ id: u.id, name: u.name, phone: u.phone, email: u.email || null, role: u.role, status: u.status, vehicle: u.vehicle, plate: u.plate, mustChangePassword: !!u.must_change_password,
-  // El personal debe tener la verificación en dos pasos activa para usar el panel
-  mustEnrollTwoFactor: isStaff(u.role) && !u.totp_enabled, twoFactorEnabled: !!u.totp_enabled });
+// El superadmin puede apagar la verificación en dos pasos del personal desde Ajustes (por defecto es obligatoria)
+const twoFactorRequired = async () => (await getSettings(pool)).staff_2fa_required !== '0';
+const publicUser = (u, require2fa = true) => ({ id: u.id, name: u.name, phone: u.phone, email: u.email || null, role: u.role, status: u.status, vehicle: u.vehicle, plate: u.plate, mustChangePassword: !!u.must_change_password,
+  // El personal debe tener la verificación en dos pasos activa para usar el panel (si está exigida)
+  mustEnrollTwoFactor: require2fa && isStaff(u.role) && !u.totp_enabled, twoFactorEnabled: !!u.totp_enabled });
 
 // ---------- Auth ----------
 app.post('/api/register', registerLimiter, async (req, res) => {
@@ -225,10 +227,12 @@ app.post('/api/login', loginLimiter, async (req, res) => {
       return res.status(401).json({ error: 'Teléfono o contraseña incorrectos' });
     if (u.status === 'blocked') return res.status(403).json({ error: 'Tu cuenta está bloqueada. Contacta a soporte.' });
     // Personal con verificación en dos pasos: la contraseña sola no da sesión; se devuelve un desafío válido 5 minutos
-    if (isStaff(u.role) && u.totp_enabled) {
+    // (si el superadmin apagó la verificación en dos pasos, basta la contraseña)
+    const require2fa = isStaff(u.role) && (await twoFactorRequired());
+    if (require2fa && u.totp_enabled) {
       return res.json({ twoFactor: true, challenge: jwt.sign({ id: u.id, purpose: '2fa' }, JWT_SECRET, { expiresIn: '5m' }) });
     }
-    res.json({ token: sign(u), user: publicUser(u) });
+    res.json({ token: sign(u), user: publicUser(u, require2fa) });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Error del servidor' });
@@ -352,7 +356,7 @@ app.post('/api/login/2fa', loginLimiter, async (req, res) => {
     return res.status(401).json({ error: 'Código incorrecto' });
   }
   await pool.query('UPDATE users SET two_fa_failures = 0, two_fa_locked_until = NULL WHERE id = ?', [u.id]);
-  res.json({ token: sign(u), user: publicUser(u) });
+  res.json({ token: sign(u), user: publicUser(u, await twoFactorRequired()) });
 });
 
 // Paso 1 de la activación: se crea un secreto (todavía no vale hasta confirmarlo con un código)
@@ -876,7 +880,7 @@ function staffOnly(perm) {
       if (!u || (payload.tv ?? 0) !== u.token_version) return res.status(401).json({ error: 'No autorizado' });
       if (!isStaff(u.role) || u.status !== 'active') return res.status(403).json({ error: 'Solo personal autorizado' });
       if (u.must_change_password) return res.status(403).json({ error: 'Debes cambiar tu contraseña', code: 'MUST_CHANGE_PASSWORD' });
-      if (!u.totp_enabled) return res.status(403).json({ error: 'Activa la verificación en dos pasos para continuar', code: 'MUST_ENROLL_2FA' });
+      if (!u.totp_enabled && (await twoFactorRequired())) return res.status(403).json({ error: 'Activa la verificación en dos pasos para continuar', code: 'MUST_ENROLL_2FA' });
       if (!permsOf(u).includes(perm)) return res.status(403).json({ error: 'No tienes permiso para esto' });
       req.staff = u;
       next();
