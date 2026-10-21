@@ -76,7 +76,7 @@ Un solo servicio (este repositorio) entrega la API y la web compilada; la base d
 
 3. **Volume:** agrega un Volume al servicio montado en `/data`. Sin él, los documentos de los conductores se pierden en cada despliegue.
 4. **Dominio:** Settings → Networking → Generate Domain (el HTTPS viene incluido y el GPS del celular lo necesita).
-5. **Respaldos:** activa los backups del MySQL en Railway.
+5. **Respaldos:** activa los backups del MySQL y del Volume en Railway, y haz además tu propio respaldo semanal con `npm --prefix server run backup` (ver «Etapa 7.2: respaldos y cómo recuperar la base»).
 
 El servicio mantiene en memoria las posiciones de los conductores, así que debe correr en **una sola instancia**.
 
@@ -346,3 +346,52 @@ El superadmin decide qué ve cada quien, en el panel → **Permisos** (por rol) 
 - **Brotli:** `npm run build` deja una copia `.br` de cada `.js` y `.css` (`client/scripts/compress.mjs`); el servidor la entrega a los navegadores que la aceptan (~12% menos que el gzip que ya pone Railway).
 - **Versión nueva con la app abierta:** una pieza que ya no existe responde 404 (no la página), y la app se recarga sola una vez.
 - Sin cambios en la base de datos. Prueba: `test/phase20.mjs` (necesita `client/dist`; si no está compilada, la salta).
+
+## Etapa 7.2: respaldos y cómo recuperar la base
+
+Hay dos copias que se complementan:
+
+1. **Las de Railway** (automáticas). En Railway abre el servicio **MySQL** → su volumen → **Backups** y programa copias (diarias o semanales, según tu plan).
+   Haz lo mismo con el **Volume del servicio de la app** (`/data`), donde están las fotos de documentos y comprobantes: la base no las incluye.
+2. **La tuya** (`npm run backup`), fuera de Railway: si se pierde la cuenta o el proyecto, sigue existiendo. Recomendado: una vez por semana.
+
+### Hacer un respaldo desde tu computadora
+
+1. En Railway → servicio **MySQL** → **Variables**, copia `MYSQL_PUBLIC_URL` (no la compartas: es la contraseña de la base).
+2. En PowerShell, desde la carpeta del proyecto:
+   ```
+   $env:MYSQL_URL = "<MYSQL_PUBLIC_URL>"; npm --prefix server run backup; Remove-Item Env:MYSQL_URL
+   ```
+3. Queda un archivo `server/backups/<base>-<fecha>.sql.gz` (no se sube a GitHub). Lleva datos personales y contraseñas cifradas:
+   guárdalo en un lugar privado (un disco o una nube personal con verificación en dos pasos), nunca en un correo o un chat.
+
+El respaldo es una foto consistente (una sola transacción), así que se puede hacer con la app funcionando. Las fechas se guardan en UTC.
+Al final trae un resumen con las filas y una huella (SHA-256) de cada tabla.
+
+### Comprobar que el respaldo sirve (simulacro)
+
+Con tu MySQL local (sin `MYSQL_URL`), una vez al mes:
+```
+npm --prefix server run restore -- server/backups/<archivo>.sql.gz
+```
+Lo restaura en una base aparte (`<base>_restore_check`), comprueba que cada tabla quedó **idéntica** (mismas filas y misma huella),
+revisa que el saldo de cada conductor sea la suma de sus movimientos y borra la base de prueba. Termina con «✓ Restauración comprobada».
+Un archivo alterado o incompleto no pasa.
+
+### Si se pierde la base de datos
+
+1. En Railway crea un servicio **MySQL** nuevo (o usa uno vacío). Copia su `MYSQL_PUBLIC_URL`.
+2. Restaura el último respaldo **en esa base vacía** (el nombre de la base es lo que va al final de la URL, normalmente `railway`):
+   ```
+   $env:MYSQL_URL = "<MYSQL_PUBLIC_URL nueva>"; npm --prefix server run restore -- server/backups/<archivo>.sql.gz --into=railway; Remove-Item Env:MYSQL_URL
+   ```
+   Nunca escribe encima de una base que tenga tablas: si la base no está vacía, se detiene sin tocar nada.
+3. En el servicio de la app, cambia `MYSQL_URL` para que apunte al MySQL nuevo (`${{ MySQL-nuevo.MYSQL_URL }}`) y vuelve a desplegar.
+4. Se pierde lo que pasó entre el respaldo y la falla. Avisa a los conductores que revisen su saldo y a los pasajeros si había viajes en curso.
+
+**Importante:** guarda una copia de `DATA_KEY` (y de `JWT_SECRET`) en un gestor de contraseñas. Sin `DATA_KEY` los documentos y los secretos
+de la verificación en dos pasos no se pueden leer, aunque tengas el respaldo.
+
+- También se puede restaurar con el cliente de MySQL: `gunzip -c archivo.sql.gz | mysql <base vacía>` (probado: da el mismo resultado).
+- Simulacro hecho el 21 de octubre de 2026 con una copia de prueba: 22 tablas idénticas, la app arrancó sobre la base recuperada y se pudo entrar y ver el historial.
+- Sin cambios en la base de datos. Prueba: `test/phase21.mjs`.

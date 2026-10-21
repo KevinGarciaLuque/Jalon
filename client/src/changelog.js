@@ -3,6 +3,17 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-21-respaldos',
+    date: '2026-10-21',
+    title: 'Respaldos comprobados',
+    for: ['staff'],
+    items: [
+      'Nuevo respaldo completo de la base de datos que se puede guardar fuera de Railway, además de las copias automáticas de Railway.',
+      'Cada respaldo se puede probar: se restaura en una base aparte y se comprueba que cada tabla quedó idéntica y que los saldos cuadran.',
+      'Guía paso a paso en el README para recuperar la base si se pierde (nunca escribe encima de datos).',
+    ],
+  },
+  {
     id: '2026-10-21-mapas',
     date: '2026-10-21',
     title: 'Mapas más confiables',
