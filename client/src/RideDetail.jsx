@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
-import { apiGet, lempiras, icons, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
-import { FitTo, Loading, RouteLine } from './components.jsx';
+import { apiGet, lempiras, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
+import { FitTo, RouteLine, icons } from './mapParts.jsx';
+import { Loading } from './components.jsx';
 
 const STATUS = { requested: 'Solicitado', accepted: 'Aceptado', arrived: 'Llegó', started: 'En curso', completed: 'Completado', cancelled: 'Cancelado' };
 const CANCELLED_BY = { passenger: 'el pasajero', driver: 'el conductor', admin: 'soporte', system: 'el sistema (nadie lo tomó a tiempo)' };

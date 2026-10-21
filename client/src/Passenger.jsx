@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
-import { icons, useGeo, apiGet, apiPost, lempiras, minutes, useChat, useNow, CATEGORIES, CATEGORY_LABEL, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
+import { useGeo, apiGet, apiPost, lempiras, minutes, useChat, useNow, CATEGORIES, CATEGORY_LABEL, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
+import { CarMarker, FitTo, RouteLine, icons } from './mapParts.jsx';
 import ReportForm from './ReportForm.jsx';
 import Rentals from './Rentals.jsx';
-import { AddressSearch, Avatar, CarMarker, Chat, FitTo, PriceStepper, Rate, RouteLine, SafetyBar, Stars, TimeRing } from './components.jsx';
+import { AddressSearch, Avatar, Chat, PriceStepper, Rate, SafetyBar, Stars, TimeRing } from './components.jsx';
 
 function Recenter({ pos }) {
   const map = useMap();

@@ -1,13 +1,16 @@
-import { useEffect, useState } from 'react';
-import Auth from './Auth.jsx';
-import Passenger from './Passenger.jsx';
-import Driver from './Driver.jsx';
-import Admin from './Admin.jsx';
-import History from './History.jsx';
-import Account from './Account.jsx';
-import TwoFactorSetup from './TwoFactorSetup.jsx';
+import { Suspense, useEffect, useState } from 'react';
 import News, { useNews } from './News.jsx';
-import { connectSocket, apiGet, apiPost, authFetch, API } from './lib.js';
+import { Loading } from './components.jsx';
+import { apiGet, apiPost, authFetch, API, lazyPage } from './lib.js';
+
+// Cada pantalla se descarga cuando se usa: el panel solo lo baja el personal; el mapa, pasajeros y conductores
+const Auth = lazyPage(() => import('./Auth.jsx')); // quien ya tiene sesión no la necesita
+const Passenger = lazyPage(() => import('./Passenger.jsx'));
+const Driver = lazyPage(() => import('./Driver.jsx'));
+const Admin = lazyPage(() => import('./Admin.jsx'));
+const History = lazyPage(() => import('./History.jsx'));
+const Account = lazyPage(() => import('./Account.jsx'));
+const TwoFactorSetup = lazyPage(() => import('./TwoFactorSetup.jsx'));
 
 const STAFF = ['superadmin', 'admin', 'support'];
 const ROLE_NAME = { passenger: 'Pasajero', driver: 'Conductor', superadmin: 'Superadministrador', admin: 'Administrador', support: 'Soporte' };
@@ -57,7 +60,18 @@ export default function App() {
   useEffect(() => {
     // El personal no usa sockets; y con contraseña temporal pendiente tampoco se conecta nadie
     if (!session || STAFF.includes(session.user.role) || session.user.mustChangePassword) return;
-    const s = connectSocket(session.token);
+    let s = null;
+    let closed = false;
+    import('./socket.js').then(({ connectSocket }) => {
+      if (closed) return;
+      s = connectSocket(session.token);
+      listen(s);
+    }).catch(() => setConnError('Sin conexión con el servidor…'));
+    return () => { closed = true; s?.close(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
+
+  function listen(s) {
     s.on('connect', () => setConnError(''));
     s.on('account:status', ({ status }) => {
       setAccountStatus(status);
@@ -69,9 +83,7 @@ export default function App() {
       else setConnError('Sin conexión con el servidor…');
     });
     setSocket(s);
-    return () => s.close();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session]);
+  }
 
   function onAuth(data) {
     const next = { user: data.user }; // la sesión llegó en la cookie
@@ -104,7 +116,7 @@ export default function App() {
     setSocket(null);
   }
 
-  if (!session) return <Auth onAuth={onAuth} notice={notice} />;
+  if (!session) return <Suspense fallback={<Loading />}><Auth onAuth={onAuth} notice={notice} /></Suspense>;
 
   return (
     <div className="app">
@@ -119,6 +131,7 @@ export default function App() {
         <button className="link" onClick={() => logout()}>Salir</button>
       </header>
       {connError && <div className="banner">{connError}</div>}
+      <Suspense fallback={<Loading />}>
       {staff && !session.user.mustChangePassword && !session.user.mustEnrollTwoFactor && <Admin token={session.token} onGate={onGate} />}
       {socket && !session.user.mustChangePassword && (session.user.role === 'driver'
         ? <Driver socket={socket} token={session.token} userId={session.user.id} status={accountStatus} perms={session.user.perms || []} />
@@ -142,6 +155,7 @@ export default function App() {
       )}
       {showNews && <News news={news} onClose={() => setShowNews(false)} />}
       {showHistory && <History token={session.token} role={session.user.role} onClose={() => setShowHistory(false)} />}
+      </Suspense>
     </div>
   );
 }

@@ -1,6 +1,4 @@
-import { io } from 'socket.io-client';
-import L from 'leaflet';
-import { useEffect, useRef, useState } from 'react';
+import { lazy, useEffect, useRef, useState } from 'react';
 
 // Desarrollo: API en :4000. Producción: el mismo servidor entrega la web, así que se usa la misma dirección ('')
 export const API = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? 'http://localhost:4000' : '');
@@ -12,6 +10,19 @@ export const DEFAULT_POS = { lat: 14.0723, lng: -87.1921 }; // Tegucigalpa
 // Categorías de servicio (las mismas que server/src/fares.js)
 export const CATEGORIES = [['moto', 'Moto'], ['car', 'Carro'], ['xl', 'Carro amplio']];
 export const CATEGORY_LABEL = Object.fromEntries(CATEGORIES);
+
+// Pantalla que se descarga al usarla. Si mientras la app estaba abierta se publicó una versión nueva, las piezas
+// viejas ya no existen: se recarga la página una vez (no más de una vez por minuto, por si el problema es otro).
+export function lazyPage(load) {
+  return lazy(() => load().catch((e) => {
+    const KEY = 'jalon:reloaded';
+    let last = 0;
+    try { last = Number(sessionStorage.getItem(KEY)) || 0; sessionStorage.setItem(KEY, String(Date.now())); } catch { /* sin almacenamiento */ }
+    if (Date.now() - last < 60000) throw e;
+    window.location.reload();
+    return new Promise(() => {});
+  }));
+}
 
 // La sesión viaja en una cookie que JavaScript no puede leer (la pone el servidor). Esta cabecera le dice que la app la usa
 // y, como otro sitio no puede ponerla, protege contra CSRF. Todas las llamadas a la API pasan por aquí.
@@ -28,11 +39,6 @@ export async function api(path, body) {
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Error');
   return data;
-}
-
-// `token` solo existe en una sesión guardada de antes de la cookie que todavía no se pudo pasar a ella
-export function connectSocket(token) {
-  return io(API || undefined, { auth: token ? { token } : {}, withCredentials: true });
 }
 
 export function distanceKm(a, b) {
@@ -86,33 +92,6 @@ export function useGeo() {
   }, []);
   return { pos, setPos, denied };
 }
-
-// Íconos del mapa dibujados en SVG (no emojis): se ven nítidos y iguales en cualquier celular
-const svgIcon = (html, size, anchor, cls) => L.divIcon({ html, className: `map-icon ${cls}`, iconSize: size, iconAnchor: anchor });
-
-// Carro visto desde arriba, con el frente hacia el norte (CarMarker lo gira según hacia dónde va)
-export const CAR_SVG = `<svg viewBox="0 0 28 48" width="22" height="38" aria-hidden="true">
-  <rect x="1" y="14" width="3.5" height="5" rx="1.6" fill="#086640"/><rect x="23.5" y="14" width="3.5" height="5" rx="1.6" fill="#086640"/>
-  <rect x="3" y="2" width="22" height="44" rx="8" fill="#0a7d4f" stroke="#fff" stroke-width="1.6"/>
-  <path d="M6.5 14.5Q14 9.5 21.5 14.5L20.5 20.5H7.5Z" fill="#0d1f17" opacity=".88"/>
-  <rect x="7.5" y="21.5" width="13" height="11" rx="3" fill="#13a36a"/>
-  <path d="M7.5 34H20.5L21.5 39Q14 42 6.5 39Z" fill="#0d1f17" opacity=".78"/>
-  <rect x="5.5" y="3.6" width="5" height="2.6" rx="1.3" fill="#fff6bf"/><rect x="17.5" y="3.6" width="5" height="2.6" rx="1.3" fill="#fff6bf"/>
-  <rect x="5.5" y="42" width="4" height="2" rx="1" fill="#ff5c5c"/><rect x="18.5" y="42" width="4" height="2" rx="1" fill="#ff5c5c"/>
-</svg>`;
-
-// Pin con la punta abajo (marca el punto exacto) y un dibujo dentro
-const pin = (fill, inner) => `<svg viewBox="0 0 34 44" width="34" height="44" aria-hidden="true">
-  <path d="M17 43s-14-15.2-14-25.5a14 14 0 0 1 28 0C31 27.8 17 43 17 43z" fill="${fill}" stroke="#fff" stroke-width="2"/>
-  <circle cx="17" cy="17.5" r="8.5" fill="#fff"/>${inner}</svg>`;
-const checks = Array.from({ length: 12 }, (_, i) => ((i % 4) + Math.floor(i / 4)) % 2 ? '' : `<rect x="${14.8 + (i % 4) * 2}" y="${11.5 + Math.floor(i / 4) * 2}" width="2" height="2" fill="#14171c"/>`).join('');
-const FLAG = `<rect x="13.2" y="11.5" width="1.6" height="12" rx=".8" fill="#14171c"/><rect x="14.8" y="11.5" width="8" height="6" fill="#fff" stroke="#14171c" stroke-width=".6"/>${checks}`;
-
-export const icons = {
-  car: svgIcon(`<div class="car-rot">${CAR_SVG}</div>`, [40, 40], [20, 20], 'car'),
-  me: svgIcon(pin('#0a7d4f', '<circle cx="17" cy="17.5" r="4" fill="#0a7d4f"/>'), [34, 44], [17, 43], 'pin'),
-  dest: svgIcon(pin('#14171c', FLAG), [34, 44], [17, 43], 'pin'),
-};
 
 // "Instalar app": Chrome/Android avisa con beforeinstallprompt; iPhone no tiene botón y hay que explicarlo
 export function useInstall() {

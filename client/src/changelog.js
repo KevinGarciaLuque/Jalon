@@ -3,6 +3,18 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-21-app-liviana',
+    date: '2026-10-21',
+    title: 'La app abre más rápido',
+    for: ['all'],
+    items: [
+      'La app ahora se descarga por partes: cada quien baja solo lo que usa. La pantalla de entrada pesa casi un tercio de lo que pesaba.',
+      'El mapa y la conexión en tiempo real se descargan después de entrar, y el panel del personal solo lo baja el personal.',
+      'Los archivos van más comprimidos, así gastas menos datos.',
+      'Si la app estaba abierta cuando publicamos una versión nueva, se recarga sola en lugar de fallar.',
+    ],
+  },
+  {
     id: '2026-10-21-sesion-cookie',
     date: '2026-10-21',
     title: 'Tu sesión, más protegida',

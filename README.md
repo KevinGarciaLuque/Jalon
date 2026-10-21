@@ -319,3 +319,11 @@ El superadmin decide qué ve cada quien, en el panel → **Permisos** (por rol) 
 - **Sesiones de antes:** la app que tenía el token guardado lo manda una vez a `POST /api/session/cookie`, recibe la cookie (con el mismo vencimiento) y lo borra. Nadie tiene que volver a entrar.
 - **Salir:** `POST /api/logout` borra la cookie. «Cerrar las demás sesiones» y cambiar la contraseña siguen invalidando todas las sesiones anteriores (`token_version`).
 - Sin cambios en la base de datos. Prueba: `test/phase19.mjs`.
+
+## Etapa 7.4: app más liviana
+
+- **Piezas que se descargan al usarse** (`lazyPage` en `client/src/lib.js`, con `React.lazy`): entrar, pasajero, conductor, panel, mapa en vivo, historial, cuenta, verificación en dos pasos (y su QR), seguimiento compartido, páginas legales y Novedades. Leaflet y sus estilos van en `mapParts.jsx`; Socket.IO, en `socket.js`.
+- **Cuánto se descarga** (comprimido): antes, ~200 kB para todos. Ahora, la pantalla de entrada ~72 kB, el personal ~88 kB, el pasajero ~137 kB y el conductor ~138 kB. El resto del pasajero y del conductor es React y el mapa (Leaflet), que son necesarios.
+- **Brotli:** `npm run build` deja una copia `.br` de cada `.js` y `.css` (`client/scripts/compress.mjs`); el servidor la entrega a los navegadores que la aceptan (~12% menos que el gzip que ya pone Railway).
+- **Versión nueva con la app abierta:** una pieza que ya no existe responde 404 (no la página), y la app se recarga sola una vez.
+- Sin cambios en la base de datos. Prueba: `test/phase20.mjs` (necesita `client/dist`; si no está compilada, la salta).

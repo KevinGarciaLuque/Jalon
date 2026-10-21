@@ -23,7 +23,18 @@ import './jobs.js';
 // En producción el mismo servidor entrega la web ya compilada (client/dist), incluida /t/<código> del seguimiento
 const DIST = path.join(HERE, '..', '..', 'client', 'dist');
 if (existsSync(DIST)) {
+  // Los .js y .css van también comprimidos con Brotli (client/scripts/compress.mjs): ~12% menos que gzip
+  app.use('/assets', (req, res, next) => {
+    if (!/\bbr\b/.test(req.headers['accept-encoding'] || '') || !/^\/[\w.-]+\.(js|css)$/.test(req.path)) return next();
+    const file = path.join(DIST, 'assets', `${req.path.slice(1)}.br`);
+    if (!existsSync(file)) return next();
+    res.type(path.extname(req.path));
+    res.set({ 'Content-Encoding': 'br', Vary: 'Accept-Encoding', 'Cache-Control': 'public, max-age=31536000, immutable' });
+    res.sendFile(file);
+  });
   app.use('/assets', express.static(path.join(DIST, 'assets'), { immutable: true, maxAge: '1y' }));
+  // Una pieza que ya no existe (de una versión anterior) es un 404, no la página: así la app sabe que debe recargarse
+  app.use('/assets', (_req, res) => res.status(404).end());
   app.use(express.static(DIST, {
     index: false,
     maxAge: '1h',

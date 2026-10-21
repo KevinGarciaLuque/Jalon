@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Marker, Polyline, useMap } from 'react-leaflet';
-import L from 'leaflet';
-import { apiGet, apiPost, pushState, enablePush, disablePush, icons, CATEGORIES } from './lib.js';
+import { apiGet, apiPost, pushState, enablePush, disablePush, CATEGORIES } from './lib.js';
 
 // Mientras llegan los datos: líneas que brillan en lugar de un texto suelto. `label` lo leen los lectores de pantalla.
 export function Loading({ label = 'Cargando…' }) {
@@ -26,61 +24,6 @@ export function Empty({ title, children }) {
       <b>{title}</b>
       {children && <span>{children}</span>}
     </div>
-  );
-}
-
-// Rumbo en grados (0 = norte, 90 = este) para ir del punto a al b
-function bearing(a, b) {
-  const r = Math.PI / 180;
-  const y = Math.sin((b.lng - a.lng) * r) * Math.cos(b.lat * r);
-  const x = Math.cos(a.lat * r) * Math.sin(b.lat * r) - Math.sin(a.lat * r) * Math.cos(b.lat * r) * Math.cos((b.lng - a.lng) * r);
-  return Math.atan2(y, x) / r;
-}
-const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-
-// Carro en el mapa: cuando llega una posición nueva se desliza hasta ella (en vez de saltar) y gira hacia donde va.
-// `duration` es cada cuánto llegan las posiciones (así termina de moverse justo cuando llega la siguiente).
-export function CarMarker({ position, duration = 2800, draggable = false, eventHandlers }) {
-  const ref = useRef(null);
-  const [start] = useState(() => [position.lat, position.lng]); // la posición inicial queda fija: después la mueve la animación
-  const anim = useRef({ angle: 0, frame: 0 });
-  useEffect(() => {
-    const m = ref.current;
-    if (!m) return;
-    const a = anim.current;
-    cancelAnimationFrame(a.frame);
-    const from = m.getLatLng();
-    const to = L.latLng(position.lat, position.lng);
-    const meters = from.distanceTo(to);
-    // Solo gira si de verdad avanzó (el GPS quieto tiembla unos metros); por el camino más corto (de 350° a 10° son 20°)
-    if (meters > 6) {
-      a.angle += ((((bearing(from, to) - a.angle) % 360) + 540) % 360) - 180;
-      const el = m.getElement()?.querySelector('.car-rot');
-      if (el) el.style.transform = `rotate(${a.angle}deg)`;
-    }
-    // Un salto muy largo (se perdió la señal) o arrastrarlo a mano no se anima: atravesaría media ciudad
-    if (meters < 0.5 || meters > 1500 || draggable || document.hidden || reducedMotion()) return void m.setLatLng(to);
-    const t0 = performance.now();
-    const step = (now) => {
-      const k = Math.min(1, (now - t0) / duration);
-      m.setLatLng([from.lat + (to.lat - from.lat) * k, from.lng + (to.lng - from.lng) * k]);
-      if (k < 1) a.frame = requestAnimationFrame(step);
-    };
-    a.frame = requestAnimationFrame(step);
-  }, [position.lat, position.lng]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => () => cancelAnimationFrame(anim.current.frame), []);
-  return <Marker ref={ref} position={start} icon={icons.car} draggable={draggable} eventHandlers={eventHandlers} zIndexOffset={500} />;
-}
-
-// Ruta con borde blanco y sombra suave para que resalte sobre cualquier calle del mapa
-export function RouteLine({ positions, color = '#0a7d4f', dashed = false }) {
-  const base = { lineCap: 'round', lineJoin: 'round' };
-  return (
-    <>
-      <Polyline positions={positions} interactive={false} pathOptions={{ ...base, color: '#000', opacity: 0.16, weight: 11 }} />
-      <Polyline positions={positions} interactive={false} pathOptions={{ ...base, color: '#fff', opacity: 0.95, weight: 8 }} />
-      <Polyline positions={positions} interactive={false} pathOptions={{ ...base, color, opacity: 1, weight: 5, dashArray: dashed ? '2 10' : undefined }} />
-    </>
   );
 }
 
@@ -172,39 +115,6 @@ export function PriceStepper({ value, onChange, step = 5, min = 10, label = 'Pre
       <button type="button" aria-label={`Subir ${step} lempiras`} onClick={() => onChange(String(n + step))}>+{step}</button>
     </div>
   );
-}
-
-// Ajusta el mapa para que se vean todos los puntos indicados.
-// En el celular la hoja de abajo tapa parte del mapa: se deja ese espacio libre para que la ruta no quede debajo.
-export function FitTo({ points }) {
-  const map = useMap();
-  const key = points.map((p) => `${p[0].toFixed(4)},${p[1].toFixed(4)}`).join('|');
-  useEffect(() => {
-    const sheet = map.getContainer().closest('.screen')?.querySelector('.sheet');
-    const fit = () => {
-      const covered = sheet && getComputedStyle(sheet).position === 'absolute' ? sheet.offsetHeight : 0;
-      // Arriba hay más margen: el pin se dibuja hacia arriba desde su punto
-      if (points.length > 1) map.fitBounds(points, { paddingTopLeft: [40, 64], paddingBottomRight: [40, 40 + covered], maxZoom: 16 });
-      else if (points.length === 1) map.setView(points[0], Math.max(map.getZoom(), 15));
-    };
-    fit();
-    if (!sheet || points.length < 2 || typeof ResizeObserver === 'undefined') return;
-    // Si la hoja cambia de alto (aparece un aviso, se achica o se agranda) se vuelve a encuadrar, salvo que la persona ya haya movido el mapa
-    let moved = false;
-    let lastHeight = sheet.offsetHeight;
-    let timer;
-    const onDrag = () => { moved = true; };
-    map.on('dragstart', onDrag);
-    const observer = new ResizeObserver(() => {
-      if (moved || Math.abs(sheet.offsetHeight - lastHeight) < 24) return;
-      lastHeight = sheet.offsetHeight;
-      clearTimeout(timer);
-      timer = setTimeout(fit, 150);
-    });
-    observer.observe(sheet);
-    return () => { observer.disconnect(); map.off('dragstart', onDrag); clearTimeout(timer); };
-  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
-  return null;
 }
 
 // Campo para buscar una dirección por nombre (Honduras)

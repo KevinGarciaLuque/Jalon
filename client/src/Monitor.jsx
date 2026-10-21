@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
-import { icons, lempiras, CAR_SVG, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
+import { lempiras, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
+import { CAR_SVG, icons } from './mapParts.jsx';
 import { Empty, Loading } from './components.jsx';
 
 const REFRESH_MS = 5000;

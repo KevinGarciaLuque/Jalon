@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
-import { icons, useGeo, distanceKm, lempiras, minutes, useChat, useNow, wazeUrl, mapsUrl, apiGet, money2, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
+import { useGeo, distanceKm, lempiras, minutes, useChat, useNow, wazeUrl, mapsUrl, apiGet, money2, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
+import { CarMarker, FitTo, RouteLine, icons } from './mapParts.jsx';
 import DriverWallet from './DriverWallet.jsx';
 import DriverRental from './DriverRental.jsx';
 import Earnings from './Earnings.jsx';
-import { Avatar, CarMarker, Chat, FitTo, PriceStepper, PushToggle, Rate, RouteLine, SafetyBar, Stars, TimeRing } from './components.jsx';
+import { Avatar, Chat, PriceStepper, PushToggle, Rate, SafetyBar, Stars, TimeRing } from './components.jsx';
 import ReportForm from './ReportForm.jsx';
 import DriverDocs from './DriverDocs.jsx';
 

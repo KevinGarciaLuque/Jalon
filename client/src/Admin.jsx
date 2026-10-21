@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { API, authFetch, lempiras } from './lib.js';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { API, authFetch, lazyPage, lempiras } from './lib.js';
 import { Avatar, Empty, Loading, PushToggle, Stars } from './components.jsx';
 import DocsModal from './DocsModal.jsx';
 import Topups from './Topups.jsx';
 import Settings from './Settings.jsx';
-import Monitor from './Monitor.jsx';
+// El mapa en vivo trae Leaflet: se descarga solo al abrir esa pestaña
+const Monitor = lazyPage(() => import('./Monitor.jsx'));
 import AdminRentals from './AdminRentals.jsx';
 import Permissions from './Permissions.jsx';
 import Metrics from './Metrics.jsx';
@@ -399,7 +400,7 @@ export default function Admin({ token, onGate }) {
       {tab === 'topups' && <Topups topups={topups} status={topStatus} setStatus={setTopStatus} call={call} token={token} reload={load} onError={setError} />}
       {tab === 'settings' && <Settings call={call} onError={setError} />}
       {tab === 'rentals' && can('rentals') && <AdminRentals call={call} token={token} can={can} onError={setError} />}
-      {tab === 'monitor' && can('monitor') && <Monitor call={call} onError={setError} />}
+      {tab === 'monitor' && can('monitor') && <Suspense fallback={<Loading />}><Monitor call={call} onError={setError} /></Suspense>}
 
       {tab === 'reports' && (
         <>

@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { newsFor } from './changelog.js';
+import { useEffect, useState } from 'react';
 import { Empty } from './components.jsx';
 
 // Recuerda en este dispositivo cuál fue la última novedad vista (para el punto de «hay algo nuevo»)
@@ -7,8 +6,14 @@ const SEEN_KEY = 'jalon:news-seen';
 const readSeen = () => { try { return localStorage.getItem(SEEN_KEY); } catch { return null; } };
 const dateText = (d) => new Date(`${d}T12:00:00`).toLocaleDateString('es-HN', { dateStyle: 'long' });
 
+// Las novedades (texto largo) se descargan después de abrir la app, no antes
 export function useNews(role) {
-  const news = newsFor(role);
+  const [news, setNews] = useState([]);
+  useEffect(() => {
+    let alive = true;
+    import('./changelog.js').then(({ newsFor }) => alive && setNews(newsFor(role))).catch(() => {});
+    return () => { alive = false; };
+  }, [role]);
   const [seen, setSeen] = useState(readSeen);
   const markSeen = () => {
     if (!news[0]) return;

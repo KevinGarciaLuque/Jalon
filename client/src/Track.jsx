@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
-import { apiGet, icons, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
-import { CarMarker, FitTo, RouteLine } from './components.jsx';
+import { apiGet, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
+import { CarMarker, FitTo, RouteLine, icons } from './mapParts.jsx';
 
 const STATUS = {
   accepted: 'El conductor va en camino a recoger al pasajero',
