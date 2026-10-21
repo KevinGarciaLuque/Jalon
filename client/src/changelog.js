@@ -3,6 +3,16 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-21-lista-lanzamiento',
+    date: '2026-10-21',
+    title: 'Lista de lanzamiento',
+    for: ['staff'],
+    items: [
+      'En el README («Etapa 8.5») está la lista de lo que falta antes de abrir al público: Railway, correo, emergencias, respaldos, la prueba con personas reales y la parte legal.',
+      'La pestaña «Sistema» ahora también avisa si falta el correo de soporte en los términos.',
+    ],
+  },
+  {
     id: '2026-10-21-pruebas-finales',
     date: '2026-10-21',
     title: 'Pruebas antes del lanzamiento',

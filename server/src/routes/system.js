@@ -65,6 +65,8 @@ export async function systemStatus() {
     // Datos
     await uploadsCheck(),
     item('datos', 'Respaldos', 'info', 'Actívalos en Railway (MySQL y Volume) y haz uno propio cada semana con «npm run backup» (README, Etapa 7.2).'),
+    item('datos', 'Correo de soporte en los términos', process.env.VITE_CONTACT_EMAIL ? 'ok' : isProd ? 'bad' : 'info',
+      process.env.VITE_CONTACT_EMAIL ? `Los términos y la privacidad muestran ${process.env.VITE_CONTACT_EMAIL}.` : 'Sin VITE_CONTACT_EMAIL: los términos dicen «falta definir» donde va el correo de contacto. Agrégala y vuelve a desplegar.'),
     item('datos', 'Términos y privacidad', terms.n ? 'info' : 'ok', terms.n ? `Versión ${TERMS_VERSION}. ${terms.n} persona(s) aceptaron una versión anterior.` : `Versión ${TERMS_VERSION}; todos la aceptaron.`),
     // Mapas
     item('mapas', 'Búsqueda de direcciones y rutas', mapsProvider === 'osm' ? 'warn' : 'ok',

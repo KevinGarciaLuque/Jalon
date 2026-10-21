@@ -459,3 +459,58 @@ lo registra; los comprobantes y la exportación exigen su permiso y la exportaci
 el estado del sistema es solo del superadmin y no muestra claves; `npm audit` sin vulnerabilidades en el servidor ni en la app.
 Se corrigió una cosa: `npm run restore` ahora solo acepta las sentencias que escribe `npm run backup` (un archivo alterado con, por ejemplo,
 `DROP DATABASE` se rechaza sin tocar nada).
+
+## Etapa 8.5: lista de lanzamiento
+
+Lo que falta antes de abrir Jalón al público. Casi todo es configuración en Railway o decisiones del negocio; el panel → **Sistema** marca en
+«✕ Falta» lo que el servidor puede comprobar solo.
+
+### 1. Que Railway publique la versión actual (bloquea todo lo demás)
+- [ ] Railway → servicio de la app → **Deployments**: el último despliegue debe ser el último commit de `main`. Si hay un error, revisa el registro de
+      la compilación; si la plataforma está en falla, espera y usa Ctrl+K → «Deploy Latest Commit».
+- [ ] `npm --prefix server run test:prod` debe decir «✓ publicada» en todas las etapas y «Todo bien».
+- [ ] Panel → **Sistema** → «Versión publicada» muestra el mismo commit que GitHub.
+
+### 2. Configuración en Railway (Variables del servicio de la app)
+- [ ] **Volume** montado en `/data` y `UPLOADS_DIR=/data/uploads` (sin esto los documentos se borran en cada despliegue).
+- [ ] `NODE_ENV=production`, `TRUST_PROXY=1` y `PUBLIC_URL=https://jalon.up.railway.app` (o tu dominio).
+- [ ] **Correo:** variables `SMTP_*` aplicadas; regístrate con un teléfono nuevo y confirma que el código llega al correo. Solo entonces **quita `SMS_DEV_ECHO`**.
+- [ ] **Correo de soporte:** `VITE_CONTACT_EMAIL=jalonsoporte@gmail.com` (o el que uses) y vuelve a desplegar: los términos hoy dicen «falta definir».
+- [ ] **Emergencias:** `SOS_ALERT_PHONES` con al menos dos teléfonos de personas que respondan, y Twilio (`TWILIO_*`) para que les llegue el SMS.
+      Haz una prueba avisándoles antes.
+- [ ] **`DATA_KEY`** siguiendo la Etapa 8.1 (respaldo primero). Guarda `DATA_KEY` y `JWT_SECRET` en un gestor de contraseñas.
+- [ ] **Verificación en dos pasos del personal:** vuelve a encenderla en Panel → Ajustes y que cada persona del personal la active.
+- [ ] **Sentry** (recomendado): `SENTRY_DSN` para enterarte de los errores sin revisar los registros.
+- [ ] **Mapas:** con poco tráfico bastan los gratuitos; cuando haya cientos de viajes al día, LocationIQ (Etapa 7.3).
+
+### 3. Respaldos
+- [ ] Railway → Backups programados para el **MySQL** y para el **Volume** de la app.
+- [ ] Primer respaldo propio (`npm --prefix server run backup` con `MYSQL_PUBLIC_URL`) y su simulacro (`npm --prefix server run restore -- archivo`).
+- [ ] Recordatorio semanal para repetirlo.
+
+### 4. Prueba completa en producción, con personas reales
+- [ ] Dos teléfonos (un pasajero y un conductor aprobado): pedir, ofertar, aceptar, llegar, iniciar, terminar, calificar, ver el recibo y el camino en el historial.
+- [ ] Una recarga por transferencia aprobada desde el panel y la comisión descontada al terminar un viaje.
+- [ ] Notificaciones en Android y en iPhone (en iPhone solo con la app instalada en la pantalla de inicio).
+- [ ] Instalar la app (PWA) en los dos.
+- [ ] Botón de emergencia en un viaje de prueba (avisando antes a quienes reciben el SMS).
+- [ ] Un alquiler con conductor de punta a punta, si se va a ofrecer desde el primer día.
+
+### 5. Legal y negocio (no es código)
+- [ ] Revisión con un abogado hondureño de los **Términos**, la **Política de privacidad** (ubicación, camino del viaje por 90 días, documentos, borrado de cuenta)
+      y el **alquiler** (seguros y responsabilidad). Si cambian, sube la versión (Etapa 8.3) y todos la vuelven a aceptar.
+- [ ] Cómo se facturan la comisión y las recargas (SAR) y la relación con los conductores (independientes).
+- [ ] Conductores del lanzamiento con sus 3 documentos revisados y aprobados en el panel.
+- [ ] Un canal de soporte atendido (el correo de soporte y, si quieres, WhatsApp) y quién responde las emergencias en qué horario.
+- [ ] El alquiler **sin** conductor (4B-2) queda fuera hasta tener la parte legal.
+
+### 6. El día del lanzamiento
+- [ ] Panel → Sistema sin «✕ Falta».
+- [ ] Alguien mirando el panel (Emergencias y Mapa en vivo) y los registros de Railway (o Sentry) las primeras horas.
+- [ ] **Si algo sale mal:** Railway → Deployments → «Redeploy» de la versión anterior (no borra datos). Si se dañaran los datos, restaurar el último
+      respaldo en una base nueva (Etapa 7.2).
+
+### Pendientes conocidos (no bloquean)
+- Las listas de Reportes, Recargas y Alquileres del panel muestran hasta 200 elementos sin «Ver más» (el servidor ya acepta páginas).
+- Mapas de pago: solo LocationIQ está integrado; Geoapify o Stadia necesitarían su propio formato de rutas.
+- La verificación de LocationIQ contra el servicio real queda para cuando haya una clave.
