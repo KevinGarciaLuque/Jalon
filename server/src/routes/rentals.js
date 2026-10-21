@@ -8,7 +8,7 @@ import { encryptBuffer, decryptBuffer } from '../secure.js';
 import { getSettings, money } from '../wallet.js';
 import { UPLOADS } from '../config.js';
 import { app, photoJson } from '../app.js';
-import { clean } from '../util.js';
+import { clean, pageOf } from '../util.js';
 import { authUser, driverOnly, passengerOnly, needs, staffOnly, audit, auditOnce } from '../access.js';
 import { push, pushStaff } from '../notify.js';
 import { readVehicle, vehicleLabel, isPlateDup, vehicleOf } from '../services/vehicles.js';
@@ -156,7 +156,8 @@ app.get('/api/admin/rentals', staffOnly('rentals'), handle(async (req, res) => {
   const status = STATUS_FILTER.includes(req.query.status) ? req.query.status : null;
   const payment = req.query.payment === 'pending';
   const where = payment ? "b.payment_status = 'pending'" : status ? 'b.status = ?' : '1 = 1';
-  res.json(await listBookings(where, status && !payment ? [status] : [], 200));
+  const { limit, offset } = pageOf(req, 200);
+  res.json(await listBookings(where, status && !payment ? [status] : [], limit, offset));
 }));
 
 // Comprobante de la transferencia (cifrado en disco); cada vez que alguien lo abre queda en el Registro

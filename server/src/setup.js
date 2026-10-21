@@ -539,5 +539,17 @@ await conn.query(`
   )
 `);
 
+// ---- Etapa 6: índices para los indicadores y reportes por fecha (solo agregan; no cambian datos) ----
+for (const [table, name, cols] of [
+  ['rides', 'idx_created', 'created_at'],
+  ['users', 'idx_role_created', 'role, created_at'],
+  ['wallet_entries', 'idx_kind_created', 'kind, created_at'],
+  ['topups', 'idx_reviewed', 'status, reviewed_at'],
+  ['rental_bookings', 'idx_ended', 'status, ended_at'],
+]) {
+  const [ix] = await conn.query('SELECT 1 FROM information_schema.statistics WHERE table_schema = ? AND table_name = ? AND index_name = ?', [DB_NAME, table, name]);
+  if (!ix.length) await conn.query(`CREATE INDEX ${name} ON ${table} (${cols})`);
+}
+
 console.log(`Base de datos "${DB_NAME}" lista.`);
 await conn.end();

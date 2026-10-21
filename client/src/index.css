@@ -467,3 +467,9 @@ table.perms input[type=checkbox] { width: 20px; height: 20px; }
 .map-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .map-legend .line { display: inline-block; width: 22px; border-top: 4px solid; border-radius: 2px; }
 .map-legend .line.dashed { border-top-style: dashed; }
+
+/* ---- Etapa 6: indicadores ---- */
+.stats.kpis div { gap: 2px; }
+.delta { font-size: 12px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.delta.up { color: var(--ok); }
+.delta.down { color: var(--danger); }

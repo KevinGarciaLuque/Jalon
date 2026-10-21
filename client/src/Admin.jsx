@@ -1,13 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { API, lempiras } from './lib.js';
-import { Avatar, Empty, PushToggle, Stars } from './components.jsx';
+import { Avatar, Empty, Loading, PushToggle, Stars } from './components.jsx';
 import DocsModal from './DocsModal.jsx';
 import Topups from './Topups.jsx';
 import Settings from './Settings.jsx';
 import Monitor from './Monitor.jsx';
 import AdminRentals from './AdminRentals.jsx';
 import Permissions from './Permissions.jsx';
-import UserDetail, { TempPassword, ROLE_LABEL, STATUS_LABEL, ACTION_LABEL, detailText, isStaffRole } from './UserDetail.jsx';
+import Metrics from './Metrics.jsx';
+import UserDetail, { TempPassword, ROLE_LABEL, STATUS_LABEL, ACTION_LABEL, detailText } from './UserDetail.jsx';
 
 const RIDE_STATUS = {
   requested: 'Solicitado', accepted: 'Aceptado', arrived: 'Llegó', started: 'En curso',
@@ -30,13 +31,50 @@ function beep(ctx) {
 
 const when = (d) => new Date(d).toLocaleString('es-HN', { dateStyle: 'medium', timeStyle: 'short' });
 
+// Listas del panel por páginas: la primera al abrir la pestaña (o al cambiar el filtro) y «Ver más» para las siguientes
+const PAGE = 50;
+function usePaged(call, path, active, onError) {
+  const [items, setItems] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const read = (r) => (Array.isArray(r) ? { list: r, more: r.length === PAGE } : { list: r.users, more: !!r.hasMore });
+  const sep = path.includes('?') ? '&' : '?';
+  const reload = useCallback(async () => {
+    if (!active) return;
+    try {
+      const { list, more } = read(await call(`${path}${sep}limit=${PAGE}`));
+      setItems(list);
+      setHasMore(more);
+    } catch (e) {
+      onError(e.message);
+    }
+  }, [call, path, sep, active, onError]);
+  useEffect(() => { reload(); }, [reload]);
+  async function loadMore() {
+    setBusy(true);
+    try {
+      const { list, more } = read(await call(`${path}${sep}limit=${PAGE}&offset=${items.length}`));
+      setItems([...items, ...list]);
+      setHasMore(more);
+    } catch (e) {
+      onError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return { items: items || [], loaded: items !== null, hasMore, busy, reload, loadMore };
+}
+
+function MoreButton({ list }) {
+  return list.hasMore ? <button disabled={list.busy} onClick={list.loadMore}>{list.busy ? 'Cargando…' : 'Ver más'}</button> : null;
+}
+
 export default function Admin({ token, onGate }) {
   const [tab, setTab] = useState('rides');
   const [stats, setStats] = useState(null);
   const [directory, setDirectory] = useState({ users: [], perms: [], me: { id: 0, role: '' } });
-  const [rides, setRides] = useState([]);
+  const [rideFilter, setRideFilter] = useState('all');
   const [alerts, setAlerts] = useState([]);
-  const [audit, setAudit] = useState([]);
   const [reports, setReports] = useState([]);
   const [repStatus, setRepStatus] = useState('open');
   const [topups, setTopups] = useState([]);
@@ -48,6 +86,7 @@ export default function Admin({ token, onGate }) {
   const [newPass, setNewPass] = useState(null); // formulario para agregar un pasajero (solo superadmin)
   const [chatView, setChatView] = useState(null); // { rideId, messages } del chat de una emergencia
   const [q, setQ] = useState('');
+  const [query, setQuery] = useState(''); // la búsqueda se manda al servidor un momento después de dejar de escribir
   const [filter, setFilter] = useState('all');
   const [staffForm, setStaffForm] = useState({ name: '', phone: '', role: 'support' });
   const [alertsOn, setAlertsOn] = useState(false);
@@ -74,9 +113,8 @@ export default function Admin({ token, onGate }) {
 
   const load = useCallback(async () => {
     try {
-      const [s, d, r, a, rp] = await Promise.all([call('stats'), call('users'), call('rides'), call('alerts'), call(`reports?status=${repStatus}`)]);
-      setStats(s); setDirectory(d); setRides(r); setAlerts(a); setReports(rp); setError('');
-      if (d.perms.includes('audit')) setAudit(await call('audit'));
+      const [s, d, a, rp] = await Promise.all([call('stats'), call('users?filter=pending&limit=50'), call('alerts'), call(`reports?status=${repStatus}`)]);
+      setStats(s); setDirectory(d); setAlerts(a); setReports(rp); setError('');
       if (d.perms.includes('wallet')) setTopups(await call(`topups?status=${topStatus}`));
     } catch (e) {
       setError(e.message);
@@ -114,11 +152,21 @@ export default function Admin({ token, onGate }) {
     return () => clearInterval(id);
   }, [load]);
 
+  // Listas largas (por páginas, solo la de la pestaña abierta)
+  const USER_FILTER = { all: 'people', passenger: 'passenger', driver: 'driver', blocked: 'blocked' };
+  useEffect(() => { const t = setTimeout(() => setQuery(q.trim()), 350); return () => clearTimeout(t); }, [q]);
+  const ridesList = usePaged(call, `rides?status=${rideFilter}`, tab === 'rides', setError);
+  const usersList = usePaged(call, `users?filter=${USER_FILTER[filter]}&q=${encodeURIComponent(query)}`, tab === 'users', setError);
+  const staffList = usePaged(call, 'users?filter=staff', tab === 'staff', setError);
+  const auditList = usePaged(call, 'audit', tab === 'audit' && perms.includes('audit'), setError);
+  const reloadTab = () => ({ rides: ridesList, users: usersList, staff: staffList, audit: auditList })[tab]?.reload();
+
   async function act(path, body, confirmMsg) {
     if (confirmMsg && !window.confirm(confirmMsg)) return;
     try {
       await call(path, body ?? {});
       await load();
+      reloadTab();
     } catch (e) {
       setError(e.message);
     }
@@ -150,6 +198,7 @@ export default function Admin({ token, onGate }) {
       setTemp({ who: staffForm.name, password: r.tempPassword });
       setStaffForm({ name: '', phone: '', role: 'support' });
       await load();
+      staffList.reload();
     } catch (err) {
       setError(err.message);
     }
@@ -163,27 +212,18 @@ export default function Admin({ token, onGate }) {
       setNewPass(null);
       setError('');
       await load();
+      usersList.reload();
     } catch (err) {
       setError(err.message);
     }
   }
 
-  const live = users.filter((u) => !u.deleted_at);
-  const pending = live.filter((u) => u.role === 'driver' && u.status === 'pending');
-  const staff = users.filter((u) => isStaffRole(u.role));
-  const shown = useMemo(() => {
-    const text = q.trim().toLowerCase();
-    return users.filter((u) => {
-      if (isStaffRole(u.role)) return false;
-      if (filter === 'passenger' && u.role !== 'passenger') return false;
-      if (filter === 'driver' && u.role !== 'driver') return false;
-      if (filter === 'blocked' && (u.status !== 'blocked' || u.deleted_at)) return false;
-      if (!text) return true;
-      return [u.name, u.phone, u.plate, u.vehicle].some((v) => (v || '').toLowerCase().includes(text));
-    });
-  }, [users, q, filter]);
+  const pending = users; // la carga periódica trae los conductores por aprobar
+  const staff = staffList.items;
+  const shown = usersList.items;
 
   const tabs = [
+    ...(can('metrics') ? [['metrics', 'Indicadores']] : []),
     ['rides', 'Viajes'],
     ['users', 'Usuarios'],
     ['reports', `Reportes${stats?.openReports ? ` (${stats.openReports})` : ''}`],
@@ -282,12 +322,23 @@ export default function Admin({ token, onGate }) {
         ))}
       </div>
 
+      {tab === 'metrics' && can('metrics') && <Metrics call={call} token={token} can={can} onError={setError} />}
+
       {tab === 'rides' && (
+        <div className="chips">
+          {[['all', 'Todos'], ['active', 'Activos'], ['completed', 'Completados'], ['cancelled', 'Cancelados']].map(([k, l]) => (
+            <button key={k} className={rideFilter === k ? 'on' : ''} onClick={() => setRideFilter(k)}>{l}</button>
+          ))}
+        </div>
+      )}
+      {tab === 'rides' && !ridesList.loaded && <Loading />}
+      {tab === 'rides' && ridesList.loaded && ridesList.items.length === 0 && <Empty title="No hay viajes con ese filtro" />}
+      {tab === 'rides' && ridesList.items.length > 0 && (
         <div className="tablewrap">
           <table>
             <thead><tr><th>#</th><th>Estado</th><th>Pasajero</th><th>Conductor</th><th>Km</th><th>Ofrecido</th><th>Final</th><th>Fecha</th><th></th></tr></thead>
             <tbody>
-              {rides.map((r) => (
+              {ridesList.items.map((r) => (
                 <tr key={r.id}>
                   <td>{r.id}</td>
                   <td><span className={`pill ride-${r.status}`}>{RIDE_STATUS[r.status]}</span>{r.cancelled_by && <span className="muted small"> ({CANCELLED_BY[r.cancelled_by]})</span>}</td>
@@ -304,6 +355,7 @@ export default function Admin({ token, onGate }) {
           </table>
         </div>
       )}
+      {tab === 'rides' && <MoreButton list={ridesList} />}
 
       {tab === 'users' && (
         <>
@@ -327,7 +379,8 @@ export default function Admin({ token, onGate }) {
               <button key={k} className={filter === k ? 'on' : ''} onClick={() => setFilter(k)}>{label}</button>
             ))}
           </div>
-          {shown.length === 0 && <Empty title="No hay usuarios con ese filtro">Prueba con otro filtro o búsqueda.</Empty>}
+          {!usersList.loaded && <Loading />}
+          {usersList.loaded && shown.length === 0 && <Empty title="No hay usuarios con ese filtro">Prueba con otro filtro o búsqueda.</Empty>}
           {shown.map((u) => (
             <button className="ucard click" key={u.id} onClick={() => setDetailId(u.id)}>
               <Avatar name={u.name} />
@@ -339,6 +392,7 @@ export default function Admin({ token, onGate }) {
               <span className={`pill ${u.status}`}>{u.deleted_at ? 'Eliminada' : STATUS_LABEL[u.status]}</span>
             </button>
           ))}
+          <MoreButton list={usersList} />
         </>
       )}
 
@@ -388,6 +442,7 @@ export default function Admin({ token, onGate }) {
             <p className="muted small">Se genera una contraseña temporal que verás una sola vez; la persona la cambiará al entrar.</p>
             <button className="primary">Crear cuenta</button>
           </form>
+          {!staffList.loaded && <Loading />}
           {staff.filter((u) => !u.deleted_at).map((u) => (
             <button className="ucard click" key={u.id} onClick={() => setDetailId(u.id)}>
               <Avatar name={u.name} />
@@ -402,12 +457,13 @@ export default function Admin({ token, onGate }) {
       )}
 
       {tab === 'perms' && can('staff.manage') && <Permissions call={call} onError={setError} />}
+      {tab === 'audit' && !auditList.loaded && <Loading />}
       {tab === 'audit' && (
         <div className="tablewrap">
           <table>
             <thead><tr><th>Cuándo</th><th>Quién</th><th>Qué hizo</th><th>Sobre</th><th>Detalle</th></tr></thead>
             <tbody>
-              {audit.map((l) => (
+              {auditList.items.map((l) => (
                 <tr key={l.id}>
                   <td>{when(l.created_at)}</td>
                   <td>{l.actor} <span className="muted">({ROLE_LABEL[l.actor_role]})</span></td>
@@ -418,9 +474,10 @@ export default function Admin({ token, onGate }) {
               ))}
             </tbody>
           </table>
-          {audit.length === 0 && <Empty title="Todavía no hay movimientos" />}
+          {auditList.loaded && auditList.items.length === 0 && <Empty title="Todavía no hay movimientos" />}
         </div>
       )}
+      {tab === 'audit' && <MoreButton list={auditList} />}
 
       {detailId && (
         <UserDetail
@@ -430,12 +487,12 @@ export default function Admin({ token, onGate }) {
           call={call}
           token={token}
           onClose={() => setDetailId(null)}
-          onChanged={load}
+          onChanged={() => { load(); reloadTab(); }}
         />
       )}
       {docsUser && (
         <DocsModal
-          user={users.find((u) => u.id === docsUser.id) || docsUser}
+          user={[...pending, ...shown].find((u) => u.id === docsUser.id) || docsUser}
           call={call}
           token={token}
           canManage={can('users.manage')}

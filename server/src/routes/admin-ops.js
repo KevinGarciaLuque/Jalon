@@ -8,6 +8,7 @@ import { UPLOADS, REPORT_TYPES } from '../config.js';
 import { app } from '../app.js';
 import { drivers } from '../live.js';
 import { staffOnly, audit, auditOnce, actOn } from '../access.js';
+import { pageOf } from '../util.js';
 import { push } from '../notify.js';
 import { cancelRide } from '../services/rides.js';
 import { tellWallet } from '../services/balance.js';
@@ -123,7 +124,7 @@ app.get('/api/admin/topups', staffOnly('wallet'), async (req, res) => {
     `SELECT t.id, t.amount, t.bank, t.reference, t.status, t.approved_amount, t.review_note, t.created_at, t.reviewed_at,
             u.id AS driver_id, u.name AS driver, u.phone AS driver_phone, u.balance AS driver_balance, r.name AS reviewer
      FROM topups t JOIN users u ON u.id = t.driver_id LEFT JOIN users r ON r.id = t.reviewed_by
-     WHERE t.status = ? ORDER BY t.id DESC LIMIT 200`, [status]
+     WHERE t.status = ? ORDER BY t.id DESC LIMIT ? OFFSET ?`, [status, ...Object.values(pageOf(req, 200))]
   );
   res.json(rows.map((t) => ({ ...t, amount: Number(t.amount), approved_amount: t.approved_amount == null ? null : Number(t.approved_amount), driver_balance: Number(t.driver_balance) })));
 });
@@ -214,7 +215,7 @@ app.get('/api/admin/reports', staffOnly('alerts'), async (req, res) => {
             o.id AS other_id, o.name AS other, o.phone AS other_phone, o.role AS other_role
      FROM reports rp JOIN rides r ON r.id = rp.ride_id JOIN users u ON u.id = rp.user_id
      LEFT JOIN users o ON o.id = IF(rp.user_id = r.passenger_id, r.driver_id, r.passenger_id)
-     WHERE rp.status = ? ORDER BY rp.id DESC LIMIT 200`, [status]
+     WHERE rp.status = ? ORDER BY rp.id DESC LIMIT ? OFFSET ?`, [status, ...Object.values(pageOf(req, 200))]
   );
   res.json(rows.map((r) => ({ ...r, type_label: REPORT_TYPES[r.type] })));
 });

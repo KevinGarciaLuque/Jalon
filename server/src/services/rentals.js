@@ -116,11 +116,11 @@ export async function getBooking(id) {
   return b ? shape(b) : null;
 }
 
-export async function listBookings(where, params, limit = 100) {
+export async function listBookings(where, params, limit = 100, offset = 0) {
   const [rows] = await pool.query(
     `SELECT ${BOOKING_COLUMNS}, v.category, v.make, v.model, v.color, v.year, v.plate, r.name AS renter_name, r.phone AS renter_phone, d.name AS driver_name, d.phone AS driver_phone
      FROM rental_bookings b JOIN vehicles v ON v.id = b.vehicle_id JOIN users r ON r.id = b.renter_id LEFT JOIN users d ON d.id = b.owner_driver_id
-     WHERE ${where} ORDER BY b.start_date DESC, b.id DESC LIMIT ${Number(limit)}`, params
+     WHERE ${where} ORDER BY b.start_date DESC, b.id DESC LIMIT ${Number(limit)} OFFSET ${Number(offset)}`, params
   );
   return rows.map(shape);
 }

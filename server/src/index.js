@@ -16,6 +16,7 @@ import './routes/admin-ops.js';
 import './routes/rentals.js';
 import './routes/permissions.js';
 import './routes/history.js';
+import './routes/metrics.js';
 import './sockets.js';
 import './jobs.js';
 

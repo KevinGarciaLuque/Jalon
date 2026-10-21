@@ -3,6 +3,19 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-21-indicadores',
+    date: '2026-10-21',
+    title: 'Indicadores, dinero por fecha y exportar a Excel',
+    for: ['staff'],
+    items: [
+      'Nueva pestaña «Indicadores»: viajes completados y cancelados, dinero movido, comisión, tiempo hasta la primera oferta, conductores y pasajeros nuevos, por hoy, 7 o 30 días, este mes, el mes pasado o las fechas que elijas, comparado con el período anterior.',
+      'Vista «Dinero»: comisiones, recargas, alquileres y ajustes día por día, y el saldo total de los conductores.',
+      'Exporta a CSV (se abre en Excel) los viajes, movimientos de saldo, recargas, alquileres y usuarios nuevos del período; cada descarga queda en el Registro.',
+      'Las listas de viajes, usuarios, personal y registro cargan por páginas con «Ver más», y la búsqueda de usuarios busca en todos, no solo en los primeros.',
+      'Al principio solo el superadmin ve Indicadores y Exportar; puede darlos a otros roles o personas en «Permisos».',
+    ],
+  },
+  {
     id: '2026-10-21-ganancias',
     date: '2026-10-21',
     title: 'Mis ganancias',

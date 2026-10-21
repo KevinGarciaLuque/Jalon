@@ -9,7 +9,7 @@ import { decryptBuffer, isEncrypted } from '../secure.js';
 import { reportError, UPLOADS, DOC_TYPES, SOS_PHONES } from '../config.js';
 import { app, io } from '../app.js';
 import { drivers, room } from '../live.js';
-import { clean, tempPassword } from '../util.js';
+import { clean, tempPassword, pageOf } from '../util.js';
 import { isStaff, staffOnly, audit, auditOnce, actOn } from '../access.js';
 import { ratingsOf, kickUser } from '../services/rides.js';
 import { grantWelcome } from '../services/balance.js';
@@ -43,23 +43,45 @@ app.get('/api/admin/stats', staffOnly('view'), async (_req, res) => {
   });
 });
 
+// Búsqueda (nombre, teléfono, placa o vehículo) y filtros en el servidor, por páginas
+const USER_FILTERS = {
+  people: "role IN ('passenger','driver')",
+  passenger: "role = 'passenger'",
+  driver: "role = 'driver'",
+  blocked: "role IN ('passenger','driver') AND status = 'blocked' AND deleted_at IS NULL",
+  pending: "role = 'driver' AND status = 'pending' AND deleted_at IS NULL",
+  staff: "role IN ('superadmin','admin','support') AND deleted_at IS NULL",
+};
 app.get('/api/admin/users', staffOnly('view'), async (req, res) => {
-  const [rows] = await pool.query(
+  const { limit, offset } = pageOf(req, 500);
+  const where = [USER_FILTERS[req.query.filter] || '1 = 1'];
+  const params = [];
+  const q = typeof req.query.q === 'string' ? req.query.q.trim().slice(0, 60) : '';
+  if (q) {
+    where.push('(name LIKE ? OR phone LIKE ? OR plate LIKE ? OR vehicle LIKE ?)');
+    const like = `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+    params.push(like, like, like, like);
+  }
+  const [found] = await pool.query(
     `SELECT id, name, phone, role, status, vehicle, plate, created_at, must_change_password, deleted_at, balance,
             (SELECT COUNT(*) FROM documents d WHERE d.user_id = users.id AND d.status = 'uploaded') AS docs
-     FROM users ORDER BY id DESC LIMIT 500`
+     FROM users WHERE ${where.join(' AND ')} ORDER BY id DESC LIMIT ? OFFSET ?`, [...params, limit + 1, offset]
   );
+  const hasMore = found.length > limit;
+  const rows = found.slice(0, limit);
   const ratings = await ratingsOf(rows.map((u) => u.id));
   // Cada quien recibe también lo que puede hacer, para que la pantalla muestre solo lo permitido
-  res.json({ perms: req.perms, me: { id: req.staff.id, role: req.staff.role }, users: rows.map(({ balance, ...u }) => ({ ...u, ...(req.perms.includes('wallet') && u.role === 'driver' ? { balance: Number(balance) } : {}), online: drivers.has(u.id), rating: ratings.get(u.id) || null })) });
+  res.json({ perms: req.perms, me: { id: req.staff.id, role: req.staff.role }, hasMore, users: rows.map(({ balance, ...u }) => ({ ...u, ...(req.perms.includes('wallet') && u.role === 'driver' ? { balance: Number(balance) } : {}), online: drivers.has(u.id), rating: ratings.get(u.id) || null })) });
 });
 
-app.get('/api/admin/rides', staffOnly('view'), async (_req, res) => {
+const RIDE_FILTERS = { active: "r.status IN ('requested','accepted','arrived','started')", completed: "r.status = 'completed'", cancelled: "r.status = 'cancelled'" };
+app.get('/api/admin/rides', staffOnly('view'), async (req, res) => {
+  const { limit, offset } = pageOf(req, 200);
   const [rows] = await pool.query(
-    `SELECT r.id, r.status, r.cancelled_by, r.distance_km, r.offered_price, r.final_price, r.created_at,
+    `SELECT r.id, r.status, r.cancelled_by, r.category, r.distance_km, r.offered_price, r.final_price, r.created_at,
             p.name AS passenger, d.name AS driver
      FROM rides r JOIN users p ON p.id = r.passenger_id LEFT JOIN users d ON d.id = r.driver_id
-     ORDER BY r.id DESC LIMIT 200`
+     WHERE ${RIDE_FILTERS[req.query.status] || '1 = 1'} ORDER BY r.id DESC LIMIT ? OFFSET ?`, [limit, offset]
   );
   res.json(rows);
 });
@@ -287,11 +309,12 @@ app.post('/api/admin/staff/:id/role', staffOnly('staff.manage'), async (req, res
   res.json({ ok: true });
 });
 
-app.get('/api/admin/audit', staffOnly('audit'), async (_req, res) => {
+app.get('/api/admin/audit', staffOnly('audit'), async (req, res) => {
+  const { limit, offset } = pageOf(req, 200);
   const [rows] = await pool.query(
     `SELECT a.id, a.action, a.details, a.created_at, a.target_user_id, s.name AS actor, s.role AS actor_role, t.name AS target_name
      FROM audit_log a JOIN users s ON s.id = a.actor_id LEFT JOIN users t ON t.id = a.target_user_id
-     ORDER BY a.id DESC LIMIT 200`
+     ORDER BY a.id DESC LIMIT ? OFFSET ?`, [limit, offset]
   );
   res.json(rows.map((r) => ({ ...r, details: r.details ? JSON.parse(r.details) : null })));
 });

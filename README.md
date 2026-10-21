@@ -300,3 +300,13 @@ El superadmin decide qué ve cada quien, en el panel → **Permisos** (por rol) 
 - **Viajes:** `rides.started_at` y `rides.completed_at` (los completados de antes tomaron su última actualización como fin).
 - **Historial:** `GET /api/rides/mine?status=all|completed|cancelled&before=<id>` (de 20 en 20, con lo gastado o cobrado del mes) y `GET /api/rides/:id/detail` (solo para quienes participaron). Están en `routes/history.js`.
 - Prueba: `test/phase17.mjs`.
+
+## Etapa 6: indicadores, dinero por fecha, exportar y listas por páginas
+
+- **Indicadores:** `GET /api/admin/metrics?preset=today|7d|30d|month|prev_month` o `?from=AAAA-MM-DD&to=AAAA-MM-DD` (hasta 366 días). Trae los indicadores del período y del período anterior del mismo largo, la serie por día, las horas pico y quién canceló. Fechas en hora de Honduras. Código en `services/metrics.js`.
+- **Dinero:** `GET /api/admin/finance` con el mismo período: comisiones, recargas, bonos, ajustes y alquileres por día, y el saldo actual de los conductores.
+- **Exportar:** `GET /api/admin/export/rides|ledger|topups|rentals|users` devuelve un CSV (UTF-8 con BOM para Excel, hasta 50 000 filas). Los textos que empiezan con `= + - @` llevan `'` delante para que Excel no los ejecute. Cada descarga se anota en el Registro como `export.csv`.
+- **Permisos nuevos:** `metrics` (Indicadores y reporte de dinero) y `export` (Exportar). Por defecto solo el superadmin.
+- **Listas por páginas:** `users`, `rides`, `audit`, `topups`, `reports` y alquileres aceptan `?limit=&offset=` (máx. 100 por página). Sin `limit` responden como antes. `users` acepta `filter=people|passenger|driver|blocked|pending|staff` y `q` (búsqueda en el servidor); `rides` acepta `status=active|completed|cancelled`.
+- **Base de datos:** solo índices nuevos (fecha de creación de viajes, usuarios por rol, movimientos por tipo, recargas revisadas, alquileres por fin), creados si no existen.
+- Prueba: `test/phase18.mjs`.

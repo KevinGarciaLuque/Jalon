@@ -17,6 +17,8 @@ export const MODULES = [
   { key: 'monitor', label: 'Mapa en vivo y desempeño de conductores', group: 'panel', roles: ['admin', 'support'] },
   { key: 'rentals', label: 'Alquileres: reservas y pagos', group: 'panel', roles: ['admin', 'support'] },
   { key: 'fleet', label: 'Flota de Jalón: agregar carros y precios', group: 'panel', roles: ['admin'] },
+  { key: 'metrics', label: 'Indicadores y reporte de dinero por fecha', group: 'panel', roles: ['admin', 'support'] },
+  { key: 'export', label: 'Exportar datos a CSV (Excel)', group: 'panel', roles: ['admin'] },
   { key: 'rent', label: 'Alquilar un carro por días', group: 'app', roles: ['passenger'] },
   { key: 'rent.offer', label: 'Ofrecer su carro en alquiler', group: 'app', roles: ['driver'] },
 ];
