@@ -3,6 +3,25 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-21-mapas',
+    date: '2026-10-21',
+    title: 'Mapas más confiables',
+    for: ['all'],
+    items: [
+      'Si el servicio de rutas falla, el precio y el tiempo se calculan al instante (marcados como «estimado») en lugar de hacerte esperar.',
+      'Las direcciones y rutas que ya se buscaron se responden más rápido.',
+    ],
+  },
+  {
+    id: '2026-10-21-mapas-staff',
+    date: '2026-10-21',
+    title: 'Proveedor de mapas configurable',
+    for: ['staff'],
+    items: [
+      'La búsqueda de direcciones y las rutas pueden pasar a LocationIQ poniendo su clave en Railway, sin cambiar la app. Mientras no se configure, se siguen usando los servicios gratuitos de OpenStreetMap.',
+    ],
+  },
+  {
     id: '2026-10-21-app-liviana',
     date: '2026-10-21',
     title: 'La app abre más rápido',

@@ -108,6 +108,25 @@ Por defecto el mapa usa los servidores públicos de OpenStreetMap, que no están
 `VITE_TILE_URL` (por ejemplo `https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=TU_CLAVE`) y `VITE_TILE_ATTRIBUTION`; el servidor ajusta solo la política de seguridad.
 `npm run test:tiles` (con el servidor en modo producción) comprueba que las baldosas carguen y que se envíe el Referer.
 
+**Búsqueda de direcciones y rutas** (Etapa 7.3). Por defecto se usan Photon y OSRM públicos. Para cambiar a LocationIQ, en Railway → Variables:
+`MAPS_PROVIDER=locationiq` y `MAPS_KEY=<tu clave>` (y `LOCATIONIQ_REGION=eu1` si la cuenta es de Europa). La clave se queda en el servidor; la app nunca la ve.
+Si falta la clave, el servidor avisa en el registro y sigue con OpenStreetMap. Para el mapa de LocationIQ (opcional, otra clave restringida a tu dominio):
+`VITE_TILE_URL=https://{s}-tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=<clave del mapa>` y
+`VITE_TILE_ATTRIBUTION=© <a href="https://locationiq.com/?ref=link-back">LocationIQ</a> © OpenStreetMap` (el plan gratis pide el enlace). Comprueba la dirección exacta en tu panel de LocationIQ.
+
+- **Caché:** el servidor guarda hasta 5.000 búsquedas, nombres de lugares y rutas (búsquedas 1 h, nombres 24 h, rutas 10 min); lo más usado se queda.
+- **Servicio caído:** si el proveedor no responde, durante `MAPS_RETRY_SECONDS` (60 s) no se le vuelve a preguntar: la ruta y el precio se estiman al instante
+  (línea recta × 1,3 a ~25 km/h, marcada como «estimado») en lugar de esperar 8 s en cada viaje. Una ruta estimada se vuelve a intentar al minuto.
+- Prueba: `test/maps-unit.mjs` (contra un LocationIQ de mentira, sin clave real).
+
+| Proveedor | Gratis | De pago | Mapa | Búsqueda | Rutas | Notas |
+|---|---|---|---|---|---|---|
+| **LocationIQ** (recomendado para empezar) | 5.000 consultas/día, uso comercial con enlace | Developer: US$100/mes (25.000/día) | Sí | Sí | Sí (formato OSRM) | Ya está integrado |
+| Geoapify | 3.000 créditos/día, uso comercial | API 10: US$59/mes (10.000/día) | Sí | Sí | Sí (otro formato) | Habría que agregar su formato de rutas |
+| Stadia Maps | 200.000 créditos/mes, **sin** uso comercial | Starter: US$20/mes (1 millón/mes) | Sí | Sí | Sí (Valhalla, otro formato) | Barato para el mapa |
+
+Precios vistos el 21 de octubre de 2026 en la página de cada proveedor; confírmalos antes de contratar.
+
 ## Fase 6: operación profesional
 
 **Emergencias por SMS.** Al pulsar el botón 🆘, además de verse en el panel, se envía un SMS a los teléfonos de `SOS_ALERT_PHONES` (separados por coma, 8 dígitos) con quién pide ayuda, su teléfono y el mapa. Si nadie la atiende se repite cada `SOS_REMINDER_MINUTES` (3 por defecto) hasta 4 avisos en total. `PUBLIC_URL` agrega el enlace al panel.
