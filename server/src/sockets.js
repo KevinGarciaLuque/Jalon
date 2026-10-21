@@ -1,12 +1,11 @@
 // Tiempo real (Socket.IO): conductor, pasajero, chat del viaje y botón de emergencia
-import jwt from 'jsonwebtoken';
 import { pool } from './db.js';
 import { distanceKm } from './geo.js';
 import { getSettings } from './wallet.js';
 import { fareFor, isCategory } from './fares.js';
 import { getRoute } from './maps.js';
 import { chatOpen, chatAllowed, CHAT_MAX } from './chat.js';
-import { reportError, JWT_SECRET, NEARBY_KM, OFFER_TTL_SECONDS, RAISE_COOLDOWN_MS, MAX_PRICE, SOCKET_WINDOW_MS, SOCKET_LIMIT_DEFAULT, SOCKET_LIMITS } from './config.js';
+import { reportError, SESSION_COOKIE, trustedOrigin, NEARBY_KM, OFFER_TTL_SECONDS, RAISE_COOLDOWN_MS, MAX_PRICE, SOCKET_WINDOW_MS, SOCKET_LIMIT_DEFAULT, SOCKET_LIMITS } from './config.js';
 import { io } from './app.js';
 import { drivers, passengers, openRides, declined, room } from './live.js';
 import { isPoint, isPrice, serial, clean } from './util.js';
@@ -17,18 +16,23 @@ import { shareWithContacts } from './services/accounts.js';
 import { notifySos } from './services/sos.js';
 import { rentingNow } from './services/rentals.js';
 import { openSession, closeSession, recordPoint, forgetTrack } from './services/activity.js';
+import { readCookie, userFromToken } from './access.js';
 
 // ---------- Sockets ----------
 io.use(async (socket, next) => {
   try {
-    const payload = jwt.verify(socket.handshake.auth?.token, JWT_SECRET);
-    const { id } = payload;
-    const [rows] = await pool.query('SELECT * FROM users WHERE id = ?', [id]);
-    if (!rows[0]) return next(new Error('Usuario no existe'));
-    if (rows[0].status === 'blocked') return next(new Error('Cuenta bloqueada'));
-    if (rows[0].must_change_password) return next(new Error('Debes cambiar tu contraseña'));
-    if ((payload.tv ?? 0) !== rows[0].token_version) return next(new Error('No autorizado'));
-    socket.user = rows[0];
+    // El token que manda la app (clientes de antes, pruebas) o la cookie de sesión; con la cookie, solo desde este sitio
+    const { headers } = socket.handshake;
+    let token = socket.handshake.auth?.token;
+    if (!token) {
+      if (!trustedOrigin(headers.origin, headers.host)) return next(new Error('No autorizado'));
+      token = readCookie(headers.cookie, SESSION_COOKIE);
+    }
+    const u = await userFromToken(token);
+    if (!u) return next(new Error('No autorizado'));
+    if (u.status === 'blocked') return next(new Error('Cuenta bloqueada'));
+    if (u.must_change_password) return next(new Error('Debes cambiar tu contraseña'));
+    socket.user = u;
     next();
   } catch {
     next(new Error('No autorizado'));

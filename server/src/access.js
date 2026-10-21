@@ -2,11 +2,56 @@
 import jwt from 'jsonwebtoken';
 import { pool } from './db.js';
 import { getSettings } from './wallet.js';
-import { JWT_SECRET } from './config.js';
+import { JWT_SECRET, isProd, SESSION_COOKIE, SESSION_HEADER } from './config.js';
 import { permsFor, can } from './perms.js';
 
 // El personal maneja datos de todos: su sesión dura 12 horas; pasajeros y conductores, 30 días
 export const sign = (u) => jwt.sign({ id: u.id, role: u.role, tv: u.token_version ?? 0 }, JWT_SECRET, { expiresIn: ['superadmin', 'admin', 'support'].includes(u.role) ? '12h' : '30d' });
+
+// ---------- Dónde viaja la sesión ----------
+// La app web la guarda en una cookie HttpOnly (JavaScript no la puede leer, así un script malicioso no se la roba).
+// Otros clientes (las pruebas, una futura app nativa) siguen usando «Authorization: Bearer <token>».
+export function readCookie(header, name) {
+  for (const part of String(header || '').split(';')) {
+    const i = part.indexOf('=');
+    if (i > 0 && part.slice(0, i).trim() === name) return decodeURIComponent(part.slice(i + 1).trim());
+  }
+  return '';
+}
+export const wantsCookie = (req) => req.headers[SESSION_HEADER] === 'cookie';
+const cookieOptions = { httpOnly: true, secure: isProd, sameSite: 'strict', path: '/' };
+function writeCookie(res, token) {
+  const { exp } = jwt.decode(token);
+  res.cookie(SESSION_COOKIE, token, { ...cookieOptions, maxAge: Math.max(0, exp * 1000 - Date.now()) });
+}
+export const clearSession = (res) => res.clearCookie(SESSION_COOKIE, cookieOptions);
+// Abre (o renueva) la sesión: la app web la recibe en la cookie; los demás, el token en la respuesta
+export function startSession(req, res, u) {
+  const token = sign(u);
+  if (!wantsCookie(req)) return { token };
+  writeCookie(res, token);
+  return {};
+}
+// Pasa a la cookie una sesión que la app tenía guardada (de antes de este cambio), sin alargar su duración
+export const moveToCookie = (res, token) => writeCookie(res, token);
+
+const SAFE = new Set(['GET', 'HEAD', 'OPTIONS']);
+const fail = (status, error) => Object.assign(new Error(error), { status });
+// El token de la petición: primero la cabecera Authorization; si no hay, la cookie.
+// Con la cookie, lo que cambia algo exige la cabecera de la app: otro sitio no puede ponerla (CSRF).
+function requestToken(req) {
+  const bearer = (req.headers.authorization || '').replace(/^Bearer /, '');
+  if (bearer) return bearer;
+  const cookie = readCookie(req.headers.cookie, SESSION_COOKIE);
+  if (cookie && !SAFE.has(req.method) && !wantsCookie(req)) throw fail(403, 'Petición no permitida');
+  return cookie;
+}
+// La persona dueña del token, si sigue valiendo (no se cerró la sesión ni se cambió la contraseña)
+export async function userFromToken(token) {
+  const payload = jwt.verify(token, JWT_SECRET);
+  const [rows] = await pool.query('SELECT * FROM users WHERE id = ?', [payload.id]);
+  return rows[0] && (payload.tv ?? 0) === rows[0].token_version ? rows[0] : null;
+}
 
 // Reglas de contraseña: 8 caracteres (10 para el personal), no solo números, nada obvio y que no contenga el teléfono
 const COMMON_PASSWORDS = new Set(['12345678', '123456789', '1234567890', '87654321', 'password', 'password1', 'contrasena', 'contrasena1', 'qwertyui', 'qwerty123', 'abcdefgh', 'abc12345', '11111111', '00000000', 'jalon2026', 'jalon1234', 'honduras', 'honduras1']);
@@ -29,16 +74,14 @@ export const publicUser = (u, require2fa = true, perms = []) => ({ id: u.id, nam
 
 export async function authUser(req, res, next) {
   try {
-    const payload = jwt.verify((req.headers.authorization || '').replace('Bearer ', ''), JWT_SECRET);
-    const { id } = payload;
-    const [rows] = await pool.query('SELECT * FROM users WHERE id = ?', [id]);
-    if (!rows[0] || rows[0].status === 'blocked' || (payload.tv ?? 0) !== rows[0].token_version) return res.status(401).json({ error: 'No autorizado' });
-    if (rows[0].must_change_password && req.path !== '/api/password/change')
+    const u = await userFromToken(requestToken(req));
+    if (!u || u.status === 'blocked') return res.status(401).json({ error: 'No autorizado' });
+    if (u.must_change_password && req.path !== '/api/password/change')
       return res.status(403).json({ error: 'Debes cambiar tu contraseña', code: 'MUST_CHANGE_PASSWORD' });
-    req.user = rows[0];
+    req.user = u;
     next();
-  } catch {
-    res.status(401).json({ error: 'No autorizado' });
+  } catch (e) {
+    res.status(e.status || 401).json({ error: e.status ? e.message : 'No autorizado' });
   }
 }
 
@@ -58,10 +101,8 @@ export const isStaff = (role) => STAFF.includes(role);
 export function staffOnly(perm) {
   return async (req, res, next) => {
     try {
-      const payload = jwt.verify((req.headers.authorization || '').replace('Bearer ', ''), JWT_SECRET);
-      const [rows] = await pool.query('SELECT * FROM users WHERE id = ?', [payload.id]);
-      const u = rows[0];
-      if (!u || (payload.tv ?? 0) !== u.token_version) return res.status(401).json({ error: 'No autorizado' });
+      const u = await userFromToken(requestToken(req));
+      if (!u) return res.status(401).json({ error: 'No autorizado' });
       if (!isStaff(u.role) || u.status !== 'active') return res.status(403).json({ error: 'Solo personal autorizado' });
       if (u.must_change_password) return res.status(403).json({ error: 'Debes cambiar tu contraseña', code: 'MUST_CHANGE_PASSWORD' });
       if (!u.totp_enabled && (await twoFactorRequired())) return res.status(403).json({ error: 'Activa la verificación en dos pasos para continuar', code: 'MUST_ENROLL_2FA' });
@@ -70,8 +111,8 @@ export function staffOnly(perm) {
       req.staff = u;
       req.perms = perms;
       next();
-    } catch {
-      res.status(401).json({ error: 'No autorizado' });
+    } catch (e) {
+      res.status(e.status || 401).json({ error: e.status ? e.message : 'No autorizado' });
     }
   };
 }

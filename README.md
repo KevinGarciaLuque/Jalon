@@ -310,3 +310,12 @@ El superadmin decide qué ve cada quien, en el panel → **Permisos** (por rol) 
 - **Listas por páginas:** `users`, `rides`, `audit`, `topups`, `reports` y alquileres aceptan `?limit=&offset=` (máx. 100 por página). Sin `limit` responden como antes. `users` acepta `filter=people|passenger|driver|blocked|pending|staff` y `q` (búsqueda en el servidor); `rides` acepta `status=active|completed|cancelled`.
 - **Base de datos:** solo índices nuevos (fecha de creación de viajes, usuarios por rol, movimientos por tipo, recargas revisadas, alquileres por fin), creados si no existen.
 - Prueba: `test/phase18.mjs`.
+
+## Etapa 7.1: sesión en cookie protegida
+
+- **La app web** manda la cabecera `X-Jalon-Session: cookie` en todas sus llamadas (`authFetch` en `client/src/lib.js`). Con ella, al entrar, registrarse, cambiar la contraseña o cerrar las demás sesiones, el servidor entrega la sesión en una cookie `HttpOnly`, `SameSite=Strict`, `Path=/` y, en producción, `Secure` con el nombre `__Host-jalon` (en desarrollo, `jalon_session`). El token ya no viaja en la respuesta ni se guarda en el teléfono; en `localStorage` solo queda el nombre, el rol y los permisos.
+- **CSRF:** con la cookie, todo lo que no sea GET exige esa cabecera; otro sitio no puede ponerla (la bloquea CORS), y además la cookie es `SameSite=Strict`. El socket solo acepta la cookie si la conexión viene de este sitio (`trustedOrigin` en `config.js`).
+- **Otros clientes** (las pruebas, una futura app nativa) siguen igual: sin la cabecera reciben el token y lo mandan en `Authorization: Bearer`.
+- **Sesiones de antes:** la app que tenía el token guardado lo manda una vez a `POST /api/session/cookie`, recibe la cookie (con el mismo vencimiento) y lo borra. Nadie tiene que volver a entrar.
+- **Salir:** `POST /api/logout` borra la cookie. «Cerrar las demás sesiones» y cambiar la contraseña siguen invalidando todas las sesiones anteriores (`token_version`).
+- Sin cambios en la base de datos. Prueba: `test/phase19.mjs`.

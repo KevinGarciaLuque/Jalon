@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { API, lempiras, RENTAL_STATUS, RENTAL_PILL, PAYMENT_LABEL, PAYMENT_STATUS, vehicleText, dateHN, CATEGORY_LABEL } from './lib.js';
+import { API, authFetch, lempiras, RENTAL_STATUS, RENTAL_PILL, PAYMENT_LABEL, PAYMENT_STATUS, vehicleText, dateHN, CATEGORY_LABEL } from './lib.js';
 import { Empty, Loading, VehicleFields } from './components.jsx';
 
 const FILTERS = [['pay', 'Pagos por revisar'], ['requested', 'Pedidos'], ['confirmed', 'Confirmados'], ['active', 'En curso'], ['completed', 'Terminados'], ['cancelled', 'Cancelados']];
@@ -10,7 +10,7 @@ function Proof({ id, token }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => {
     let url;
-    fetch(`${API}/api/admin/rentals/${id}/receipt`, { headers: { Authorization: `Bearer ${token}` } })
+    authFetch(`${API}/api/admin/rentals/${id}/receipt`)
       .then((r) => (r.ok ? r.blob() : Promise.reject()))
       .then((b) => { url = URL.createObjectURL(b); setSrc(url); })
       .catch(() => setFailed(true));

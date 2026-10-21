@@ -128,7 +128,7 @@ function Privacy() {
         <li><b>Reportes:</b> lo que nos cuentes sobre un viaje (un objeto olvidado, un cobro, un problema). Lo ve el personal de Jalón para atenderte.</li>
         <li><b>Notificaciones:</b> si las activas, guardamos un identificador de tu dispositivo para enviártelas (puedes desactivarlas en Cuenta).</li>
         <li><b>Técnicos:</b> tu dirección IP y registros del servidor, para seguridad y para limitar intentos de acceso abusivos.</li>
-        <li>La sesión se guarda en tu navegador (almacenamiento local). No usamos cookies de publicidad ni rastreadores de terceros.</li>
+        <li>Tu sesión se guarda en una cookie segura que solo sirve para mantenerte dentro de tu cuenta (la página no puede leerla). En tu navegador guardamos tu nombre y tus preferencias. No usamos cookies de publicidad ni rastreadores de terceros.</li>
       </ul>
 
       <h2>2. Para qué los usamos</h2>

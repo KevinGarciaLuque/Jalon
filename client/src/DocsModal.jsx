@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { API } from './lib.js';
+import { API, authFetch } from './lib.js';
 import { Loading } from './components.jsx';
 
 export const DOC_LABEL = { photo: 'Foto del conductor', license: 'Licencia', registration: 'Matrícula' };
@@ -17,7 +17,7 @@ export default function DocsModal({ user, call, token, canManage, onClose, onApp
       // Las imágenes exigen sesión de personal, por eso se bajan con fetch y se muestran como blob
       const urls = {};
       for (const d of list) {
-        const res = await fetch(`${API}/api/admin/documents/${d.id}/file`, { headers: { Authorization: `Bearer ${token}` } });
+        const res = await authFetch(`${API}/api/admin/documents/${d.id}/file`);
         if (res.ok) urls[d.id] = URL.createObjectURL(await res.blob());
       }
       setImages((old) => { Object.values(old).forEach(URL.revokeObjectURL); return urls; });

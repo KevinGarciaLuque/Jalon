@@ -7,11 +7,13 @@ import History from './History.jsx';
 import Account from './Account.jsx';
 import TwoFactorSetup from './TwoFactorSetup.jsx';
 import News, { useNews } from './News.jsx';
-import { connectSocket, apiGet } from './lib.js';
+import { connectSocket, apiGet, apiPost, authFetch, API } from './lib.js';
 
 const STAFF = ['superadmin', 'admin', 'support'];
 const ROLE_NAME = { passenger: 'Pasajero', driver: 'Conductor', superadmin: 'Superadministrador', admin: 'Administrador', support: 'Soporte' };
 
+// En el teléfono solo queda quién es la persona (nombre, rol); la sesión misma está en la cookie, que JavaScript no puede leer.
+// `token` aparece solo en sesiones guardadas antes de la cookie: al abrir la app se pasa a la cookie y se borra.
 function loadSession() {
   try { return JSON.parse(localStorage.getItem('jalon')) || null; } catch { return null; }
 }
@@ -27,17 +29,30 @@ export default function App() {
   const { news, unseen, markSeen } = useNews(session?.user.role);
   const [accountStatus, setAccountStatus] = useState(() => loadSession()?.user.status);
 
+  // Sesión de antes de la cookie: se pasa a la cookie una vez y el token se borra del teléfono.
+  // Si no hay conexión, se sigue usando el token y se intenta la próxima vez que se abra la app.
   useEffect(() => {
-    if (!session?.token || session.user.mustChangePassword) return;
-    apiGet('me', session.token)
+    if (!session?.token) return;
+    authFetch(`${API}/api/session/cookie`, { method: 'POST', headers: { Authorization: `Bearer ${session.token}` } })
+      .then((res) => {
+        if (res.ok) save({ user: session.user });
+        else if (res.status === 401) logout();
+      })
+      .catch(() => {});
+  }, [session?.token]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Al abrir la app: los datos de la sesión (p. ej. los módulos que el superadmin dio o quitó). Si la sesión venció, se sale.
+  useEffect(() => {
+    if (!session || session.token || session.user.mustChangePassword) return;
+    apiGet('me')
       .then(({ user }) => setSession((cur) => {
-        if (!cur || cur.token !== session.token) return cur;
+        if (!cur || cur.user.id !== user.id) return cur;
         const next = { ...cur, user: { ...cur.user, perms: user.perms } };
         localStorage.setItem('jalon', JSON.stringify(next));
         return next;
       }))
-      .catch(() => {});
-  }, [session?.token]); // eslint-disable-line react-hooks/exhaustive-deps
+      .catch((e) => { if (e.message === 'No autorizado') logout('Tu sesión venció. Vuelve a entrar.'); });
+  }, [session?.user.id, session?.token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     // El personal no usa sockets; y con contraseña temporal pendiente tampoco se conecta nadie
@@ -59,17 +74,18 @@ export default function App() {
   }, [session]);
 
   function onAuth(data) {
-    localStorage.setItem('jalon', JSON.stringify(data));
+    const next = { user: data.user }; // la sesión llegó en la cookie
+    localStorage.setItem('jalon', JSON.stringify(next));
     setNotice('');
     setAccountStatus(data.user.status);
-    setSession(data);
+    setSession(next);
   }
 
   const save = (next) => { localStorage.setItem('jalon', JSON.stringify(next)); setSession(next); };
 
-  // Al cambiar la contraseña (o cerrar las demás sesiones) el servidor entrega un token nuevo; se reemplaza para no cerrar esta sesión
-  function updateToken(token) {
-    save({ ...session, token, user: { ...session.user, mustChangePassword: false } });
+  // Al cambiar la contraseña (o cerrar las demás sesiones) el servidor renueva la cookie de esta sesión; un token viejo ya no sirve
+  function updateToken() {
+    save({ user: { ...session.user, mustChangePassword: false } });
   }
 
   // El servidor puede exigir pasos pendientes aunque la sesión guardada no lo sepa (p. ej. un superadmin que ya estaba conectado)
@@ -81,6 +97,7 @@ export default function App() {
   const staff = STAFF.includes(session?.user.role);
 
   function logout(message = '') {
+    apiPost('logout').catch(() => {}); // el servidor borra la cookie
     localStorage.removeItem('jalon');
     setNotice(typeof message === 'string' ? message : '');
     setSession(null);

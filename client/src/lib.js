@@ -13,8 +13,14 @@ export const DEFAULT_POS = { lat: 14.0723, lng: -87.1921 }; // Tegucigalpa
 export const CATEGORIES = [['moto', 'Moto'], ['car', 'Carro'], ['xl', 'Carro amplio']];
 export const CATEGORY_LABEL = Object.fromEntries(CATEGORIES);
 
+// La sesión viaja en una cookie que JavaScript no puede leer (la pone el servidor). Esta cabecera le dice que la app la usa
+// y, como otro sitio no puede ponerla, protege contra CSRF. Todas las llamadas a la API pasan por aquí.
+export function authFetch(url, { headers, ...opts } = {}) {
+  return fetch(url, { ...opts, credentials: 'include', headers: { 'X-Jalon-Session': 'cookie', ...headers } });
+}
+
 export async function api(path, body) {
-  const res = await fetch(`${API}/api/${path}`, {
+  const res = await authFetch(`${API}/api/${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -24,8 +30,9 @@ export async function api(path, body) {
   return data;
 }
 
+// `token` solo existe en una sesión guardada de antes de la cookie que todavía no se pudo pasar a ella
 export function connectSocket(token) {
-  return io(API || undefined, { auth: { token } });
+  return io(API || undefined, { auth: token ? { token } : {}, withCredentials: true });
 }
 
 export function distanceKm(a, b) {
@@ -38,7 +45,7 @@ export function distanceKm(a, b) {
 }
 
 async function request(method, path, token, body) {
-  const res = await fetch(`${API}/api/${path}`, {
+  const res = await authFetch(`${API}/api/${path}`, {
     method,
     headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: body ? JSON.stringify(body) : undefined,

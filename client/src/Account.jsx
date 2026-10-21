@@ -23,8 +23,8 @@ export default function Account({ user, token, onToken, onClose, onLogout, force
     if (f.next !== f.again) return setMsg({ ok: false, text: 'La confirmación no coincide' });
     setBusy(true);
     try {
-      const { token: fresh } = await apiPost('password/change', token, { current: f.current, password: f.next });
-      onToken(fresh); // las demás sesiones se cierran; esta sigue con el token nuevo
+      await apiPost('password/change', token, { current: f.current, password: f.next });
+      onToken(); // las demás sesiones se cierran; esta sigue (el servidor renovó la cookie)
       setF({ current: '', next: '', again: '' });
       setMsg({ ok: true, text: 'Contraseña actualizada. Se cerraron tus otras sesiones.' });
     } catch (err) {
@@ -37,8 +37,8 @@ export default function Account({ user, token, onToken, onClose, onLogout, force
   async function logoutAll() {
     if (!window.confirm('¿Cerrar tu sesión en todos los demás dispositivos? Esta sesión seguirá abierta.')) return;
     try {
-      const { token: fresh } = await apiPost('logout-all', token);
-      onToken(fresh);
+      await apiPost('logout-all', token);
+      onToken();
       setNote({ ok: true, text: 'Listo: se cerraron las sesiones en los demás dispositivos.' });
     } catch (err) {
       setNote({ ok: false, text: err.message });

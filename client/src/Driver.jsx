@@ -167,7 +167,7 @@ export default function Driver({ socket, token, status, userId, perms = [] }) {
               <button onClick={chat.open ? chat.closeChat : chat.openChat}>💬 Chat con el pasajero{chat.unread ? ` (${chat.unread})` : ''}</button>
             )}
             {ride?.status === 'completed' && <button onClick={() => setReporting(true)}>⚠ Reportar un problema con este viaje</button>}
-            {showWallet && wallet && <DriverWallet token={token} wallet={wallet} reload={loadWallet} onClose={() => setShowWallet(false)} />}
+            {showWallet && wallet && <DriverWallet wallet={wallet} reload={loadWallet} onClose={() => setShowWallet(false)} />}
             {showRental && <DriverRental token={token} socket={socket} onClose={() => { setShowRental(false); setRenting(false); }} />}
             {renting && <div className="hint">Tienes un alquiler en curso: no recibes viajes hasta terminarlo en «Alquiler de mi carro».</div>}
             {reporting && ride && <ReportForm rideId={ride.id} token={token} onClose={() => setReporting(false)} />}

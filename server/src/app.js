@@ -20,7 +20,7 @@ app.use(helmet({
     },
   },
 }));
-app.use(cors({ origin: allowOrigin }));
+app.use(cors({ origin: allowOrigin, credentials: true })); // credentials: en desarrollo la web (:5173) usa la cookie de la API (:4000)
 const smallJson = express.json({ limit: '10kb' });
 app.use((req, res, next) => (/^\/api\/(driver\/(documents|topups)|rentals\/\d+\/receipt)/.test(req.path) ? next() : smallJson(req, res, next)));
 
@@ -49,6 +49,6 @@ export const registerLimiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: isPr
 export const otpLimiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: isProd ? 20 : 1000, message: limitMsg });
 
 export const server = http.createServer(app);
-export const io = new Server(server, { cors: { origin: allowOrigin } });
+export const io = new Server(server, { cors: { origin: allowOrigin, credentials: true } });
 
 export const photoJson = express.json({ limit: '3mb' });

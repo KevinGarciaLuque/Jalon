@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { apiGet, apiPost, API } from './lib.js';
+import { apiGet, apiPost, API, authFetch } from './lib.js';
 
-async function del(path, token) {
-  await fetch(`${API}/api/${path}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+async function del(path) {
+  await authFetch(`${API}/api/${path}`, { method: 'DELETE' });
 }
 
 // Contactos de confianza: reciben por SMS el enlace para seguir tu viaje cuando empieza
@@ -33,7 +33,7 @@ export function TrustedContacts({ token }) {
       {list.map((c) => (
         <div className="row between" key={c.id}>
           <span>{c.name} <span className="muted">· {c.phone}</span></span>
-          <button className="link" onClick={async () => { await del(`contacts/${c.id}`, token); load(); }} aria-label={`Quitar a ${c.name}`}>✕</button>
+          <button className="link" onClick={async () => { await del(`contacts/${c.id}`); load(); }} aria-label={`Quitar a ${c.name}`}>✕</button>
         </div>
       ))}
       {list.length < 3 && (
@@ -61,7 +61,7 @@ export function SavedPlaces({ token }) {
       {list.map((p) => (
         <div className="row between" key={p.id}>
           <span>⭐ {p.label} <span className="muted small">· {p.text}</span></span>
-          <button className="link" onClick={async () => { await del(`favorites/${p.id}`, token); load(); }} aria-label={`Borrar ${p.label}`}>✕</button>
+          <button className="link" onClick={async () => { await del(`favorites/${p.id}`); load(); }} aria-label={`Borrar ${p.label}`}>✕</button>
         </div>
       ))}
     </div>

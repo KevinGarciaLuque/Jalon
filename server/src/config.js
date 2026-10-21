@@ -64,6 +64,14 @@ export const PUBLIC_URL = process.env.PUBLIC_URL || process.env.CLIENT_ORIGIN ||
 
 // En desarrollo se acepta cualquier puerto de localhost (Vite cambia de puerto si el 5173 está ocupado)
 export const allowOrigin = (origin, cb) => cb(null, !origin || origin === ORIGIN || /^http:\/\/localhost:\d+$/.test(origin));
+// Una conexión que viene de otro sitio no puede usar la cookie de sesión (el mismo servidor, CLIENT_ORIGIN o localhost en desarrollo)
+export const trustedOrigin = (origin, host) => !origin || origin === ORIGIN || /^http:\/\/localhost:\d+$/.test(origin) || origin === `https://${host}` || (!isProd && origin === `http://${host}`);
+
+// Sesión de la app web: una cookie que JavaScript no puede leer (HttpOnly), solo para este sitio (SameSite=Strict)
+// y en producción solo por HTTPS. El prefijo __Host- obliga al navegador a no compartirla con subdominios.
+export const SESSION_COOKIE = isProd ? '__Host-jalon' : 'jalon_session';
+// La app web manda esta cabecera: pide la sesión en cookie y, como otro sitio no puede ponerla, protege contra CSRF
+export const SESSION_HEADER = 'x-jalon-session';
 
 export const MAX_PRICE = 5000; // L
 export const REQUEST_TTL_MIN = 10; // un viaje sin conductor se cancela solo

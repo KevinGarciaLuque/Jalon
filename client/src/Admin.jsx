@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { API, lempiras } from './lib.js';
+import { API, authFetch, lempiras } from './lib.js';
 import { Avatar, Empty, Loading, PushToggle, Stars } from './components.jsx';
 import DocsModal from './DocsModal.jsx';
 import Topups from './Topups.jsx';
@@ -98,9 +98,9 @@ export default function Admin({ token, onGate }) {
 
   const call = useCallback(async (path, body, method) => {
     const verb = method || (body ? 'POST' : 'GET');
-    const res = await fetch(`${API}/api/admin/${path}`, {
+    const res = await authFetch(`${API}/api/admin/${path}`, {
       method: verb,
-      headers: { Authorization: `Bearer ${token}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      headers: { ...(body ? { 'Content-Type': 'application/json' } : {}) },
       body: body ? JSON.stringify(body) : undefined,
     });
     const data = await res.json().catch(() => ({}));
@@ -322,7 +322,7 @@ export default function Admin({ token, onGate }) {
         ))}
       </div>
 
-      {tab === 'metrics' && can('metrics') && <Metrics call={call} token={token} can={can} onError={setError} />}
+      {tab === 'metrics' && can('metrics') && <Metrics call={call} can={can} onError={setError} />}
 
       {tab === 'rides' && (
         <div className="chips">

@@ -11,7 +11,7 @@ import { TERMS_VERSION } from '../legal.js';
 import { generateSecret, verifyTotp, otpauthUrl, generateBackupCodes, hashBackup } from '../totp.js';
 import { JWT_SECRET, OTP_CHANNELS, echoCode } from '../config.js';
 import { app, loginLimiter, registerLimiter, otpLimiter } from '../app.js';
-import { sign, checkPassword, twoFactorRequired, publicUser, authUser, isStaff, audit } from '../access.js';
+import { startSession, moveToCookie, clearSession, userFromToken, wantsCookie, checkPassword, twoFactorRequired, publicUser, authUser, isStaff, audit } from '../access.js';
 import { readVehicle, plateTaken, saveVehicle, vehicleLabel, isPlateDup } from '../services/vehicles.js';
 import { permsFor } from '../perms.js';
 
@@ -66,7 +66,7 @@ app.post('/api/register', registerLimiter, async (req, res) => {
     } finally {
       conn.release();
     }
-    res.json({ token: sign(user), user: publicUser(user, true, await permsFor(user)) });
+    res.json({ ...startSession(req, res, user), user: publicUser(user, true, await permsFor(user)) });
   } catch (e) {
     if (isPlateDup(e)) return res.status(409).json({ error: 'Esa placa ya está registrada' });
     if (e.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: /email/.test(e.message) ? 'Ese correo ya está registrado' : 'Ese teléfono ya está registrado' });
@@ -91,7 +91,7 @@ app.post('/api/login', loginLimiter, async (req, res) => {
     if (require2fa && u.totp_enabled) {
       return res.json({ twoFactor: true, challenge: jwt.sign({ id: u.id, purpose: '2fa' }, JWT_SECRET, { expiresIn: '5m' }) });
     }
-    res.json({ token: sign(u), user: publicUser(u, require2fa, await permsFor(u)) });
+    res.json({ ...startSession(req, res, u), user: publicUser(u, require2fa, await permsFor(u)) });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Error del servidor' });
@@ -170,7 +170,7 @@ app.post('/api/password/change', authUser, loginLimiter, async (req, res) => {
   if (current === password) return res.status(400).json({ error: 'La contraseña nueva debe ser distinta de la actual' });
   await pool.query('UPDATE users SET password_hash = ?, must_change_password = 0, token_version = token_version + 1 WHERE id = ?', [await bcrypt.hash(password, 10), req.user.id]);
   const [[u]] = await pool.query('SELECT * FROM users WHERE id = ?', [req.user.id]);
-  res.json({ ok: true, token: sign(u) });
+  res.json({ ok: true, ...startSession(req, res, u) });
 });
 
 // ---------- Verificación en dos pasos (personal) ----------
@@ -214,7 +214,7 @@ app.post('/api/login/2fa', loginLimiter, async (req, res) => {
     return res.status(401).json({ error: 'Código incorrecto' });
   }
   await pool.query('UPDATE users SET two_fa_failures = 0, two_fa_locked_until = NULL WHERE id = ?', [u.id]);
-  res.json({ token: sign(u), user: publicUser(u, await twoFactorRequired(), await permsFor(u)) });
+  res.json({ ...startSession(req, res, u), user: publicUser(u, await twoFactorRequired(), await permsFor(u)) });
 });
 
 // Paso 1 de la activación: se crea un secreto (todavía no vale hasta confirmarlo con un código)
@@ -250,4 +250,25 @@ app.post('/api/2fa/backup-codes', authUser, loginLimiter, async (req, res) => {
   await pool.query('UPDATE users SET backup_codes = ? WHERE id = ?', [JSON.stringify(codes.map(hashBackup)), u.id]);
   await audit(u, '2fa.backup_codes');
   res.json({ backupCodes: codes });
+});
+
+// ---------- Sesión en cookie (app web) ----------
+// La app instalada antes de este cambio guardaba el token en el teléfono: al abrirla lo manda una vez y pasa a la cookie
+app.post('/api/session/cookie', async (req, res) => {
+  const token = (req.headers.authorization || '').replace(/^Bearer /, '');
+  if (!token || !wantsCookie(req)) return res.status(400).json({ error: 'Datos incompletos' });
+  try {
+    const u = await userFromToken(token);
+    if (!u || u.status === 'blocked') return res.status(401).json({ error: 'No autorizado' });
+    moveToCookie(res, token);
+    res.json({ ok: true });
+  } catch {
+    res.status(401).json({ error: 'No autorizado' });
+  }
+});
+
+// Salir: el navegador borra la cookie (para cerrar también los otros dispositivos está «Cerrar las demás sesiones»)
+app.post('/api/logout', (_req, res) => {
+  clearSession(res);
+  res.json({ ok: true });
 });

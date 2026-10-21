@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { API, lempiras, todayHN } from './lib.js';
+import { API, authFetch, lempiras, todayHN } from './lib.js';
 import { Loading } from './components.jsx';
 
 const PRESETS = [['today', 'Hoy'], ['7d', '7 días'], ['30d', '30 días'], ['month', 'Este mes'], ['prev_month', 'Mes pasado'], ['custom', 'Fechas']];
@@ -48,7 +48,7 @@ function Bars({ title, items, tick }) {
 }
 
 // Panel: indicadores del negocio y reporte de dinero del período, y exportar a CSV
-export default function Metrics({ call, token, can, onError }) {
+export default function Metrics({ call, can, onError }) {
   const today = todayHN();
   const [view, setView] = useState('metrics'); // metrics | money
   const [preset, setPreset] = useState('7d');
@@ -71,7 +71,7 @@ export default function Metrics({ call, token, can, onError }) {
   async function download(kind) {
     setBusy(true);
     try {
-      const res = await fetch(`${API}/api/admin/export/${kind}?${query}`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await authFetch(`${API}/api/admin/export/${kind}?${query}`);
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'No se pudo exportar');
       const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] || `jalon-${kind}.csv`;
       const url = URL.createObjectURL(await res.blob());

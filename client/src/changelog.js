@@ -3,6 +3,17 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-21-sesion-cookie',
+    date: '2026-10-21',
+    title: 'Tu sesión, más protegida',
+    for: ['all'],
+    items: [
+      'Tu sesión ahora se guarda en una cookie segura que la página no puede leer, así es mucho más difícil que alguien te la robe.',
+      'No tienes que hacer nada: la próxima vez que abras la app, tu sesión pasa sola a la nueva forma, sin volver a entrar.',
+      'Al tocar «Salir», la sesión se cierra también en el servidor.',
+    ],
+  },
+  {
     id: '2026-10-21-indicadores',
     date: '2026-10-21',
     title: 'Indicadores, dinero por fecha y exportar a Excel',

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { API, money2 } from './lib.js';
+import { API, authFetch, money2 } from './lib.js';
 import { Empty } from './components.jsx';
 
 const when = (d) => new Date(d).toLocaleString('es-HN', { dateStyle: 'medium', timeStyle: 'short' });
@@ -10,7 +10,7 @@ function Proof({ id, token }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => {
     let url;
-    fetch(`${API}/api/admin/topups/${id}/receipt`, { headers: { Authorization: `Bearer ${token}` } })
+    authFetch(`${API}/api/admin/topups/${id}/receipt`)
       .then((r) => (r.ok ? r.blob() : Promise.reject()))
       .then((b) => { url = URL.createObjectURL(b); setSrc(url); })
       .catch(() => setFailed(true));

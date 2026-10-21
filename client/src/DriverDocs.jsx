@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { apiGet, API, toJpeg } from './lib.js';
+import { apiGet, API, authFetch, toJpeg } from './lib.js';
 
 const DOCS = [
   { type: 'photo', label: 'Tu foto (rostro visible)' },
@@ -27,9 +27,9 @@ export default function DriverDocs({ token, socket }) {
     setBusy(type);
     try {
       const image = await toJpeg(file);
-      const res = await fetch(`${API}/api/driver/documents/${type}`, {
+      const res = await authFetch(`${API}/api/driver/documents/${type}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image }),
       });
       const data = await res.json().catch(() => ({}));

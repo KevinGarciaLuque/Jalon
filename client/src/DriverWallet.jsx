@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { API, toJpeg, money2 } from './lib.js';
+import { API, authFetch, toJpeg, money2 } from './lib.js';
 
 const BANKS = ['BAC Credomatic', 'Ficohsa', 'Banco Atlántida', 'Banpaís', 'Davivienda', 'Banco de Occidente', 'Promerica', 'Lafise', 'Tigo Money', 'Otro'];
 const KIND = { topup: 'Recarga', commission: 'Comisión de viaje', bonus: 'Crédito', adjustment: 'Ajuste' };
 const when = (d) => new Date(d).toLocaleString('es-HN', { dateStyle: 'medium', timeStyle: 'short' });
 
 // Saldo del conductor: cómo recargar (transferencia + comprobante), sus recargas y sus movimientos
-export default function DriverWallet({ token, wallet, reload, onClose }) {
+export default function DriverWallet({ wallet, reload, onClose }) {
   const [f, setF] = useState({ amount: '', bank: '', reference: '' });
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -27,9 +27,9 @@ export default function DriverWallet({ token, wallet, reload, onClose }) {
     setMsg({ ok: false, text: '' });
     try {
       const image = await toJpeg(file);
-      const res = await fetch(`${API}/api/driver/topups`, {
+      const res = await authFetch(`${API}/api/driver/topups`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount: Number(f.amount), bank: f.bank, reference: f.reference, image }),
       });
       const data = await res.json().catch(() => ({}));

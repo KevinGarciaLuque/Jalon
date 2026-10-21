@@ -12,7 +12,7 @@ import { isProd, REPORT_TYPES } from '../config.js';
 import { app, io, loginLimiter, mapsLimiter, trackLimiter } from '../app.js';
 import { drivers, room } from '../live.js';
 import { isPoint, clean, num, parsePoint } from '../util.js';
-import { sign, authUser, passengerOnly, isStaff, audit, publicUser, twoFactorRequired } from '../access.js';
+import { startSession, authUser, passengerOnly, isStaff, audit, publicUser, twoFactorRequired } from '../access.js';
 import { permsFor } from '../perms.js';
 import { pushStaff } from '../notify.js';
 import { getRide, activeRideFor } from '../services/rides.js';
@@ -208,7 +208,7 @@ app.post('/api/logout-all', authUser, async (req, res) => {
   await pool.query('UPDATE users SET token_version = token_version + 1 WHERE id = ?', [req.user.id]);
   io.in(room(req.user.id)).disconnectSockets(true);
   const [[u]] = await pool.query('SELECT * FROM users WHERE id = ?', [req.user.id]);
-  res.json({ ok: true, token: sign(u) });
+  res.json({ ok: true, ...startSession(req, res, u) });
 });
 
 app.get('/api/health', async (_req, res) => {
