@@ -6,6 +6,7 @@ import path from 'path';
 import { pool } from './db.js';
 import { keyIsDerived } from './secure.js';
 import { encryptLegacyDocuments } from './docs.js';
+import { rekeyAll } from './rekey.js';
 import { Sentry, reportError, PORT, isProd, HERE, UPLOADS } from './config.js';
 import { app, server, io } from './app.js';
 import './routes/auth.js';
@@ -51,6 +52,10 @@ if (existsSync(DIST)) {
 // Los documentos que se guardaron antes del cifrado se cifran una sola vez al arrancar
 const legacyDocs = await encryptLegacyDocuments(UPLOADS);
 if (legacyDocs) console.log(`Se cifraron ${legacyDocs} documento(s) guardados antes del cifrado.`);
+// Si se puso o cambió DATA_KEY, lo cifrado con la llave anterior pasa a la nueva (una sola vez; después no hay nada que hacer)
+const rekeyed = await rekeyAll(UPLOADS);
+if (rekeyed.files || rekeyed.secrets) console.log(`Llave de cifrado nueva: se volvieron a cifrar ${rekeyed.files} archivo(s) y ${rekeyed.secrets} secreto(s) 2FA.`);
+if (rekeyed.unreadable) console.warn(`⚠ ${rekeyed.unreadable} elemento(s) cifrado(s) no se pudieron leer con ninguna llave (¿cambió JWT_SECRET antes de poner DATA_KEY?). Se dejaron como estaban.`);
 if (isProd && keyIsDerived) console.warn('⚠ DATA_KEY no está definida: la llave de cifrado se deriva de JWT_SECRET. Define DATA_KEY (ver README) para poder rotar JWT_SECRET sin perder los documentos.');
 
 // Errores no controlados: siempre JSON, sin filtrar detalles internos

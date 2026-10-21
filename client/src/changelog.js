@@ -3,6 +3,16 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-21-llave-cifrado',
+    date: '2026-10-21',
+    title: 'Llave de cifrado propia, sin perder documentos',
+    for: ['staff'],
+    items: [
+      'Ya se puede poner la llave de cifrado propia (DATA_KEY) en Railway: los documentos, comprobantes y la verificación en dos pasos se pasan solos a la llave nueva al arrancar, sin perder nada.',
+      'Los pasos están en el README («Etapa 8.1»). Haz un respaldo antes.',
+    ],
+  },
+  {
     id: '2026-10-21-respaldos',
     date: '2026-10-21',
     title: 'Respaldos comprobados',

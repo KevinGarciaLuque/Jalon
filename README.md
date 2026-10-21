@@ -395,3 +395,23 @@ de la verificación en dos pasos no se pueden leer, aunque tengas el respaldo.
 - También se puede restaurar con el cliente de MySQL: `gunzip -c archivo.sql.gz | mysql <base vacía>` (probado: da el mismo resultado).
 - Simulacro hecho el 21 de octubre de 2026 con una copia de prueba: 22 tablas idénticas, la app arrancó sobre la base recuperada y se pudo entrar y ver el historial.
 - Sin cambios en la base de datos. Prueba: `test/phase21.mjs`.
+
+## Etapa 8.1: poner DATA_KEY sin perder datos
+
+Los documentos de los conductores, los comprobantes y los secretos de la verificación en dos pasos van cifrados. Sin `DATA_KEY`, la llave
+se deriva de `JWT_SECRET`. Al poner `DATA_KEY`, lo cifrado antes **se sigue leyendo** (con la llave anterior) y, al arrancar, el servidor lo
+**vuelve a cifrar con la nueva** una sola vez (`src/rekey.js`). Cada archivo nuevo se comprueba antes de reemplazar al anterior.
+
+**Pasos en Railway** (una sola vez):
+1. Haz un respaldo: `npm --prefix server run backup` (ver Etapa 7.2) y un Backup del Volume.
+2. Genera la llave en tu computadora: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`.
+   Guárdala en tu gestor de contraseñas **antes** de ponerla en Railway.
+3. Railway → servicio de la app → Variables → agrega `DATA_KEY`. **No cambies `JWT_SECRET` en el mismo paso** (la llave anterior sale de él).
+4. Al desplegar, el registro dice «Llave de cifrado nueva: se volvieron a cifrar N archivo(s) y M secreto(s) 2FA». Abre un documento en el panel para confirmarlo.
+5. Desde ese momento ya se puede cambiar `JWT_SECRET` sin perder nada (solo cierra las sesiones abiertas).
+
+**Nunca quites `DATA_KEY`.** Para cambiarla por otra: pon la nueva en `DATA_KEY` y la anterior en `DATA_KEY_OLD`, despliega, y cuando el
+registro confirme que todo se volvió a cifrar, quita `DATA_KEY_OLD`. Si algo no se puede leer con ninguna llave, el servidor lo avisa y lo deja como estaba.
+
+- Simulacro hecho con la base de prueba: 4 archivos cifrados con la llave derivada pasaron a una `DATA_KEY` nueva y el panel siguió mostrando los documentos.
+- Sin cambios en la base de datos. Prueba: `test/rekey-unit.mjs`.
