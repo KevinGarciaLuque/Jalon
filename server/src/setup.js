@@ -487,5 +487,21 @@ await addColumn('wallet_entries', 'rental_id', 'INT NULL');
   if (!ix.length) await conn.query('ALTER TABLE wallet_entries ADD UNIQUE KEY one_rental (kind, rental_id)');
 }
 
+// ---- Permisos por persona ----
+// Lo que ve cada rol se guarda en Ajustes (role_perms); aquí, las excepciones de una persona: allow 1 = se lo da, 0 = se lo quita.
+await conn.query(`
+  CREATE TABLE IF NOT EXISTS user_permissions (
+    user_id INT NOT NULL,
+    perm VARCHAR(40) NOT NULL,
+    allow TINYINT(1) NOT NULL,
+    updated_by INT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, perm),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  )
+`);
+// Los administradores que ya tenían el mapa en vivo (users.can_monitor) lo conservan como excepción
+await conn.query("INSERT IGNORE INTO user_permissions (user_id, perm, allow) SELECT id, 'monitor', 1 FROM users WHERE role = 'admin' AND can_monitor = 1");
+
 console.log(`Base de datos "${DB_NAME}" lista.`);
 await conn.end();

@@ -3,6 +3,18 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-20-permisos',
+    date: '2026-10-20',
+    title: 'Permisos por módulo',
+    for: ['staff'],
+    items: [
+      'Nueva pestaña «Permisos» (solo superadmin): marca qué módulos ve cada rol (Administrador, Soporte, Conductor y Pasajero).',
+      'En la ficha de cada persona el superadmin puede darle o quitarle un módulo solo a ella; al cambiarle el rol se borran esas excepciones.',
+      'El alquiler empieza visible solo para el superadmin: dale «Alquileres» al personal, «Alquilar» a los pasajeros y «Ofrecer su carro» a los conductores cuando quieras abrirlo.',
+      'El permiso del mapa en vivo que ya tenían algunos administradores se conservó.',
+    ],
+  },
+  {
     id: '2026-10-20-alquiler-pasajero',
     date: '2026-10-20',
     title: 'Alquila un carro con conductor por días',

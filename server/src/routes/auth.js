@@ -13,6 +13,7 @@ import { JWT_SECRET, OTP_CHANNELS, echoCode } from '../config.js';
 import { app, loginLimiter, registerLimiter, otpLimiter } from '../app.js';
 import { sign, checkPassword, twoFactorRequired, publicUser, authUser, isStaff, audit } from '../access.js';
 import { readVehicle, plateTaken, saveVehicle, vehicleLabel, isPlateDup } from '../services/vehicles.js';
+import { permsFor } from '../perms.js';
 
 // ---------- Auth ----------
 app.post('/api/register', registerLimiter, async (req, res) => {
@@ -65,7 +66,7 @@ app.post('/api/register', registerLimiter, async (req, res) => {
     } finally {
       conn.release();
     }
-    res.json({ token: sign(user), user: publicUser(user) });
+    res.json({ token: sign(user), user: publicUser(user, true, await permsFor(user)) });
   } catch (e) {
     if (isPlateDup(e)) return res.status(409).json({ error: 'Esa placa ya está registrada' });
     if (e.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: /email/.test(e.message) ? 'Ese correo ya está registrado' : 'Ese teléfono ya está registrado' });
@@ -90,7 +91,7 @@ app.post('/api/login', loginLimiter, async (req, res) => {
     if (require2fa && u.totp_enabled) {
       return res.json({ twoFactor: true, challenge: jwt.sign({ id: u.id, purpose: '2fa' }, JWT_SECRET, { expiresIn: '5m' }) });
     }
-    res.json({ token: sign(u), user: publicUser(u, require2fa) });
+    res.json({ token: sign(u), user: publicUser(u, require2fa, await permsFor(u)) });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Error del servidor' });
@@ -213,7 +214,7 @@ app.post('/api/login/2fa', loginLimiter, async (req, res) => {
     return res.status(401).json({ error: 'Código incorrecto' });
   }
   await pool.query('UPDATE users SET two_fa_failures = 0, two_fa_locked_until = NULL WHERE id = ?', [u.id]);
-  res.json({ token: sign(u), user: publicUser(u, await twoFactorRequired()) });
+  res.json({ token: sign(u), user: publicUser(u, await twoFactorRequired(), await permsFor(u)) });
 });
 
 // Paso 1 de la activación: se crea un secreto (todavía no vale hasta confirmarlo con un código)

@@ -6,6 +6,7 @@ import Topups from './Topups.jsx';
 import Settings from './Settings.jsx';
 import Monitor from './Monitor.jsx';
 import AdminRentals from './AdminRentals.jsx';
+import Permissions from './Permissions.jsx';
 import UserDetail, { TempPassword, ROLE_LABEL, STATUS_LABEL, ACTION_LABEL, detailText, isStaffRole } from './UserDetail.jsx';
 
 const RIDE_STATUS = {
@@ -191,6 +192,7 @@ export default function Admin({ token, onGate }) {
     ...(can('monitor') ? [['monitor', 'Mapa en vivo']] : []),
     ...(can('settings') ? [['settings', 'Ajustes']] : []),
     ...(can('staff.manage') ? [['staff', 'Personal']] : []),
+    ...(can('staff.manage') ? [['perms', 'Permisos']] : []),
     ...(can('audit') ? [['audit', 'Registro']] : []),
   ];
 
@@ -399,6 +401,7 @@ export default function Admin({ token, onGate }) {
         </>
       )}
 
+      {tab === 'perms' && can('staff.manage') && <Permissions call={call} onError={setError} />}
       {tab === 'audit' && (
         <div className="tablewrap">
           <table>

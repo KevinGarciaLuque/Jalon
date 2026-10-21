@@ -10,7 +10,7 @@ import { reportError, UPLOADS, DOC_TYPES, SOS_PHONES } from '../config.js';
 import { app, io } from '../app.js';
 import { drivers, room } from '../live.js';
 import { clean, tempPassword } from '../util.js';
-import { isStaff, permsOf, staffOnly, audit, auditOnce, actOn } from '../access.js';
+import { isStaff, staffOnly, audit, auditOnce, actOn } from '../access.js';
 import { ratingsOf, kickUser } from '../services/rides.js';
 import { grantWelcome } from '../services/balance.js';
 import { anonymizeUser } from '../services/accounts.js';
@@ -51,7 +51,7 @@ app.get('/api/admin/users', staffOnly('view'), async (req, res) => {
   );
   const ratings = await ratingsOf(rows.map((u) => u.id));
   // Cada quien recibe también lo que puede hacer, para que la pantalla muestre solo lo permitido
-  res.json({ perms: permsOf(req.staff), me: { id: req.staff.id, role: req.staff.role }, users: rows.map(({ balance, ...u }) => ({ ...u, ...(permsOf(req.staff).includes('wallet') && u.role === 'driver' ? { balance: Number(balance) } : {}), online: drivers.has(u.id), rating: ratings.get(u.id) || null })) });
+  res.json({ perms: req.perms, me: { id: req.staff.id, role: req.staff.role }, users: rows.map(({ balance, ...u }) => ({ ...u, ...(req.perms.includes('wallet') && u.role === 'driver' ? { balance: Number(balance) } : {}), online: drivers.has(u.id), rating: ratings.get(u.id) || null })) });
 });
 
 app.get('/api/admin/rides', staffOnly('view'), async (_req, res) => {
@@ -83,7 +83,7 @@ app.get('/api/admin/users/:id', staffOnly('view'), async (req, res) => {
      FROM rides r LEFT JOIN users o ON o.id = IF(r.passenger_id = ?, r.driver_id, r.passenger_id)
      WHERE r.passenger_id = ? OR r.driver_id = ? ORDER BY r.id DESC LIMIT 10`, [id, id, id]
   );
-  const can = permsOf(req.staff);
+  const can = req.perms;
   const docs = can.includes('docs') ? (await pool.query('SELECT id, type, status, note, created_at FROM documents WHERE user_id = ?', [id]))[0] : null;
   const history = can.includes('audit')
     ? (await pool.query(
@@ -282,6 +282,7 @@ app.post('/api/admin/staff/:id/role', staffOnly('staff.manage'), async (req, res
   if (!isStaff(t.role)) return res.status(400).json({ error: 'Esa cuenta no es del personal' });
   if (t.role === role) return res.status(400).json({ error: 'Ya tiene ese rol' });
   await pool.query('UPDATE users SET role = ?, can_monitor = 0 WHERE id = ?', [role, t.id]);
+  await pool.query('DELETE FROM user_permissions WHERE user_id = ?', [t.id]); // al cambiar de rol no se heredan las excepciones
   await audit(req.staff, 'staff.role', { target: t.id, details: { from: t.role, to: role } });
   res.json({ ok: true });
 });

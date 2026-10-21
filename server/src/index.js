@@ -14,6 +14,7 @@ import './routes/driver.js';
 import './routes/admin-users.js';
 import './routes/admin-ops.js';
 import './routes/rentals.js';
+import './routes/permissions.js';
 import './sockets.js';
 import './jobs.js';
 

@@ -435,3 +435,12 @@ fieldset.pay { border: 1px solid var(--line); border-radius: var(--r-1); padding
 fieldset.pay legend { font-size: 14px; font-weight: 600; padding: 0 4px; }
 fieldset.pay .check { color: var(--text); }
 .req > label:not(.check):not(.upload), .req .row > label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+
+/* ---- Permisos ---- */
+table.perms td { text-align: center; }
+table.perms th[scope=row] { text-transform: none; letter-spacing: 0; font-size: 14px; font-weight: 500; color: var(--text); background: none; white-space: normal; min-width: 200px; }
+table.perms tr.group th { background: var(--brand-soft); color: var(--brand); text-align: left; }
+table.perms input[type=checkbox] { width: 20px; height: 20px; }
+.perm-row { flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 8px; }
+.perm-row span { flex: 1; min-width: 180px; font-size: 14px; }
+.perm-row select { width: auto; }

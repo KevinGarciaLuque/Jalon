@@ -9,7 +9,7 @@ import { getSettings, money } from '../wallet.js';
 import { UPLOADS } from '../config.js';
 import { app, photoJson } from '../app.js';
 import { clean } from '../util.js';
-import { authUser, driverOnly, passengerOnly, staffOnly, audit, auditOnce } from '../access.js';
+import { authUser, driverOnly, passengerOnly, needs, staffOnly, audit, auditOnce } from '../access.js';
 import { push, pushStaff } from '../notify.js';
 import { readVehicle, vehicleLabel, isPlateDup, vehicleOf } from '../services/vehicles.js';
 import {
@@ -30,7 +30,7 @@ const STATUS_FILTER = ['requested', 'confirmed', 'active', 'completed', 'cancell
 
 // ---------- Pasajero ----------
 // Carros libres en esas fechas, con el precio por día y el total
-app.get('/api/rentals/search', authUser, passengerOnly, handle(async (req, res) => {
+app.get('/api/rentals/search', authUser, passengerOnly, needs('rent'), handle(async (req, res) => {
   const s = await getSettings(pool);
   const info = { enabled: s.rental_enabled === '1', maxDays: Number(s.rental_max_days), advanceDays: Number(s.rental_advance_days), transfer: !!(s.bank_name && s.bank_account && s.bank_holder) };
   if (!info.enabled || !req.query.start) return res.json({ ...info, results: [] });
@@ -38,25 +38,25 @@ app.get('/api/rentals/search', authUser, passengerOnly, handle(async (req, res) 
   res.json({ ...info, start: from, end, days, results: await searchAvailable(from, end, days) });
 }));
 
-app.post('/api/rentals', authUser, passengerOnly, handle(async (req, res) => {
+app.post('/api/rentals', authUser, passengerOnly, needs('rent'), handle(async (req, res) => {
   const b = await createBooking(req.user, req.body || {});
   res.json({ ok: true, booking: forRenter(b) });
 }));
 
-app.get('/api/rentals/mine', authUser, passengerOnly, handle(async (req, res) => {
+app.get('/api/rentals/mine', authUser, passengerOnly, needs('rent'), handle(async (req, res) => {
   const s = await getSettings(pool);
   const bank = { name: s.bank_name, type: s.bank_account_type, account: s.bank_account, holder: s.bank_holder, note: s.bank_note };
   res.json({ bookings: (await listBookings('b.renter_id = ?', [req.user.id], 30)).map(forRenter), bank });
 }));
 
-app.post('/api/rentals/:id/cancel', authUser, passengerOnly, handle(async (req, res) => {
+app.post('/api/rentals/:id/cancel', authUser, passengerOnly, needs('rent'), handle(async (req, res) => {
   const b = await getBooking(req.params.id);
   if (!b || b.renter_id !== req.user.id) return res.status(404).json({ error: 'Reserva no encontrada' });
   res.json({ ok: true, booking: forRenter(await cancel(b, 'renter')) });
 }));
 
 // Pago por transferencia: la persona sube el comprobante y el personal lo revisa (igual que las recargas de saldo)
-app.post('/api/rentals/:id/receipt', authUser, passengerOnly, photoJson, handle(async (req, res) => {
+app.post('/api/rentals/:id/receipt', authUser, passengerOnly, needs('rent'), photoJson, handle(async (req, res) => {
   const b = await getBooking(req.params.id);
   if (!b || b.renter_id !== req.user.id) return res.status(404).json({ error: 'Reserva no encontrada' });
   if (b.payment !== 'transfer') return res.status(409).json({ error: 'Esta reserva se paga en efectivo' });
@@ -97,7 +97,7 @@ app.post('/api/rentals/:id/receipt', authUser, passengerOnly, photoJson, handle(
 }));
 
 // ---------- Conductor que ofrece su carro (con él como conductor) ----------
-app.get('/api/driver/rental', authUser, driverOnly, handle(async (req, res) => {
+app.get('/api/driver/rental', authUser, driverOnly, needs('rent.offer'), handle(async (req, res) => {
   const s = await getSettings(pool);
   const vehicle = await vehicleOf(pool, req.user.id);
   const [[listing]] = await pool.query(
@@ -110,7 +110,7 @@ app.get('/api/driver/rental', authUser, driverOnly, handle(async (req, res) => {
   });
 }));
 
-app.put('/api/driver/rental', authUser, driverOnly, handle(async (req, res) => {
+app.put('/api/driver/rental', authUser, driverOnly, needs('rent.offer'), handle(async (req, res) => {
   const s = await getSettings(pool);
   if (s.rental_enabled !== '1') return res.status(409).json({ error: 'El alquiler de carros no está activo' });
   if (req.user.status !== 'active') return res.status(403).json({ error: 'Tu cuenta debe estar aprobada para ofrecer tu carro' });
@@ -134,19 +134,19 @@ const ownBooking = async (req, res) => {
   if (!b || b.owner_driver_id !== req.user.id) { res.status(404).json({ error: 'Reserva no encontrada' }); return null; }
   return b;
 };
-app.post('/api/driver/rentals/:id/decide', authUser, driverOnly, handle(async (req, res) => {
+app.post('/api/driver/rentals/:id/decide', authUser, driverOnly, needs('rent.offer'), handle(async (req, res) => {
   const b = await ownBooking(req, res);
   if (b) res.json({ ok: true, booking: forOwner(await decide(b, req.body?.accept === true, req.user.id, { note: req.body?.note })) });
 }));
-app.post('/api/driver/rentals/:id/start', authUser, driverOnly, handle(async (req, res) => {
+app.post('/api/driver/rentals/:id/start', authUser, driverOnly, needs('rent.offer'), handle(async (req, res) => {
   const b = await ownBooking(req, res);
   if (b) res.json({ ok: true, booking: forOwner(await start(b)) });
 }));
-app.post('/api/driver/rentals/:id/finish', authUser, driverOnly, handle(async (req, res) => {
+app.post('/api/driver/rentals/:id/finish', authUser, driverOnly, needs('rent.offer'), handle(async (req, res) => {
   const b = await ownBooking(req, res);
   if (b) res.json({ ok: true, booking: forOwner(await finish(b)) });
 }));
-app.post('/api/driver/rentals/:id/cancel', authUser, driverOnly, handle(async (req, res) => {
+app.post('/api/driver/rentals/:id/cancel', authUser, driverOnly, needs('rent.offer'), handle(async (req, res) => {
   const b = await ownBooking(req, res);
   if (b) res.json({ ok: true, booking: forOwner(await cancel(b, 'owner')) });
 }));

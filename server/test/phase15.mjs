@@ -22,6 +22,7 @@ const receipt = (() => { const b = Buffer.from(FIXTURE); const i = b.length - 30
 const root = await createTestSuperadmin(pool);
 const SA = jwt.sign({ id: root.id, role: 'superadmin' }, process.env.JWT_SECRET, { expiresIn: '10m' });
 const before = await http('GET', 'admin/settings', SA);
+const rolesBefore = (await http('GET', 'admin/permissions', SA)).roles;
 const keep = Object.fromEntries(['rental_enabled', 'commission_enabled', 'commission_percent', 'bank_name', 'bank_account', 'bank_holder', 'bank_account_type', 'rental_max_days'].map((k) => [k, before[k]]));
 let ds;
 
@@ -31,6 +32,12 @@ try {
   await pool.query("UPDATE users SET status = 'active' WHERE id = ?", [D.user.id]);
   const P = await registerUser({ name: 'E1 Pasajero', phone: `87${rnd}5`.slice(0, 8), password: 'Cielo-azul-77', role: 'passenger' });
   const P2 = await registerUser({ name: 'E1 Pasajero', phone: `86${rnd}5`.slice(0, 8), password: 'Cielo-azul-77', role: 'passenger' });
+
+  // Sin el permiso, ni el pasajero ni el conductor ven el alquiler (al principio solo lo ve el superadmin)
+  check('sin permiso, el pasajero no puede buscar carros', (await http('GET', `rentals/search?start=${today}&days=1`, P.token)).status === 403);
+  check('sin permiso, el conductor no puede ofrecer su carro', (await http('GET', 'driver/rental', D.token)).status === 403);
+  await http('PUT', 'admin/permissions/passenger', SA, { perms: ['rent'] });
+  await http('PUT', 'admin/permissions/driver', SA, { perms: ['rent.offer'] });
 
   // Apagado: no se ofrece
   await http('PUT', 'admin/settings', SA, { rental_enabled: false });
@@ -146,6 +153,7 @@ try {
 } finally {
   ds?.close();
   await http('PUT', 'admin/settings', SA, keep);
+  for (const role of ['passenger', 'driver']) await http('PUT', `admin/permissions/${role}`, SA, { perms: rolesBefore?.[role] || [] });
 }
 
 await pool.end();

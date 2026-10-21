@@ -7,7 +7,7 @@ import { getSettings, clearSettingsCache, validateSettings, postEntry, money } f
 import { UPLOADS, REPORT_TYPES } from '../config.js';
 import { app } from '../app.js';
 import { drivers } from '../live.js';
-import { permsOf, staffOnly, audit, auditOnce, actOn } from '../access.js';
+import { staffOnly, audit, auditOnce, actOn } from '../access.js';
 import { push } from '../notify.js';
 import { cancelRide } from '../services/rides.js';
 import { tellWallet } from '../services/balance.js';
@@ -21,7 +21,9 @@ app.post('/api/admin/staff/:id/monitor', staffOnly('staff.manage'), async (req, 
   const t = await actOn(req, res);
   if (!t) return;
   if (t.role !== 'admin') return res.status(400).json({ error: 'Solo se puede dar a un administrador (el superadministrador ya lo tiene y soporte no puede tenerlo)' });
+  // Ahora es una excepción de permisos de esa persona (users.can_monitor se mantiene al día por compatibilidad)
   await pool.query('UPDATE users SET can_monitor = ? WHERE id = ?', [req.body.enabled ? 1 : 0, t.id]);
+  await pool.query('INSERT INTO user_permissions (user_id, perm, allow, updated_by) VALUES (?, "monitor", ?, ?) ON DUPLICATE KEY UPDATE allow = VALUES(allow), updated_by = VALUES(updated_by)', [t.id, req.body.enabled ? 1 : 0, req.staff.id]);
   await audit(req.staff, 'staff.monitor', { target: t.id, details: { enabled: req.body.enabled } });
   res.json({ ok: true });
 });
@@ -86,7 +88,7 @@ app.get('/api/admin/monitor/drivers/:id', staffOnly('monitor'), async (req, res)
     `SELECT id, status, cancelled_by, dest_text, final_price, offered_price, created_at FROM rides WHERE driver_id = ? ORDER BY id DESC LIMIT 8`, [id]
   );
   const d = drivers.get(id);
-  const wallet = permsOf(req.staff).includes('wallet');
+  const wallet = req.perms.includes('wallet');
   let commission = null;
   if (wallet) {
     const [[c]] = await pool.query("SELECT COALESCE(-SUM(amount),0) AS v FROM wallet_entries WHERE user_id = ? AND kind = 'commission' AND created_at > NOW() - INTERVAL 30 DAY", [id]);

@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { pool } from './db.js';
 import { getSettings } from './wallet.js';
 import { JWT_SECRET } from './config.js';
+import { permsFor, can } from './perms.js';
 
 // El personal maneja datos de todos: su sesión dura 12 horas; pasajeros y conductores, 30 días
 export const sign = (u) => jwt.sign({ id: u.id, role: u.role, tv: u.token_version ?? 0 }, JWT_SECRET, { expiresIn: ['superadmin', 'admin', 'support'].includes(u.role) ? '12h' : '30d' });
@@ -21,7 +22,8 @@ export function checkPassword(password, { phone = '', role = 'passenger' } = {})
 }
 // El superadmin puede apagar la verificación en dos pasos del personal desde Ajustes (por defecto es obligatoria)
 export const twoFactorRequired = async () => (await getSettings(pool)).staff_2fa_required !== '0';
-export const publicUser = (u, require2fa = true) => ({ id: u.id, name: u.name, phone: u.phone, email: u.email || null, role: u.role, status: u.status, vehicle: u.vehicle, plate: u.plate, mustChangePassword: !!u.must_change_password,
+// `perms`: los módulos que puede usar (la app muestra u oculta, por ejemplo, el alquiler)
+export const publicUser = (u, require2fa = true, perms = []) => ({ id: u.id, name: u.name, phone: u.phone, email: u.email || null, role: u.role, status: u.status, vehicle: u.vehicle, plate: u.plate, mustChangePassword: !!u.must_change_password, perms,
   // El personal debe tener la verificación en dos pasos activa para usar el panel (si está exigida)
   mustEnrollTwoFactor: require2fa && isStaff(u.role) && !u.totp_enabled, twoFactorEnabled: !!u.totp_enabled });
 
@@ -44,18 +46,13 @@ export const driverOnly = (req, res, next) => (req.user.role === 'driver' ? next
 
 export const passengerOnly = (req, res, next) => (req.user.role === 'passenger' ? next() : res.status(403).json({ error: 'Solo para pasajeros' }));
 
+// Exige que la persona (pasajero o conductor) tenga ese módulo (por su rol o porque el superadmin se lo dio)
+export const needs = (perm) => async (req, res, next) => ((await can(req.user, perm)) ? next() : res.status(403).json({ error: 'No tienes acceso a esta función' }));
+
 // ---------- Personal: superadmin, administrador y soporte ----------
 export const STAFF = ['superadmin', 'admin', 'support'];
 export const isStaff = (role) => STAFF.includes(role);
-// Qué puede hacer cada rol: el superadmin todo; el administrador opera la plataforma; soporte mira y atiende emergencias
-export const PERMS = {
-  superadmin: ['view', 'alerts', 'rides.cancel', 'users.manage', 'users.create', 'docs', 'audit', 'staff.manage', 'wallet', 'wallet.adjust', 'settings', 'rentals', 'fleet'],
-  admin: ['view', 'alerts', 'rides.cancel', 'users.manage', 'docs', 'audit', 'wallet', 'rentals'],
-  support: ['view', 'alerts', 'rides.cancel'],
-};
-
-// 'monitor' (mapa en vivo y desempeño de conductores): siempre el superadmin; un administrador solo si el superadmin se lo concedió; soporte nunca
-export const permsOf = (u) => (u.role === 'superadmin' || (u.role === 'admin' && u.can_monitor) ? [...PERMS[u.role], 'monitor'] : PERMS[u.role]);
+// Qué puede hacer cada quien lo decide el superadmin por rol y por persona (perms.js)
 
 // Middleware: exige sesión de personal activo con el permiso indicado (se consulta la base en cada petición)
 export function staffOnly(perm) {
@@ -68,8 +65,10 @@ export function staffOnly(perm) {
       if (!isStaff(u.role) || u.status !== 'active') return res.status(403).json({ error: 'Solo personal autorizado' });
       if (u.must_change_password) return res.status(403).json({ error: 'Debes cambiar tu contraseña', code: 'MUST_CHANGE_PASSWORD' });
       if (!u.totp_enabled && (await twoFactorRequired())) return res.status(403).json({ error: 'Activa la verificación en dos pasos para continuar', code: 'MUST_ENROLL_2FA' });
-      if (!permsOf(u).includes(perm)) return res.status(403).json({ error: 'No tienes permiso para esto' });
+      const perms = await permsFor(u);
+      if (!perms.includes(perm)) return res.status(403).json({ error: 'No tienes permiso para esto' });
       req.staff = u;
+      req.perms = perms;
       next();
     } catch {
       res.status(401).json({ error: 'No autorizado' });
@@ -101,7 +100,7 @@ export async function actOn(req, res, { allowDeleted = false } = {}) {
   let problem = null;
   if (t.id === req.staff.id) problem = 'No puedes hacer esto con tu propia cuenta (usa Cuenta para cambiar tu contraseña)';
   else if (t.role === 'superadmin') problem = 'No se puede modificar a un superadministrador';
-  else if (isStaff(t.role) && !permsOf(req.staff).includes('staff.manage')) problem = 'Solo el superadministrador gestiona al personal';
+  else if (isStaff(t.role) && !req.perms.includes('staff.manage')) problem = 'Solo el superadministrador gestiona al personal';
   if (problem) return void res.status(403).json({ error: problem });
   return t;
 }

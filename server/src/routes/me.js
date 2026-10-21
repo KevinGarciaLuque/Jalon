@@ -12,7 +12,8 @@ import { isProd, REPORT_TYPES } from '../config.js';
 import { app, io, loginLimiter, mapsLimiter, trackLimiter } from '../app.js';
 import { drivers, room } from '../live.js';
 import { isPoint, clean, num, parsePoint } from '../util.js';
-import { sign, authUser, passengerOnly, isStaff, audit } from '../access.js';
+import { sign, authUser, passengerOnly, isStaff, audit, publicUser, twoFactorRequired } from '../access.js';
+import { permsFor } from '../perms.js';
 import { pushStaff } from '../notify.js';
 import { getRide, activeRideFor, ratingsOf } from '../services/rides.js';
 import { anonymizeUser } from '../services/accounts.js';
@@ -187,6 +188,11 @@ app.post('/api/push/unsubscribe', authUser, async (req, res) => {
 });
 
 // Cerrar la sesión en todos los dispositivos (por si perdiste el celular o la dejaste abierta en otro): invalida todos los tokens y devuelve uno nuevo
+// Datos de la sesión al abrir la app (por ejemplo, los módulos que el superadmin le dio o le quitó desde la última vez)
+app.get('/api/me', authUser, async (req, res) => {
+  res.json({ user: publicUser(req.user, isStaff(req.user.role) && (await twoFactorRequired()), await permsFor(req.user)) });
+});
+
 app.post('/api/logout-all', authUser, async (req, res) => {
   await pool.query('UPDATE users SET token_version = token_version + 1 WHERE id = ?', [req.user.id]);
   io.in(room(req.user.id)).disconnectSockets(true);

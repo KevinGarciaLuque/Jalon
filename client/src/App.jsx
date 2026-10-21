@@ -7,7 +7,7 @@ import History from './History.jsx';
 import Account from './Account.jsx';
 import TwoFactorSetup from './TwoFactorSetup.jsx';
 import News, { useNews } from './News.jsx';
-import { connectSocket } from './lib.js';
+import { connectSocket, apiGet } from './lib.js';
 
 const STAFF = ['superadmin', 'admin', 'support'];
 const ROLE_NAME = { passenger: 'Pasajero', driver: 'Conductor', superadmin: 'Superadministrador', admin: 'Administrador', support: 'Soporte' };
@@ -26,6 +26,18 @@ export default function App() {
   const [showNews, setShowNews] = useState(false);
   const { news, unseen, markSeen } = useNews(session?.user.role);
   const [accountStatus, setAccountStatus] = useState(() => loadSession()?.user.status);
+
+  useEffect(() => {
+    if (!session?.token || session.user.mustChangePassword) return;
+    apiGet('me', session.token)
+      .then(({ user }) => setSession((cur) => {
+        if (!cur || cur.token !== session.token) return cur;
+        const next = { ...cur, user: { ...cur.user, perms: user.perms } };
+        localStorage.setItem('jalon', JSON.stringify(next));
+        return next;
+      }))
+      .catch(() => {});
+  }, [session?.token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     // El personal no usa sockets; y con contraseña temporal pendiente tampoco se conecta nadie
@@ -92,8 +104,8 @@ export default function App() {
       {connError && <div className="banner">{connError}</div>}
       {staff && !session.user.mustChangePassword && !session.user.mustEnrollTwoFactor && <Admin token={session.token} onGate={onGate} />}
       {socket && !session.user.mustChangePassword && (session.user.role === 'driver'
-        ? <Driver socket={socket} token={session.token} userId={session.user.id} status={accountStatus} />
-        : <Passenger socket={socket} token={session.token} userId={session.user.id} />)}
+        ? <Driver socket={socket} token={session.token} userId={session.user.id} status={accountStatus} perms={session.user.perms || []} />
+        : <Passenger socket={socket} token={session.token} userId={session.user.id} perms={session.user.perms || []} />)}
       {(showAccount || session.user.mustChangePassword) && (
         <Account
           forced={!!session.user.mustChangePassword}

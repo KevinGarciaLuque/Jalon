@@ -34,7 +34,7 @@ const CANCELLED = {
 
 const QUICK = ['Ya salgo', 'Dame 2 minutos', 'Estoy en la esquina', '¿Dónde estás?'];
 
-export default function Passenger({ socket, token, userId }) {
+export default function Passenger({ socket, token, userId, perms = [] }) {
   const { pos, setPos, denied } = useGeo();
   const [drivers, setDrivers] = useState([]);
   const [origin, setOrigin] = useState(null); // punto de recogida elegido a mano; null = mi GPS
@@ -214,7 +214,7 @@ export default function Passenger({ socket, token, userId }) {
               <button className="link left" onClick={saveFav}>⭐ Guardar este lugar</button>
             )}
 
-            {!dest && <button className="link left" onClick={() => setRenting(true)}>¿Necesitas un carro todo el día? Alquila uno con conductor</button>}
+            {!dest && perms.includes('rent') && <button className="link left" onClick={() => setRenting(true)}>¿Necesitas un carro todo el día? Alquila uno con conductor</button>}
             {dest && !preview && !previewError && <div className="pulse">Calculando ruta…</div>}
             {previewError && <div className="error">{previewError}</div>}
             {dest && preview && (

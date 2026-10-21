@@ -16,6 +16,8 @@ export const ACTION_LABEL = {
   'user.unblock': 'Desbloqueó la cuenta',
   'user.edit': 'Editó los datos',
   'user.vehicle': 'Editó el vehículo',
+  'perms.role': 'Cambió los permisos de un rol',
+  'perms.user': 'Cambió los permisos de una persona',
   'rental.payment_approve': 'Aprobó el pago de un alquiler',
   'rental.payment_reject': 'Rechazó el pago de un alquiler',
   'rental.receipt_view': 'Abrió el comprobante de un alquiler',
@@ -90,6 +92,48 @@ export function TempPassword({ who, password, onClose }) {
   );
 }
 
+// Módulos de esta persona: lo de su rol, o una excepción (se lo da o se lo quita). Solo el superadmin.
+function PersonPerms({ userId, call, onError }) {
+  const [p, setP] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(() => call(`users/${userId}/permissions`).then(setP).catch((e) => onError(e.message)), [call, userId, onError]);
+  useEffect(() => { load(); }, [load]);
+  if (!p) return <Loading />;
+  if (!p.modules.length) return null;
+  const choose = async (perm, value) => {
+    setBusy(true);
+    try {
+      await call(`users/${userId}/permissions`, { perm, allow: value === 'role' ? null : value === 'yes' }, 'PUT');
+      await load();
+    } catch (e) {
+      onError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="req">
+      <b>Permisos de esta persona</b>
+      <p className="muted small">«Según su rol» sigue lo que marques en la pestaña Permisos. «Sí» o «No» es una excepción solo para esta persona (se borra si le cambias el rol).</p>
+      {p.modules.map((m) => {
+        const own = p.overrides[m.key];
+        const value = own === undefined ? 'role' : own ? 'yes' : 'no';
+        const byRole = p.roleDefault.includes(m.key);
+        return (
+          <div className="row between perm-row" key={m.key}>
+            <span className={p.effective.includes(m.key) ? '' : 'muted'}>{m.label}</span>
+            <select aria-label={m.label} value={value} disabled={busy} onChange={(e) => choose(m.key, e.target.value)}>
+              <option value="role">Según su rol ({byRole ? 'sí' : 'no'})</option>
+              <option value="yes">Sí</option>
+              <option value="no">No</option>
+            </select>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // Ficha completa de un usuario con las acciones que el rol de quien mira permite
 export default function UserDetail({ userId, me, perms, call, token, onClose, onChanged }) {
   const [data, setData] = useState(null);
@@ -152,7 +196,6 @@ export default function UserDetail({ userId, me, perms, call, token, onClose, on
     if (word !== 'ELIMINAR') return;
     run(() => call(`users/${u.id}/delete`, {}), onClose);
   };
-  const toggleMonitor = () => run(() => call(`staff/${u.id}/monitor`, { enabled: !u.can_monitor }));
   const changeRole = (role) => run(() => call(`staff/${u.id}/role`, { role }));
   const adjustBalance = () => {
     const v = window.prompt(`Ajustar el saldo de ${u.name}. Escribe el monto: positivo para sumar, negativo para restar (ej. 25 o -12.50):`);
@@ -215,12 +258,6 @@ export default function UserDetail({ userId, me, perms, call, token, onClose, on
                 <option value="support">Soporte</option>
               </select>
             )}
-            {u.role === 'admin' && can('staff.manage') && (
-              <label className="check">
-                <input type="checkbox" checked={!!u.can_monitor} disabled={busy} onChange={toggleMonitor} />
-                <span>Puede ver el <b>mapa en vivo</b> y el desempeño de los conductores</span>
-              </label>
-            )}
             {staffTarget && can('staff.manage') && u.totp_enabled ? <button disabled={busy} onClick={reset2fa}>🔐 Restablecer verificación en dos pasos</button> : null}
             {can('staff.manage') && <button className="danger" disabled={busy} onClick={remove}>🗑 Eliminar cuenta</button>}
           </div>
@@ -238,6 +275,8 @@ export default function UserDetail({ userId, me, perms, call, token, onClose, on
             </div>
           </div>
         )}
+
+        {touchable && can('staff.manage') && <PersonPerms userId={u.id} call={call} onError={setError} />}
 
         {u.role === 'driver' && (
           <div className="req">

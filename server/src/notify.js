@@ -4,7 +4,7 @@ import { sendPush, pushEnabled } from './push.js';
 import { reportError } from './config.js';
 import { io } from './app.js';
 import { room } from './live.js';
-import { PERMS } from './access.js';
+import { permsFor } from './perms.js';
 
 // ---------- Notificaciones push ----------
 const hasLiveSocket = async (userId) => (await io.in(room(userId)).fetchSockets()).length > 0;
@@ -22,7 +22,9 @@ async function notifyUser(userId, payload, { always = false } = {}) {
 async function notifyStaff(payload, perm = 'alerts') {
   if (!pushEnabled) return;
   const [rows] = await pool.query("SELECT DISTINCT u.id, u.role FROM push_subscriptions p JOIN users u ON u.id = p.user_id WHERE u.role IN ('superadmin','admin','support') AND u.status = 'active'");
-  await Promise.all(rows.filter((u) => PERMS[u.role]?.includes(perm)).map((u) => notifyUser(u.id, payload, { always: true })));
+  const allowed = [];
+  for (const u of rows) if ((await permsFor(u)).includes(perm)) allowed.push(u);
+  await Promise.all(allowed.map((u) => notifyUser(u.id, payload, { always: true })));
 }
 export const push = (userId, payload, opts) => notifyUser(userId, payload, opts).catch(reportError); // sin esperar: nunca retrasa la respuesta
 export const pushStaff = (payload, perm) => notifyStaff(payload, perm).catch(reportError);

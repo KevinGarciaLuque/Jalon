@@ -29,7 +29,7 @@ const STATUS = {
 
 const QUICK = ['Ya llegué', 'Estoy afuera', 'Voy en camino', 'Llego en 5 minutos', 'No te encuentro'];
 
-export default function Driver({ socket, token, status, userId }) {
+export default function Driver({ socket, token, status, userId, perms = [] }) {
   const { pos, setPos, denied } = useGeo();
   const [online, setOnline] = useState(false);
   const [requests, setRequests] = useState([]);
@@ -190,7 +190,7 @@ export default function Driver({ socket, token, status, userId }) {
               </div>
             )}
             {wallet?.enabled && wallet.balance < wallet.minBalance && <div className="hint danger">Tu saldo está por debajo del mínimo: recarga para volver a recibir viajes.</div>}
-            {status === 'active' && !online && <button className="sm left" onClick={() => setShowRental(true)}>Alquiler de mi carro por días</button>}
+            {status === 'active' && !online && perms.includes('rent.offer') && <button className="sm left" onClick={() => setShowRental(true)}>Alquiler de mi carro por días</button>}
             {!online && status !== 'pending' && <PushToggle token={token} why="Activa las notificaciones para recibir viajes cercanos y avisos aunque cierres la app." />}
             <button className={online ? 'danger' : 'primary'} onClick={toggle} disabled={!pos || status === 'pending'}>
               {online ? 'Desconectarme' : 'Ponerme disponible'}

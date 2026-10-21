@@ -8,6 +8,10 @@ import { io } from '../app.js';
 import { drivers, room } from '../live.js';
 import { push, pushStaff } from '../notify.js';
 import { tellWallet } from './balance.js';
+import { can } from '../perms.js';
+
+// El carro de un conductor solo se alquila si él tiene el módulo «Ofrecer su carro en alquiler»
+const ownerMayRent = (driverId) => !driverId || can({ id: driverId, role: 'driver' }, 'rent.offer');
 
 export class RentalError extends Error {
   constructor(message, status = 400) { super(message); this.status = status; }
@@ -47,7 +51,9 @@ export async function searchAvailable(start, end, days) {
      ORDER BY l.price_with_driver, l.id`,
     [end, start]
   );
-  return rows.map((r) => ({
+  const allowed = [];
+  for (const r of rows) if (await ownerMayRent(r.driver_id)) allowed.push(r);
+  return allowed.map((r) => ({
     listingId: r.listing_id,
     vehicle: { category: r.category, categoryLabel: CATEGORY_LABEL[r.category], make: r.make, model: r.model, color: r.color, year: r.year },
     owner: r.driver_id ? 'driver' : 'fleet',
@@ -74,7 +80,7 @@ export async function createBooking(renter, { listingId, start, days, payment, p
       `SELECT l.id, l.vehicle_id, l.price_with_driver, v.driver_id FROM rental_listings l JOIN vehicles v ON v.id = l.vehicle_id
        WHERE l.id = ? AND l.active = 1 AND l.with_driver = 1 FOR UPDATE`, [Number(listingId)]
     );
-    if (!l || !(Number(l.price_with_driver) > 0)) throw new RentalError('Ese carro ya no está disponible para alquilar', 404);
+    if (!l || !(Number(l.price_with_driver) > 0) || !(await ownerMayRent(l.driver_id))) throw new RentalError('Ese carro ya no está disponible para alquilar', 404);
     await conn.query('SELECT id FROM vehicles WHERE id = ? FOR UPDATE', [l.vehicle_id]);
     const [[busy]] = await conn.query(`SELECT COUNT(*) AS n FROM rental_bookings WHERE vehicle_id = ? AND status IN ${HOLDS} AND start_date <= ? AND end_date >= ?`, [l.vehicle_id, dates.end, dates.start]);
     if (busy.n) throw new RentalError('Ese carro ya está reservado en esas fechas. Elige otras fechas u otro carro.', 409);

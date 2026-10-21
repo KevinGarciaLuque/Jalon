@@ -281,3 +281,13 @@ Se activa en el panel → **Ajustes → Alquiler de carros por días** (apagado 
 - **Tablas nuevas:** `rental_listings` y `rental_bookings`; `wallet_entries` suma `rental_id` y los tipos `rental_commission` y `rental_payout`. Al eliminar una cuenta se cancelan sus reservas pendientes y se borran sus datos del alquiler; si su vehículo ya tuvo alquileres se conserva sin datos (la placa queda libre).
 - **Pendiente (4B-2):** alquiler sin conductor (licencia e identidad del cliente, depósito y revisión del carro al entregar y recibir). Antes de lanzarlo hace falta un contrato y un seguro revisados por un abogado.
 - Prueba: `test/phase15.mjs`.
+
+## Permisos por módulo
+
+El superadmin decide qué ve cada quien, en el panel → **Permisos** (por rol) y en la ficha de cada persona (excepciones).
+
+- **Módulos** (`server/src/perms.js`): ver el panel, emergencias y reportes, cancelar viajes, gestionar y agregar usuarios, documentos, registro, recargas y saldo, ajustar saldos, mapa en vivo, alquileres, flota; y en la app, **alquilar** (pasajeros) y **ofrecer su carro** (conductores). Cada módulo dice a qué roles se puede dar. **Ajustes** y **Personal** son solo del superadmin, que siempre tiene todo.
+- **Por rol:** se guarda en Ajustes (`role_perms`). Al principio el administrador y soporte tienen lo mismo que antes, y **el alquiler solo lo ve el superadmin**.
+- **Por persona:** tabla `user_permissions` (`allow` 1 = se lo da, 0 = se lo quita; sin fila = según su rol). Al cambiarle el rol a alguien se borran sus excepciones. Los administradores que ya tenían el mapa en vivo (`users.can_monitor`) lo conservan como excepción.
+- **Dónde se aplica:** cada petición del panel calcula los permisos de la persona (`req.perms`); el alquiler exige `rent` o `rent.offer`; el carro de un conductor sin `rent.offer` deja de aparecer para alquilar; los avisos al personal solo llegan a quien tiene el permiso. La app recibe los módulos al entrar y los vuelve a pedir al abrirse (`GET /api/me`).
+- Prueba: `test/phase16.mjs`.
