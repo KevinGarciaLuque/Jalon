@@ -415,3 +415,13 @@ registro confirme que todo se volvió a cifrar, quita `DATA_KEY_OLD`. Si algo no
 
 - Simulacro hecho con la base de prueba: 4 archivos cifrados con la llave derivada pasaron a una `DATA_KEY` nueva y el panel siguió mostrando los documentos.
 - Sin cambios en la base de datos. Prueba: `test/rekey-unit.mjs`.
+
+## Etapa 8.2: estado del sistema
+
+Panel → **Sistema** (solo el superadmin; `GET /api/admin/system`). Muestra, en «✓ Listo», «! Revisar», «✕ Falta» o «i Dato», cada cosa que conviene tener
+antes de abrir al público: modo producción, verificación en dos pasos del personal, `DATA_KEY`, Sentry, el canal del código de verificación
+(y si `SMS_DEV_ECHO` sigue activo), correo, Twilio, teléfonos de SOS, notificaciones, el Volume de documentos, respaldos, términos, mapas,
+`PUBLIC_URL` y `TRUST_PROXY`. Nunca muestra claves.
+
+Arriba dice **qué versión está publicada** (el commit que Railway desplegó, `RAILWAY_GIT_COMMIT_SHA`): si después de subir un cambio
+a GitHub el commit no cambia, Railway no lo publicó. Prueba: `test/phase22.mjs`.

@@ -3,6 +3,16 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-21-sistema',
+    date: '2026-10-21',
+    title: 'Estado del sistema',
+    for: ['staff'],
+    items: [
+      'Nueva pestaña «Sistema» (solo el superadmin): lo que falta configurar antes de abrir al público, con «Listo», «Revisar» o «Falta», sin mostrar ninguna clave.',
+      'También dice qué versión está publicada, para saber si Railway ya desplegó el último cambio.',
+    ],
+  },
+  {
     id: '2026-10-21-llave-cifrado',
     date: '2026-10-21',
     title: 'Llave de cifrado propia, sin perder documentos',

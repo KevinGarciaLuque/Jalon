@@ -18,6 +18,7 @@ import './routes/rentals.js';
 import './routes/permissions.js';
 import './routes/history.js';
 import './routes/metrics.js';
+import './routes/system.js';
 import './sockets.js';
 import './jobs.js';
 
