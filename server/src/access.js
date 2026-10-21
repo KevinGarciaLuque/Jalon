@@ -4,6 +4,7 @@ import { pool } from './db.js';
 import { getSettings } from './wallet.js';
 import { JWT_SECRET, isProd, SESSION_COOKIE, SESSION_HEADER } from './config.js';
 import { permsFor, can } from './perms.js';
+import { TERMS_VERSION } from './legal.js';
 
 // El personal maneja datos de todos: su sesión dura 12 horas; pasajeros y conductores, 30 días
 export const sign = (u) => jwt.sign({ id: u.id, role: u.role, tv: u.token_version ?? 0 }, JWT_SECRET, { expiresIn: ['superadmin', 'admin', 'support'].includes(u.role) ? '12h' : '30d' });
@@ -69,6 +70,8 @@ export function checkPassword(password, { phone = '', role = 'passenger' } = {})
 export const twoFactorRequired = async () => (await getSettings(pool)).staff_2fa_required !== '0';
 // `perms`: los módulos que puede usar (la app muestra u oculta, por ejemplo, el alquiler)
 export const publicUser = (u, require2fa = true, perms = []) => ({ id: u.id, name: u.name, phone: u.phone, email: u.email || null, role: u.role, status: u.status, vehicle: u.vehicle, plate: u.plate, mustChangePassword: !!u.must_change_password, perms,
+  // Pasajeros y conductores que aceptaron una versión anterior de los términos los vuelven a ver al abrir la app
+  mustAcceptTerms: ['passenger', 'driver'].includes(u.role) && u.terms_version !== TERMS_VERSION, termsVersion: TERMS_VERSION,
   // El personal debe tener la verificación en dos pasos activa para usar el panel (si está exigida)
   mustEnrollTwoFactor: require2fa && isStaff(u.role) && !u.totp_enabled, twoFactorEnabled: !!u.totp_enabled });
 

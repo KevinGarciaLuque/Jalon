@@ -9,6 +9,7 @@ import { searchPlaces, reversePlace, getRoute } from '../maps.js';
 import { normalizePhone } from '../phone.js';
 import { validEndpoint, publicKey as vapidPublicKey } from '../push.js';
 import { isProd, REPORT_TYPES } from '../config.js';
+import { TERMS_VERSION } from '../legal.js';
 import { app, io, loginLimiter, mapsLimiter, trackLimiter } from '../app.js';
 import { drivers, room } from '../live.js';
 import { isPoint, clean, num, parsePoint } from '../util.js';
@@ -202,6 +203,13 @@ app.post('/api/push/unsubscribe', authUser, async (req, res) => {
 // Datos de la sesión al abrir la app (por ejemplo, los módulos que el superadmin le dio o le quitó desde la última vez)
 app.get('/api/me', authUser, async (req, res) => {
   res.json({ user: publicUser(req.user, isStaff(req.user.role) && (await twoFactorRequired()), await permsFor(req.user)) });
+});
+
+// Aceptar la versión nueva de los términos y la política de privacidad (se guarda cuándo y cuál)
+app.post('/api/terms/accept', authUser, async (req, res) => {
+  if (req.body?.version !== TERMS_VERSION) return res.status(409).json({ error: 'Los términos cambiaron otra vez: vuelve a abrir la app para ver la versión nueva' });
+  await pool.query('UPDATE users SET terms_accepted_at = NOW(), terms_version = ? WHERE id = ?', [TERMS_VERSION, req.user.id]);
+  res.json({ ok: true, version: TERMS_VERSION });
 });
 
 app.post('/api/logout-all', authUser, async (req, res) => {

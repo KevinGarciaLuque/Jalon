@@ -59,7 +59,7 @@ app.post('/api/register', registerLimiter, async (req, res) => {
       );
       if (veh) await saveVehicle(conn, r.insertId, veh);
       await conn.commit();
-      user = { id: r.insertId, name: name.trim(), phone: phoneN, email, role, status, vehicle: veh ? vehicleLabel(veh) : null, plate: veh?.plate || null };
+      user = { id: r.insertId, name: name.trim(), phone: phoneN, email, role, status, vehicle: veh ? vehicleLabel(veh) : null, plate: veh?.plate || null, terms_version: TERMS_VERSION };
     } catch (e) {
       await conn.rollback().catch(() => {});
       throw e;

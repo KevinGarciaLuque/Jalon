@@ -425,3 +425,12 @@ antes de abrir al público: modo producción, verificación en dos pasos del per
 
 Arriba dice **qué versión está publicada** (el commit que Railway desplegó, `RAILWAY_GIT_COMMIT_SHA`): si después de subir un cambio
 a GitHub el commit no cambia, Railway no lo publicó. Prueba: `test/phase22.mjs`.
+
+## Etapa 8.3: volver a aceptar los términos
+
+Si un pasajero o conductor aceptó una versión anterior de los términos (`users.terms_version` distinta de `TERMS_VERSION`), la app le muestra
+al abrirla lo que cambió y le pide aceptar la versión nueva (`POST /api/terms/accept` con la versión; se guarda cuál y cuándo).
+Mientras tanto la app sigue respondiendo (no se corta un viaje en curso) y puede ir a su cuenta a descargar sus datos o eliminarla.
+
+**Al cambiar los términos:** sube `TERMS_VERSION` en `server/src/legal.js` y `VERSION` en `client/src/Legal.jsx`, y actualiza la lista
+`CHANGES` de `client/src/TermsUpdate.jsx` con lo más importante que cambió. Sin cambios en la base de datos. Prueba: `test/phase23.mjs`.

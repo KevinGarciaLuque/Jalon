@@ -11,6 +11,7 @@ const Admin = lazyPage(() => import('./Admin.jsx'));
 const History = lazyPage(() => import('./History.jsx'));
 const Account = lazyPage(() => import('./Account.jsx'));
 const TwoFactorSetup = lazyPage(() => import('./TwoFactorSetup.jsx'));
+const TermsUpdate = lazyPage(() => import('./TermsUpdate.jsx'));
 
 const STAFF = ['superadmin', 'admin', 'support'];
 const ROLE_NAME = { passenger: 'Pasajero', driver: 'Conductor', superadmin: 'Superadministrador', admin: 'Administrador', support: 'Soporte' };
@@ -50,7 +51,7 @@ export default function App() {
     apiGet('me')
       .then(({ user }) => setSession((cur) => {
         if (!cur || cur.user.id !== user.id) return cur;
-        const next = { ...cur, user: { ...cur.user, perms: user.perms } };
+        const next = { ...cur, user: { ...cur.user, perms: user.perms, mustAcceptTerms: user.mustAcceptTerms, termsVersion: user.termsVersion } };
         localStorage.setItem('jalon', JSON.stringify(next));
         return next;
       }))
@@ -151,6 +152,14 @@ export default function App() {
           token={session.token}
           onLogout={() => logout()}
           onDone={() => save({ ...session, user: { ...session.user, mustEnrollTwoFactor: false, twoFactorEnabled: true } })}
+        />
+      )}
+      {session.user.mustAcceptTerms && !session.user.mustChangePassword && !showAccount && (
+        <TermsUpdate
+          version={session.user.termsVersion}
+          onAccepted={() => save({ ...session, user: { ...session.user, mustAcceptTerms: false } })}
+          onAccount={() => setShowAccount(true)}
+          onLogout={() => logout()}
         />
       )}
       {showNews && <News news={news} onClose={() => setShowNews(false)} />}

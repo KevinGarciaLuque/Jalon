@@ -3,6 +3,16 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-21-terminos-aviso',
+    date: '2026-10-21',
+    title: 'Aviso cuando cambian los términos',
+    for: ['all'],
+    items: [
+      'Cuando actualicemos los Términos de uso o la Política de privacidad, al abrir la app verás un resumen de lo que cambió y podrás aceptarlos con un toque.',
+      'Si no estás de acuerdo, desde ahí mismo puedes ir a tu cuenta para descargar tus datos o eliminarla.',
+    ],
+  },
+  {
     id: '2026-10-21-sistema',
     date: '2026-10-21',
     title: 'Estado del sistema',
