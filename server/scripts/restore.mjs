@@ -9,6 +9,7 @@ import zlib from 'zlib';
 import readline from 'readline';
 import { connect, fingerprint, balanceIssues, tablesOf, q, DB_NAME, FORMAT } from './backup-lib.mjs';
 
+const SAFE_LINE = /^(SET (NAMES utf8mb4|time_zone = '\+00:00'|FOREIGN_KEY_CHECKS = [01]|UNIQUE_CHECKS = [01]);$|DROP TABLE IF EXISTS `[^`.]+`;$|CREATE TABLE `[^`.]+` \(|INSERT INTO `[^`.]+` \()/;
 const args = process.argv.slice(2);
 const file = args.find((a) => !a.startsWith('--'));
 const into = args.find((a) => a.startsWith('--into='))?.slice(7);
@@ -42,6 +43,8 @@ try {
   for await (const line of lines) {
     if (line.startsWith('-- jalon-manifest ')) manifest = JSON.parse(line.slice(18));
     if (!line.trim() || line.startsWith('--')) continue;
+    // Solo lo que escribe «npm run backup»: un archivo alterado no puede borrar ni cambiar de base (y cada línea es una sola sentencia)
+    if (!SAFE_LINE.test(line)) throw new Error(`El archivo tiene una sentencia que un respaldo de Jalón no lleva: «${line.slice(0, 60)}…». No se restaura.`);
     await conn.query(line);
     statements++;
   }

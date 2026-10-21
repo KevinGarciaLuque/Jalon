@@ -168,7 +168,7 @@ console.log(`Duración total:    ${(total / 1000).toFixed(1)} s · errores: ${er
 if (errors.length) console.log([...new Set(errors)].slice(0, 5).map((e) => `  - ${e}`).join('\n'));
 
 const pass = ok.length === users.length && completed / Math.max(1, all.length) >= 0.93 && pct(reqToOffer, 95) < 3000 && pct(health, 95) < 500;
-console.log(pass ? '\nOK   la carga de 30 conductores y 500 pasajeros se sostiene' : '\nFAIL no se sostiene: revisa los números de arriba');
+console.log(pass ? `\nOK   la carga de ${DRIVERS} conductores y ${PASSENGERS} pasajeros se sostiene` :'\nFAIL no se sostiene: revisa los números de arriba');
 
 sockets.forEach((s) => s.close());
 await sleep(500);

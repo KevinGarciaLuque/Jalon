@@ -434,3 +434,28 @@ Mientras tanto la app sigue respondiendo (no se corta un viaje en curso) y puede
 
 **Al cambiar los términos:** sube `TERMS_VERSION` en `server/src/legal.js` y `VERSION` en `client/src/Legal.jsx`, y actualiza la lista
 `CHANGES` de `client/src/TermsUpdate.jsx` con lo más importante que cambió. Sin cambios en la base de datos. Prueba: `test/phase23.mjs`.
+
+## Etapa 8.4: pruebas finales
+
+**Revisión de la app publicada** (`npm --prefix server run test:prod`, o `PROD_URL=https://... npm --prefix server run test:prod`). Solo lectura: no crea cuentas
+ni escribe nada. Dice qué etapas están publicadas (cada una agregó una ruta: 401 = existe, 404 = falta) y revisa HTTPS y la redirección desde http,
+HSTS, CSP, iframes, `nosniff`, `referrer-policy`, permisos del navegador, que no se publiquen los `.map`, la caché de los archivos, CORS, que sin sesión
+o con un token inventado no se vea nada y que los errores no muestren detalles internos.
+El 21 de octubre de 2026, contra jalon.up.railway.app: todas las revisiones de seguridad pasan, pero **lo publicado es la versión «Permisos por módulo»**:
+las Etapas 5 a 8 están en GitHub y pasaron el CI, pero Railway no las desplegó.
+
+**Prueba de carga** (`npm --prefix server run test:load`, siempre contra un servidor local con una base aparte), en una computadora de oficina:
+
+| Carga | Conexiones | Viajes | Pedido → 1ª oferta (p95) | Errores | Memoria del servidor |
+|---|---|---|---|---|---|
+| 30 conductores, 500 pasajeros, 100 viajes en 30 s | 530/530 | 99 de 100 | 492 ms | 0 | — |
+| 100 conductores, 2.000 pasajeros, 400 viajes en 60 s | 2.100/2.100 | 399 de 400 | 552 ms | 0 | 153 MB |
+
+(El viaje que falta en cada caso es uno que ningún conductor tomó a tiempo, como pasaría en la calle.) Railway corre en otra máquina, pero un solo
+servidor de Jalón alcanza con holgura para el lanzamiento en una ciudad. Lo que se nota primero con más gente son los servicios de mapas gratuitos (Etapa 7.3).
+
+**Revisión de seguridad** de las Etapas 5 a 8: el camino de un viaje solo lo ven su pasajero y su conductor, y solo el conductor del viaje en curso
+lo registra; los comprobantes y la exportación exigen su permiso y la exportación queda en el Registro; la sesión en cookie tiene protección CSRF;
+el estado del sistema es solo del superadmin y no muestra claves; `npm audit` sin vulnerabilidades en el servidor ni en la app.
+Se corrigió una cosa: `npm run restore` ahora solo acepta las sentencias que escribe `npm run backup` (un archivo alterado con, por ejemplo,
+`DROP DATABASE` se rechaza sin tocar nada).

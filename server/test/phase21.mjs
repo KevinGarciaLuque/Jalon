@@ -67,7 +67,12 @@ try {
   rewrite(full, cut, (s) => s.slice(0, s.indexOf('-- jalon-manifest')));
   const c = run('restore', cut);
   check('un respaldo incompleto se rechaza', c.status !== 0 && /incompleto/.test(c.stderr));
-  check('un archivo que no existe, también', run('restore', path.join(dir, 'no-existe.sql.gz')).status !== 0);
+  const evil = path.join(dir, 'malicioso.sql.gz');
+  rewrite(full, evil, (s) => s.replace('SET FOREIGN_KEY_CHECKS = 0;\n', `SET FOREIGN_KEY_CHECKS = 0;\nDROP DATABASE \`${DB_NAME}\`;\n`));
+  const m = run('restore', evil);
+  const [[still]] = await pool.query('SELECT COUNT(*) AS n FROM information_schema.schemata WHERE schema_name = ?', [DB_NAME]);
+  check('un respaldo con sentencias ajenas (borrar una base) se rechaza sin tocar nada', m.status !== 0 && /no lleva/.test(m.stderr) && still.n === 1);
+  check('un archivo que no existe, también',run('restore', path.join(dir, 'no-existe.sql.gz')).status !== 0);
 } catch (e) {
   check('la prueba terminó sin errores', false, e.message);
 } finally {

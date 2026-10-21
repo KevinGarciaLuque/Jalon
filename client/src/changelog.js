@@ -3,6 +3,17 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-21-pruebas-finales',
+    date: '2026-10-21',
+    title: 'Pruebas antes del lanzamiento',
+    for: ['staff'],
+    items: [
+      'Nueva revisión de la app publicada (solo lectura): dice qué versión está en línea y revisa la seguridad básica.',
+      'Prueba de carga: 2.100 personas conectadas y 400 viajes en un minuto, sin errores y con la primera oferta en menos de un segundo.',
+      'Revisión de seguridad de lo nuevo; se reforzó la restauración de respaldos.',
+    ],
+  },
+  {
     id: '2026-10-21-terminos-aviso',
     date: '2026-10-21',
     title: 'Aviso cuando cambian los términos',
