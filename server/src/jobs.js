@@ -7,6 +7,7 @@ import { drivers, passengers, openRides, room } from './live.js';
 import { rideView, nearbyDrivers, expireOffers, expireStaleRides } from './services/rides.js';
 import { remindOpenAlerts } from './services/sos.js';
 import { expireRentals } from './services/rentals.js';
+import { reconcileSessions, purgeTracks } from './services/activity.js';
 
 // Las ofertas vencidas se revisan cada OFFER_SWEEP_MS (5 s por defecto)
 setInterval(() => expireOffers().catch(reportError), Number(process.env.OFFER_SWEEP_MS || 5000)).unref();
@@ -41,6 +42,17 @@ setInterval(() => expireStaleRides().catch(console.error), 30000);
   if (pending.length) console.log(`Se recuperaron ${pending.length} solicitud(es) abiertas tras el reinicio`);
   await expireStaleRides();
 }
+
+// Horas conectado: cada minuto se anota quién sigue con la app abierta y se cierran las sesiones de quienes ya no están.
+// Al arrancar no hay nadie conectado todavía: las sesiones abiertas antes del reinicio se cierran en su última vez vista.
+reconcileSessions().catch(reportError);
+setInterval(() => reconcileSessions().catch(reportError), 60000).unref();
+
+// El camino real de los viajes se borra a los RIDE_TRACK_RETENTION_DAYS días (90 por defecto)
+const TRACK_DAYS = Number(process.env.RIDE_TRACK_RETENTION_DAYS || 90);
+const purgeOldTracks = () => purgeTracks(TRACK_DAYS).then((n) => n && console.log(`Se borraron ${n} puntos de recorridos antiguos`)).catch(reportError);
+purgeOldTracks();
+setInterval(purgeOldTracks, 6 * 3600 * 1000).unref();
 
 // Alquileres: los pedidos sin respuesta cuya fecha pasó y los confirmados que nunca empezaron se cancelan solos
 const expireRentalsNow = () => expireRentals().then((n) => n && console.log(`Se cancelaron ${n} alquiler(es) vencidos`)).catch(reportError);

@@ -1,6 +1,6 @@
-// Términos de uso y política de privacidad. Si cambias el contenido, sube TERMS_VERSION en server/src/index.js.
-const VERSION = '1.6';
-const UPDATED = '10 de octubre de 2026';
+// Términos de uso y política de privacidad. Si cambias el contenido, sube TERMS_VERSION en server/src/legal.js (y VERSION aquí).
+const VERSION = '1.7';
+const UPDATED = '21 de octubre de 2026';
 const CONTACT = import.meta.env.VITE_CONTACT_EMAIL; // se define al compilar (variable en Railway)
 
 const Contact = () => (CONTACT ? <a href={`mailto:${CONTACT}`}>{CONTACT}</a> : <i>[correo de soporte: falta definir VITE_CONTACT_EMAIL]</i>);
@@ -117,6 +117,8 @@ function Privacy() {
           chat. Los mensajes se borran automáticamente a los 90 días, y el personal solo los lee si el viaje tiene una emergencia (queda anotado quién los leyó).
         </li>
         <li><b>Ubicación de los conductores:</b> mientras están conectados o en un viaje, el personal autorizado la ve en un mapa en vivo, junto con su desempeño. No se guarda un historial de recorridos fuera del viaje.</li>
+        <li><b>Camino de cada viaje:</b> mientras un viaje está en curso (desde que el conductor lo inicia hasta que lo termina) se guarda el camino que sigue el carro, con un punto cada 15 segundos aproximadamente. Sirve para mostrarte el recorrido real en tu historial y en el recibo, y para atender reclamos (por ejemplo, un cobro o una ruta que no corresponde). Lo ven solo el pasajero y el conductor de ese viaje, y el personal autorizado cuando hay un reclamo. Se borra automáticamente a los 90 días.</li>
+        <li><b>Horas conectado (conductores):</b> cuándo te pones disponible y cuándo te desconectas, para mostrarte tus horas y tu ganancia por hora, y al personal autorizado tu desempeño. No incluye dónde estabas.</li>
         <li><b>Recargas de saldo (conductores):</b> el monto, el banco, el número de referencia y la foto del comprobante de cada transferencia, y el historial de movimientos de tu saldo. El personal las revisa para acreditarlas; los registros de dinero se conservan con fines contables aunque elimines tu cuenta, pero sin tus datos personales.</li>
         <li><b>Lugares guardados:</b> los destinos que decidas guardar (casa, trabajo…), con su nombre y ubicación. Puedes borrarlos cuando quieras.</li>
         <li>
@@ -158,7 +160,7 @@ function Privacy() {
       <h2>4. Cuánto tiempo los conservamos</h2>
       <p>
         Mientras tengas cuenta y el tiempo necesario para cumplir obligaciones legales, resolver reclamos y mantener la seguridad. Los documentos de los
-        conductores se conservan mientras sean necesarios para su verificación.
+        conductores se conservan mientras sean necesarios para su verificación. Los mensajes del chat y el camino de cada viaje se borran a los 90 días.
       </p>
 
       <h2>5. Tus derechos</h2>
@@ -166,7 +168,7 @@ function Privacy() {
         Desde la sección <b>Cuenta</b> de la aplicación puedes, cuando quieras:
       </p>
       <ul>
-        <li><b>Descargar tus datos:</b> un archivo con tu cuenta, tus viajes, tus calificaciones y tus alertas de emergencia.</li>
+        <li><b>Descargar tus datos:</b> un archivo con tu cuenta, tus viajes (con su camino guardado), tus calificaciones y tus alertas de emergencia.</li>
         <li>
           <b>Eliminar tu cuenta:</b> se borran tu nombre, teléfono, correo, vehículo, documentos y comentarios. Tus viajes se conservan sin direcciones, únicamente
           para estadísticas y para atender reclamos. No se puede eliminar con un viaje en curso.

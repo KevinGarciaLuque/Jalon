@@ -40,6 +40,9 @@ export async function anonymizeUser(t) {
   await pool.query("UPDATE topups SET receipt_file = NULL, receipt_hash = NULL, reference = '[eliminado]', reference_key = NULL WHERE driver_id = ?", [t.id]);
   await pool.query("UPDATE reports SET text = '[reporte eliminado]' WHERE user_id = ?", [t.id]);
   await pool.query('UPDATE rides SET origin_text = NULL, dest_text = NULL, share_token = NULL WHERE passenger_id = ? OR driver_id = ?', [t.id, t.id]);
+  // El camino real de sus viajes y sus horas conectado también se borran
+  await pool.query('DELETE p FROM ride_points p JOIN rides r ON r.id = p.ride_id WHERE r.passenger_id = ? OR r.driver_id = ?', [t.id, t.id]);
+  await pool.query('DELETE FROM driver_sessions WHERE driver_id = ?', [t.id]);
   await pool.query(
     `UPDATE users SET name = 'Cuenta eliminada', phone = ?, email = NULL, password_hash = ?, vehicle = NULL, plate = NULL, status = 'blocked',
             must_change_password = 0, totp_enabled = 0, totp_secret = NULL, backup_codes = NULL, totp_last_step = NULL,

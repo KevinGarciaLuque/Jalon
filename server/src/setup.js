@@ -503,5 +503,41 @@ await conn.query(`
 // Los administradores que ya tenían el mapa en vivo (users.can_monitor) lo conservan como excepción
 await conn.query("INSERT IGNORE INTO user_permissions (user_id, perm, allow) SELECT id, 'monitor', 1 FROM users WHERE role = 'admin' AND can_monitor = 1");
 
+// ---- Etapa 5: ganancias, horas conectado y recorrido real ----
+// Cuándo empezó y terminó cada viaje. Los completados de antes toman como fin su última actualización (aproximado).
+await addColumn('rides', 'started_at', 'TIMESTAMP NULL');
+await addColumn('rides', 'completed_at', 'TIMESTAMP NULL');
+await conn.query("UPDATE rides SET completed_at = updated_at WHERE status = 'completed' AND completed_at IS NULL");
+{
+  const [ix] = await conn.query("SELECT 1 FROM information_schema.statistics WHERE table_schema = ? AND table_name = 'rides' AND index_name = 'idx_driver_completed'", [DB_NAME]);
+  if (!ix.length) await conn.query('CREATE INDEX idx_driver_completed ON rides (driver_id, completed_at)');
+}
+// Cada vez que un conductor está conectado con la app abierta: de cuándo a cuándo (para sus horas y su ganancia por hora)
+await conn.query(`
+  CREATE TABLE IF NOT EXISTS driver_sessions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    driver_id INT NOT NULL,
+    started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ended_at TIMESTAMP NULL,
+    KEY by_driver (driver_id, started_at),
+    KEY open_sessions (ended_at),
+    FOREIGN KEY (driver_id) REFERENCES users(id) ON DELETE CASCADE
+  )
+`);
+// Camino real del carro mientras el viaje está en curso (un punto cada ~15 s). Se borran a los 90 días (RIDE_TRACK_RETENTION_DAYS).
+await conn.query(`
+  CREATE TABLE IF NOT EXISTS ride_points (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    ride_id INT NOT NULL,
+    lat DOUBLE NOT NULL,
+    lng DOUBLE NOT NULL,
+    at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY by_ride (ride_id, id),
+    KEY by_time (at),
+    FOREIGN KEY (ride_id) REFERENCES rides(id) ON DELETE CASCADE
+  )
+`);
+
 console.log(`Base de datos "${DB_NAME}" lista.`);
 await conn.end();

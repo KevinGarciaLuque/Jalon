@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import { icons, useGeo, distanceKm, lempiras, minutes, useChat, useNow, wazeUrl, mapsUrl, apiGet, money2, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
 import DriverWallet from './DriverWallet.jsx';
 import DriverRental from './DriverRental.jsx';
+import Earnings from './Earnings.jsx';
 import { Avatar, CarMarker, Chat, FitTo, PriceStepper, PushToggle, Rate, RouteLine, SafetyBar, Stars, TimeRing } from './components.jsx';
 import ReportForm from './ReportForm.jsx';
 import DriverDocs from './DriverDocs.jsx';
@@ -46,6 +47,7 @@ export default function Driver({ socket, token, status, userId, perms = [] }) {
   const [notApproved, setNotApproved] = useState(false);
   const [compact, setCompact] = useState(false); // en el celular, la hoja de abajo se puede achicar para ver más mapa
   const [showRental, setShowRental] = useState(false); // alquiler de su carro por días
+  const [showEarnings, setShowEarnings] = useState(false); // mis ganancias por día, semana o mes
   const [renting, setRenting] = useState(false); // tiene un alquiler en curso: no recibe viajes
   const posRef = useRef(pos);
   posRef.current = pos;
@@ -190,6 +192,8 @@ export default function Driver({ socket, token, status, userId, perms = [] }) {
               </div>
             )}
             {wallet?.enabled && wallet.balance < wallet.minBalance && <div className="hint danger">Tu saldo está por debajo del mínimo: recarga para volver a recibir viajes.</div>}
+            {status === 'active' && !online && <button className="sm left" onClick={() => setShowEarnings(true)}>Mis ganancias</button>}
+            {showEarnings && <Earnings token={token} onClose={() => setShowEarnings(false)} />}
             {status === 'active' && !online && perms.includes('rent.offer') && <button className="sm left" onClick={() => setShowRental(true)}>Alquiler de mi carro por días</button>}
             {!online && status !== 'pending' && <PushToggle token={token} why="Activa las notificaciones para recibir viajes cercanos y avisos aunque cierres la app." />}
             <button className={online ? 'danger' : 'primary'} onClick={toggle} disabled={!pos || status === 'pending'}>

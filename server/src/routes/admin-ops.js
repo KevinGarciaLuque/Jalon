@@ -11,6 +11,7 @@ import { staffOnly, audit, auditOnce, actOn } from '../access.js';
 import { push } from '../notify.js';
 import { cancelRide } from '../services/rides.js';
 import { tellWallet } from '../services/balance.js';
+import { periodRange, connectedSeconds } from '../services/earnings.js';
 
 // ---------- Monitoreo de conductores (permiso 'monitor') ----------
 const RIDE_LIVE = "('accepted','arrived','started')";
@@ -89,6 +90,10 @@ app.get('/api/admin/monitor/drivers/:id', staffOnly('monitor'), async (req, res)
   );
   const d = drivers.get(id);
   const wallet = req.perms.includes('wallet');
+  // Horas conectado en los últimos 30 días (con la app abierta)
+  const { today } = await periodRange('day');
+  const from = new Date(Date.parse(`${today}T00:00:00Z`) - 29 * 86400e3).toISOString().slice(0, 10);
+  const hours30 = Math.round((await connectedSeconds(id, from, today)) / 360) / 10;
   let commission = null;
   if (wallet) {
     const [[c]] = await pool.query("SELECT COALESCE(-SUM(amount),0) AS v FROM wallet_entries WHERE user_id = ? AND kind = 'commission' AND created_at > NOW() - INTERVAL 30 DAY", [id]);
@@ -99,7 +104,7 @@ app.get('/api/admin/monitor/drivers/:id', staffOnly('monitor'), async (req, res)
     live: d ? { state: d.disconnected ? 'away' : d.available ? 'free' : 'busy', lat: d.lat, lng: d.lng, seenSecondsAgo: d.seenAt ? Math.round((Date.now() - d.seenAt) / 1000) : null, onlineMinutes: d.since ? Math.round((Date.now() - d.since) / 60000) : null } : null,
     last30: {
       completed: Number(r.completed), cancelled: Number(r.cancelled), cancelledByDriver: Number(r.cancelledByDriver), earned: Number(r.earned), km: Math.round(Number(r.km) * 10) / 10,
-      offersMade: Number(o.made), offersAccepted: Number(o.accepted),
+      offersMade: Number(o.made), offersAccepted: Number(o.accepted), hoursOnline: hours30,
       acceptanceRate: Number(o.made) ? Math.round((Number(o.accepted) / Number(o.made)) * 100) : null,
       ...(wallet ? { commission } : {}),
     },

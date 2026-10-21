@@ -15,8 +15,9 @@ import { isPoint, clean, num, parsePoint } from '../util.js';
 import { sign, authUser, passengerOnly, isStaff, audit, publicUser, twoFactorRequired } from '../access.js';
 import { permsFor } from '../perms.js';
 import { pushStaff } from '../notify.js';
-import { getRide, activeRideFor, ratingsOf } from '../services/rides.js';
+import { getRide, activeRideFor } from '../services/rides.js';
 import { anonymizeUser } from '../services/accounts.js';
+import { trackOf, trackKm } from '../services/activity.js';
 
 // ---------- Derechos del usuario sobre sus datos ----------
 // Descargar todo lo que la plataforma guarda de la persona (JSON). Las imágenes de los documentos no se incluyen: se piden a soporte.
@@ -40,6 +41,7 @@ app.get('/api/me/export', authUser, async (req, res) => {
   const [reps] = await pool.query('SELECT ride_id, type, text, status, resolution, created_at FROM reports WHERE user_id = ? ORDER BY id', [id]);
   const [moves] = await pool.query('SELECT amount, kind, ride_id, note, created_at FROM wallet_entries WHERE user_id = ? ORDER BY id', [id]);
   const [tops] = await pool.query('SELECT amount, bank, reference, status, approved_amount, review_note, created_at FROM topups WHERE driver_id = ? ORDER BY id', [id]);
+  const [points] = await pool.query('SELECT p.ride_id, p.lat, p.lng, p.at FROM ride_points p JOIN rides r ON r.id = p.ride_id WHERE r.passenger_id = ? OR r.driver_id = ? ORDER BY p.id', [id, id]);
   const [rentals] = await pool.query("SELECT id, IF(renter_id = ?, 'alquilé', 'alquilaron mi carro') AS rol, DATE_FORMAT(start_date, '%Y-%m-%d') AS desde, DATE_FORMAT(end_date, '%Y-%m-%d') AS hasta, days AS dias, total, payment AS pago, status AS estado, pickup_text AS recogida, created_at AS fecha FROM rental_bookings WHERE renter_id = ? OR owner_driver_id = ? ORDER BY id", [id, id, id]);
   res.set('Content-Disposition', 'attachment; filename="mis-datos-jalon.json"');
   res.json({
@@ -50,6 +52,7 @@ app.get('/api/me/export', authUser, async (req, res) => {
     mensajesQueEnvie: msgs.map((m) => ({ viaje: m.ride_id, texto: m.text, enviadoEl: m.created_at })),
     saldo: Number(u.balance || 0),
     movimientosDeSaldo: moves.map((m) => ({ monto: Number(m.amount), tipo: m.kind, viaje: m.ride_id, nota: m.note, fecha: m.created_at })),
+    recorridosDeViajes: Object.values(points.reduce((acc, p) => ((acc[p.ride_id] ||= { viaje: p.ride_id, puntos: [] }).puntos.push({ lat: p.lat, lng: p.lng, hora: p.at }), acc), {})),
     alquileres: rentals.map((r) => ({ ...r, total: Number(r.total) })),
     recargas: tops.map((t) => ({ monto: Number(t.amount), banco: t.bank, referencia: t.reference, estado: t.status, montoAprobado: t.approved_amount == null ? null : Number(t.approved_amount), nota: t.review_note, fecha: t.created_at })),
     lugaresFavoritos: favs,
@@ -125,6 +128,13 @@ app.delete('/api/contacts/:id', authUser, passengerOnly, async (req, res) => {
 });
 
 // ---------- Recibo del viaje ----------
+// Kilómetros y minutos reales (del camino guardado y de las horas de inicio y fin), si se tienen
+async function realTrip(ride) {
+  const track = await trackOf(ride.id);
+  const km = track.length > 1 ? trackKm(track) : null;
+  const min = ride.started_at && ride.completed_at ? Math.round((new Date(ride.completed_at) - new Date(ride.started_at)) / 60000) : null;
+  return { realKm: km, realMin: min };
+}
 app.get('/api/rides/:id/receipt', authUser, async (req, res) => {
   const ride = await getRide(Number(req.params.id));
   if (!ride || ![ride.passenger_id, ride.driver_id].includes(req.user.id)) return res.status(404).json({ error: 'Viaje no encontrado' });
@@ -133,10 +143,11 @@ app.get('/api/rides/:id/receipt', authUser, async (req, res) => {
   const [[d]] = await pool.query('SELECT name, vehicle, plate FROM users WHERE id = ?', [ride.driver_id]);
   res.json({
     number: `JAL-${String(ride.id).padStart(6, '0')}`,
-    date: ride.created_at, endedAt: ride.updated_at,
+    date: ride.created_at, endedAt: ride.completed_at || ride.updated_at,
     passenger: p.name, driver: d.name, vehicle: d.vehicle, plate: d.plate,
     origin: ride.origin_text, dest: ride.dest_text,
     distanceKm: ride.distance_km, durationMin: ride.duration_min,
+    ...(await realTrip(ride)),
     price: Number(ride.final_price), payment: 'Efectivo',
   });
 });
@@ -245,21 +256,7 @@ app.get('/api/route', authUser, mapsLimiter, async (req, res) => {
   res.json({ ...r, prices, suggestedPrice: prices.car });
 });
 
-// Historial de viajes del usuario
-app.get('/api/rides/mine', authUser, async (req, res) => {
-  const id = req.user.id;
-  const [rows] = await pool.query(
-    `SELECT r.id, r.status, r.cancelled_by, r.origin_text, r.dest_text, r.distance_km, r.offered_price, r.final_price,
-            r.created_at, o.name AS other_name,
-            (SELECT stars FROM ratings WHERE ride_id = r.id AND rater_id = ?) AS my_stars,
-            (SELECT stars FROM ratings WHERE ride_id = r.id AND ratee_id = ?) AS their_stars
-     FROM rides r LEFT JOIN users o ON o.id = IF(r.passenger_id = ?, r.driver_id, r.passenger_id)
-     WHERE r.passenger_id = ? OR r.driver_id = ?
-     ORDER BY r.id DESC LIMIT 50`,
-    [id, id, id, id, id]
-  );
-  res.json({ rides: rows, rating: (await ratingsOf([id])).get(id) || { avg: null, count: 0 } });
-});
+// El historial de viajes (con filtros y detalle) está en routes/history.js
 
 // Calificar al otro participante de un viaje completado (1 a 5 estrellas)
 app.post('/api/rides/:id/rate', authUser, async (req, res) => {

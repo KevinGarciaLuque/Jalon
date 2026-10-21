@@ -291,3 +291,12 @@ El superadmin decide qué ve cada quien, en el panel → **Permisos** (por rol) 
 - **Por persona:** tabla `user_permissions` (`allow` 1 = se lo da, 0 = se lo quita; sin fila = según su rol). Al cambiarle el rol a alguien se borran sus excepciones. Los administradores que ya tenían el mapa en vivo (`users.can_monitor`) lo conservan como excepción.
 - **Dónde se aplica:** cada petición del panel calcula los permisos de la persona (`req.perms`); el alquiler exige `rent` o `rent.offer`; el carro de un conductor sin `rent.offer` deja de aparecer para alquilar; los avisos al personal solo llegan a quien tiene el permiso. La app recibe los módulos al entrar y los vuelve a pedir al abrirse (`GET /api/me`).
 - Prueba: `test/phase16.mjs`.
+
+## Etapa 5: ganancias, horas conectado, recorrido real e historial
+
+- **Mis ganancias (conductor):** `GET /api/driver/earnings?period=day|week|month`. Lo cobrado en viajes, la comisión, lo que le queda, viajes, km, promedio, alquileres, horas conectado, ganancia por hora y la serie por hora (hoy) o por día (semana de lunes a domingo, mes). Las fechas se calculan en MySQL en hora de Honduras (UTC−6, `CONVERT_TZ`), así da igual la zona horaria de la base.
+- **Horas conectado:** tabla `driver_sessions`. Empieza al ponerse disponible y termina al desconectarse o cerrar la app; cada minuto se anota que sigue ahí (`jobs.js`), y si el servidor se reinicia las sesiones se cierran en la última vez vista. La ficha de rendimiento del panel muestra las de 30 días.
+- **Recorrido real:** tabla `ride_points`, solo con el viaje en curso (un punto cada 15 s, antes si avanzó más de 150 m). Se borra a los `RIDE_TRACK_RETENTION_DAYS` días (90). Lo ven el pasajero y el conductor en el detalle y en el recibo (km reales), se incluye al descargar los datos y se borra al eliminar la cuenta. Política de privacidad **v1.7** (`TERMS_VERSION` en `server/src/legal.js`).
+- **Viajes:** `rides.started_at` y `rides.completed_at` (los completados de antes tomaron su última actualización como fin).
+- **Historial:** `GET /api/rides/mine?status=all|completed|cancelled&before=<id>` (de 20 en 20, con lo gastado o cobrado del mes) y `GET /api/rides/:id/detail` (solo para quienes participaron). Están en `routes/history.js`.
+- Prueba: `test/phase17.mjs`.

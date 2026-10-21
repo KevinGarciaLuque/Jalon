@@ -16,6 +16,7 @@ import { walletGate, chargeCommission } from './services/balance.js';
 import { shareWithContacts } from './services/accounts.js';
 import { notifySos } from './services/sos.js';
 import { rentingNow } from './services/rentals.js';
+import { openSession, closeSession, recordPoint, forgetTrack } from './services/activity.js';
 
 // ---------- Sockets ----------
 io.use(async (socket, next) => {
@@ -78,9 +79,13 @@ io.on('connection', async (socket) => {
         lat, lng, available: !busy, since: Date.now(), seenAt: Date.now(),
       });
       socket.emit('rides:open', openRidesNear(lat, lng, user.id, category));
+      openSession(user.id).catch(reportError); // empiezan a contar sus horas conectado
     });
 
-    on('driver:offline', () => drivers.delete(user.id));
+    on('driver:offline', () => {
+      drivers.delete(user.id);
+      closeSession(user.id).catch(reportError);
+    });
 
     // El conductor rechaza una solicitud: deja de verla (en todas sus pestañas) y, si había ofertado, su oferta se retira.
     // Si el pasajero sube el precio, se le vuelve a mostrar.
@@ -106,6 +111,8 @@ io.on('connection', async (socket) => {
       if (!ride) return;
       io.to(room(ride.passenger_id)).emit('ride:driver_location', { lat, lng });
       sendEta(ride, { lat, lng }).catch(reportError); // sin esperar: el aviso de ubicación no depende de la ruta
+      // Con el viaje en curso se guarda el camino real (para el historial, el recibo y los reclamos)
+      if (ride.status === 'started') recordPoint(ride.id, { lat, lng }).catch(reportError);
     });
 
     on('offer:make', async ({ rideId, price }) => {
@@ -146,7 +153,12 @@ io.on('connection', async (socket) => {
       const ride = await getRide(rideId);
       if (!ride || ride.driver_id !== user.id || order[status] !== ride.status) return;
       // Solo avanza desde el estado anterior: si justo lo cancelaron (o llegó un doble toque), no se pisa
-      const [moved] = await pool.query('UPDATE rides SET status = ? WHERE id = ? AND driver_id = ? AND status = ?', [status, rideId, user.id, order[status]]);
+      // También se anota cuándo empezó y cuándo terminó (para las ganancias por día y la duración real)
+      const [moved] = await pool.query(
+        `UPDATE rides SET status = ?, started_at = IF(? = 'started', NOW(), started_at), completed_at = IF(? = 'completed', NOW(), completed_at)
+         WHERE id = ? AND driver_id = ? AND status = ?`,
+        [status, status, status, rideId, user.id, order[status]]
+      );
       if (moved.affectedRows !== 1) return socket.emit('ride:state', await rideView(await getRide(rideId)));
       if (status === 'completed') {
         releaseDriver(user.id);
@@ -154,7 +166,12 @@ io.on('connection', async (socket) => {
       }
       const view = await rideView(await getRide(rideId));
       io.to(room(ride.passenger_id)).to(room(user.id)).emit('ride:state', view);
-      if (status === 'started') shareWithContacts(ride).catch(reportError);
+      if (status === 'started') {
+        shareWithContacts(ride).catch(reportError);
+        const d = drivers.get(user.id);
+        if (d?.lat != null) recordPoint(ride.id, { lat: d.lat, lng: d.lng }).catch(reportError); // primer punto del recorrido
+      }
+      if (status === 'completed') forgetTrack(ride.id);
       if (status === 'arrived') push(ride.passenger_id, { title: 'Tu conductor llegó', body: `${user.name} te espera · ${user.vehicle || ''} ${user.plate || ''}`.trim(), tag: `ride-${rideId}`, url: '/' });
     });
   }
@@ -325,6 +342,7 @@ io.on('connection', async (socket) => {
         // Con notificaciones activadas se le sigue avisando de viajes cercanos aunque cierre la app (hasta 30 min sin volver)
         if (await hasPushSub(user.id)) { d.disconnected = true; d.lastSeen = Date.now(); } else drivers.delete(user.id);
       } else if (d) d.disconnected = true; // con viaje activo: se quita del mapa cuando termine
+      closeSession(user.id).catch(reportError); // cerró la app: dejan de contar sus horas conectado
     }
     if (user.role === 'passenger') passengers.delete(user.id);
   });

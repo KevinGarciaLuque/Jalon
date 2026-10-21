@@ -151,6 +151,7 @@ export default function Monitor({ call, onError }) {
             <div><b>{ficha.last30.completed}</b><span>Viajes completados</span></div>
             <div><b>{lempiras(ficha.last30.earned)}</b><span>Cobrado en viajes</span></div>
             <div><b>{ficha.last30.km}</b><span>Km recorridos</span></div>
+            <div><b>{ficha.last30.hoursOnline ?? '—'}</b><span>Horas conectado</span></div>
             <div><b>{ficha.last30.acceptanceRate == null ? '—' : `${ficha.last30.acceptanceRate}%`}</b><span>Ofertas aceptadas ({ficha.last30.offersAccepted}/{ficha.last30.offersMade})</span></div>
             <div className={ficha.last30.cancelledByDriver >= 3 ? 'alert' : ''}><b>{ficha.last30.cancelledByDriver}</b><span>Cancelados por él</span></div>
             <div><b>{ficha.rating ? `${ficha.rating.avg} ★` : '—'}</b><span>{ficha.rating ? `${ficha.rating.count} calificaciones` : 'Sin calificaciones'}</span></div>

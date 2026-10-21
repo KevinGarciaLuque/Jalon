@@ -3,6 +3,35 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-21-ganancias',
+    date: '2026-10-21',
+    title: 'Mis ganancias',
+    for: ['driver'],
+    items: [
+      'Nueva pantalla «Mis ganancias»: lo que te quedó hoy, esta semana o este mes, con tus viajes, kilómetros, promedio por viaje y la comisión de Jalón.',
+      'Tus horas conectado y cuánto ganas por hora (cuentan mientras tienes la app abierta y estás disponible o en un viaje).',
+      'Un gráfico con lo cobrado por hora o por día; toca una barra para ver el detalle.',
+    ],
+  },
+  {
+    id: '2026-10-21-historial',
+    date: '2026-10-21',
+    title: 'Historial con el camino real de cada viaje',
+    for: ['all'],
+    items: [
+      'En «Mis viajes» filtras por completados o cancelados, ves lo de este mes y cargas más viajes con «Ver más».',
+      '«Ver detalle» muestra el mapa con la ruta planeada y el camino real, los kilómetros y minutos reales, y las calificaciones.',
+      'Política de privacidad v1.7: mientras un viaje está en curso guardamos el camino del carro (para tu historial, el recibo y los reclamos) y lo borramos a los 90 días.',
+    ],
+  },
+  {
+    id: '2026-10-21-horas-panel',
+    date: '2026-10-21',
+    title: 'Horas conectado en la ficha de rendimiento',
+    for: ['staff'],
+    items: ['En el mapa en vivo, la ficha de cada conductor muestra sus horas conectado de los últimos 30 días.'],
+  },
+  {
     id: '2026-10-20-permisos',
     date: '2026-10-20',
     title: 'Permisos por módulo',

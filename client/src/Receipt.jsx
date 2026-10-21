@@ -31,7 +31,7 @@ export default function Receipt({ rideId, token, onClose }) {
                 <dt>Vehículo</dt><dd>{r.vehicle} · placa {r.plate}</dd>
                 <dt>Desde</dt><dd>{r.origin || 'Ubicación del pasajero'}</dd>
                 <dt>Hasta</dt><dd>{r.dest || 'Destino en el mapa'}</dd>
-                <dt>Recorrido</dt><dd>{Number(r.distanceKm).toFixed(1)} km{r.durationMin ? ` · ${Math.round(r.durationMin)} min estimados` : ''}</dd>
+                <dt>Recorrido</dt><dd>{r.realKm != null ? `${r.realKm.toFixed(1)} km recorridos` : `${Number(r.distanceKm).toFixed(1)} km`}{r.realMin != null ? ` · ${r.realMin} min` : r.durationMin ? ` · ${Math.round(r.durationMin)} min estimados` : ''}</dd>
                 <dt>Forma de pago</dt><dd>{r.payment}</dd>
               </dl>
               <div className="total"><span>Total</span><b>{lempiras(r.price)}</b></div>
