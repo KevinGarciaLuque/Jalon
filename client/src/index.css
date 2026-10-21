@@ -1,9 +1,9 @@
-/* Sistema de diseño de Jalón (Etapa 3): colores, letras y medidas. Todo lo demás se construye con estas variables.
+/* Sistema de diseño de Ktracho GO (Etapa 3): colores, letras y medidas. Todo lo demás se construye con estas variables.
    El verde es la marca y la acción principal; el mango solo se usa para el dinero (precios y ofertas). */
 :root {
-  --brand: #0a7d4f;
-  --brand-dark: #075c3a;
-  --brand-soft: #e9f6ef;
+  --brand: #14802f; /* verde del logo, oscurecido para que el texto blanco encima se lea bien (AA) */
+  --brand-dark: #0b6e2e;
+  --brand-soft: #e6f6ea;
   --on-brand: #fff; /* texto sobre el verde */
   --mango: #f0a020;
   --mango-soft: #fff2d6;
@@ -32,7 +32,7 @@
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --brand: #2fbf83; --brand-dark: #22a06c; --brand-soft: #12301f; --on-brand: #04170d;
+    --brand: #3ccf68; --brand-dark: #2fbf5a; --brand-soft: #11301b; --on-brand: #04170d;
     --mango: #f5b544; --mango-soft: #3a2a0c; --mango-ink: #ffd48a;
     --bg: #0b120e; --card: #131c17; --text: #e8f0eb; --muted: #95a89d; --line: #24322a;
     --ok: #3ccf7d; --warn: #f0b13c; --danger: #ff6b6b; --on-danger: #2a0606; --danger-soft: #3a1717; --info: #6b9bff;
@@ -239,7 +239,7 @@ input.code::placeholder { letter-spacing: 0; font-size: 15px; font-weight: 400; 
 /* ---- Fase 8D ---- */
 textarea { width: 100%; font: inherit; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: var(--r-1); background: var(--card); color: var(--text); resize: vertical; }
 .receipt { background: #fff; color: #111; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 8px; }
-.receipt h2 { margin: 0; text-align: center; color: #0a7d4f; font-size: 28px; }
+.receipt h2 { margin: 0; text-align: center; color: #14802f; font-size: 28px; }
 .receipt dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 8px 0; }
 .receipt dt { color: #666; }
 .receipt dd { margin: 0; text-align: right; font-weight: 600; }
@@ -325,7 +325,7 @@ header span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-spa
 .dotstate.away, .stats b.away { background: #9aa3ad; color: #9aa3ad; }
 .stats b.free, .stats b.busy, .stats b.away { background: none; }
 .mk { display: flex; flex-direction: column; align-items: center; line-height: 1; }
-.mk .car svg { display: block; width: 18px; height: 31px; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .35)); }
+.mk .car img { display: block; width: 16px; height: 35px; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .35)); }
 .mk .plate { margin-top: 2px; padding: 2px 6px; border-radius: 6px; font: 700 11px var(--font-text); color: #fff; background: #5b6b63; white-space: nowrap; }
 .mk.free .plate { background: #15803d; }
 .mk.busy .plate { background: #2563eb; }
@@ -357,8 +357,8 @@ header span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-spa
 
 /* Íconos del mapa (SVG) */
 .map-icon { background: none; border: none; }
-.map-icon svg { display: block; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
-.map-icon.car .car-rot { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; transition: transform .6s ease-out; }
+.map-icon svg, .map-icon img { display: block; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+.map-icon.car .car-rot { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; transition: transform .6s ease-out; }
 @media (prefers-reduced-motion: reduce) { .map-icon.car .car-rot { transition: none; } }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -473,3 +473,23 @@ table.perms input[type=checkbox] { width: 20px; height: 20px; }
 .delta { font-size: 12px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
 .delta.up { color: var(--ok); }
 .delta.down { color: var(--danger); }
+
+/* Marca Ktracho GO: el símbolo del logo sobre blanco (así se ve igual en modo oscuro) y el nombre con «GO» en verde */
+.brand { display: inline-flex; align-items: center; gap: 8px; }
+.brand img { width: 38px; height: 32px; object-fit: contain; background: #fff; border-radius: 10px; padding: 2px 3px; box-shadow: 0 0 0 1px var(--line); }
+.brand b, header .brand b { font-family: var(--font-display); font-weight: 800; letter-spacing: -.02em; color: var(--text); font-size: 21px; white-space: nowrap; }
+.brand i { font-style: normal; color: var(--brand); }
+.brand.lg { flex-direction: column; gap: 10px; }
+.brand.lg img { width: 148px; height: auto; border-radius: 28px; padding: 10px 12px; }
+.brand.lg b { font-size: 44px; }
+
+/* Brújula: el mapa siempre tiene el norte arriba */
+.north-arrow { width: 34px; height: 34px; border-radius: 50%; background: #fff; box-shadow: 0 1px 5px rgba(0,0,0,.35); display: grid; place-items: center; position: relative; }
+.north-arrow svg { width: 22px; height: 22px; }
+.north-arrow b { position: absolute; top: 9px; font: 800 8px var(--font-text); color: #fff; }
+
+/* Al terminar el viaje: el carro con las 5 estrellas */
+.rate-art { display: block; margin: 0 auto; width: min(240px, 72%); height: auto; animation: rate-pop .6s ease-out both; }
+.rate-title { font-size: 22px; text-align: center; }
+@keyframes rate-pop { from { transform: translateY(14px) scale(.9); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .rate-art { animation: none; } }

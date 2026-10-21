@@ -2,7 +2,7 @@
   "name": "jalon",
   "version": "0.1.0",
   "private": true,
-  "description": "Jalón: app tipo inDrive para Honduras (API + web en un solo servicio)",
+  "description": "Ktracho GO: app tipo inDrive para Honduras (API + web en un solo servicio)",
   "engines": { "node": ">=22" },
   "scripts": {
     "postinstall": "npm --prefix server ci --omit=dev && npm --prefix client ci --include=dev",

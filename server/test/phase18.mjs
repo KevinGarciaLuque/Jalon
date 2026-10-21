@@ -69,7 +69,7 @@ try {
 
   // Exportar
   const rides = await csv('export/rides?preset=today', SA);
-  check('exporta los viajes en CSV', rides.status === 200 && rides.type.startsWith('text/csv') && /jalon-viajes-/.test(rides.name));
+  check('exporta los viajes en CSV', rides.status === 200 && rides.type.startsWith('text/csv') && /ktracho-go-viajes-/.test(rides.name));
   check('con la marca para que Excel lea las tildes y sus columnas', rides.bom && rides.text.split('\r\n')[0].includes('precio_final'));
   check('incluye los viajes del período', rides.text.includes(`\r\n${r1.insertId},`));
   check('un texto que parece fórmula no se ejecuta en Excel', rides.text.includes(`'=HIPERVINCULO(""x"")`) && !rides.text.includes(',=HIPERVINCULO'));

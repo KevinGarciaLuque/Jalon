@@ -1,13 +1,13 @@
 {
-  "name": "Jalón",
-  "short_name": "Jalón",
+  "name": "Ktracho GO",
+  "short_name": "Ktracho GO",
   "description": "Pide un viaje y propón tu precio. Tu conductor llega.",
   "lang": "es",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "theme_color": "#0a7d4f",
+  "theme_color": "#14802f",
   "background_color": "#0f1215",
   "icons": [
     { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },

@@ -55,7 +55,7 @@ export default function DriverRental({ token, socket, onClose }) {
           <label>Precio por día (de {lempiras(data.price.min)} a {lempiras(data.price.max)})
             <input inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value.replace(/\D/g, ''))} />
           </label>
-          <p className="muted small">El pasajero paga en efectivo al empezar o por transferencia a Jalón. Si el alquiler se paga en efectivo, Jalón te descuenta su comisión del saldo; si se paga por transferencia, te acreditamos el total menos la comisión. Mientras dura un alquiler no recibes viajes.</p>
+          <p className="muted small">El pasajero paga en efectivo al empezar o por transferencia a Ktracho GO. Si el alquiler se paga en efectivo, Ktracho GO te descuenta su comisión del saldo; si se paga por transferencia, te acreditamos el total menos la comisión. Mientras dura un alquiler no recibes viajes.</p>
           <div className="row">
             <button className="primary grow" disabled={busy || !data.vehicle} onClick={() => offer(true)}>{listed ? 'Guardar precio' : 'Publicar mi carro'}</button>
             {listed && <button disabled={busy} onClick={() => offer(false)}>Dejar de ofrecer</button>}

@@ -1,6 +1,6 @@
 // Alquiler de carros por días (con conductor). Reglas compartidas por la pantalla del pasajero, la del conductor y el panel.
 // Estados: requested (pedido) → confirmed (el dueño aceptó) → active (entregado) → completed. También rejected y cancelled.
-// Pago: efectivo al empezar, o transferencia a la cuenta de Jalón con comprobante que aprueba el personal antes de empezar.
+// Pago: efectivo al empezar, o transferencia a la cuenta de Ktracho GO con comprobante que aprueba el personal antes de empezar.
 import { pool } from '../db.js';
 import { getSettings, postEntry, commissionFor, money } from '../wallet.js';
 import { CATEGORY_LABEL } from '../fares.js';
@@ -190,7 +190,7 @@ export async function start(b) {
 }
 
 // Termina el alquiler. Si el carro es de un conductor: en efectivo se le descuenta la comisión del saldo;
-// por transferencia (el dinero llegó a Jalón) se le acredita el total menos la comisión.
+// por transferencia (el dinero llegó a Ktracho GO) se le acredita el total menos la comisión.
 export async function finish(b) {
   if (b.status !== 'active') throw new RentalError('Solo se puede terminar un alquiler en curso', 409);
   const next = await move(b.id, ['active'], 'completed', { ended_at: new Date() });

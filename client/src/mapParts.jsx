@@ -4,20 +4,13 @@ import 'leaflet/dist/leaflet.css';
 import { useEffect, useRef, useState } from 'react';
 import { Marker, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import carImg from './assets/carro.png';
 
 // Íconos del mapa dibujados en SVG (no emojis): se ven nítidos y iguales en cualquier celular
 const svgIcon = (html, size, anchor, cls) => L.divIcon({ html, className: `map-icon ${cls}`, iconSize: size, iconAnchor: anchor });
 
-// Carro visto desde arriba, con el frente hacia el norte (CarMarker lo gira según hacia dónde va)
-export const CAR_SVG = `<svg viewBox="0 0 28 48" width="22" height="38" aria-hidden="true">
-  <rect x="1" y="14" width="3.5" height="5" rx="1.6" fill="#086640"/><rect x="23.5" y="14" width="3.5" height="5" rx="1.6" fill="#086640"/>
-  <rect x="3" y="2" width="22" height="44" rx="8" fill="#0a7d4f" stroke="#fff" stroke-width="1.6"/>
-  <path d="M6.5 14.5Q14 9.5 21.5 14.5L20.5 20.5H7.5Z" fill="#0d1f17" opacity=".88"/>
-  <rect x="7.5" y="21.5" width="13" height="11" rx="3" fill="#13a36a"/>
-  <path d="M7.5 34H20.5L21.5 39Q14 42 6.5 39Z" fill="#0d1f17" opacity=".78"/>
-  <rect x="5.5" y="3.6" width="5" height="2.6" rx="1.3" fill="#fff6bf"/><rect x="17.5" y="3.6" width="5" height="2.6" rx="1.3" fill="#fff6bf"/>
-  <rect x="5.5" y="42" width="4" height="2" rx="1" fill="#ff5c5c"/><rect x="18.5" y="42" width="4" height="2" rx="1" fill="#ff5c5c"/>
-</svg>`;
+// Carro visto desde arriba (verde Ktracho GO, con las 5 estrellas en el techo), con el frente hacia el norte: CarMarker lo gira según hacia dónde va
+export const CAR_HTML = `<img src="${carImg}" alt="" width="22" height="48">`;
 
 // Pin con la punta abajo (marca el punto exacto) y un dibujo dentro
 const pin = (fill, inner) => `<svg viewBox="0 0 34 44" width="34" height="44" aria-hidden="true">
@@ -27,8 +20,8 @@ const checks = Array.from({ length: 12 }, (_, i) => ((i % 4) + Math.floor(i / 4)
 const FLAG = `<rect x="13.2" y="11.5" width="1.6" height="12" rx=".8" fill="#14171c"/><rect x="14.8" y="11.5" width="8" height="6" fill="#fff" stroke="#14171c" stroke-width=".6"/>${checks}`;
 
 export const icons = {
-  car: svgIcon(`<div class="car-rot">${CAR_SVG}</div>`, [40, 40], [20, 20], 'car'),
-  me: svgIcon(pin('#0a7d4f', '<circle cx="17" cy="17.5" r="4" fill="#0a7d4f"/>'), [34, 44], [17, 43], 'pin'),
+  car: svgIcon(`<div class="car-rot">${CAR_HTML}</div>`, [48, 48], [24, 24], 'car'),
+  me: svgIcon(pin('#14802f', '<circle cx="17" cy="17.5" r="4" fill="#14802f"/>'), [34, 44], [17, 43], 'pin'),
   dest: svgIcon(pin('#14171c', FLAG), [34, 44], [17, 43], 'pin'),
 };
 
@@ -76,7 +69,7 @@ export function CarMarker({ position, duration = 2800, draggable = false, eventH
 }
 
 // Ruta con borde blanco y sombra suave para que resalte sobre cualquier calle del mapa
-export function RouteLine({ positions, color = '#0a7d4f', dashed = false }) {
+export function RouteLine({ positions, color = '#14802f', dashed = false }) {
   const base = { lineCap: 'round', lineJoin: 'round' };
   return (
     <>
@@ -117,5 +110,24 @@ export function FitTo({ points }) {
     observer.observe(sheet);
     return () => { observer.disconnect(); map.off('dragstart', onDrag); clearTimeout(timer); };
   }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+  return null;
+}
+
+// Brújula: el mapa siempre tiene el norte arriba (no gira); la flecha con la N lo deja claro, también en tableta
+export function NorthArrow() {
+  const map = useMap();
+  useEffect(() => {
+    const control = L.control({ position: 'topleft' });
+    control.onAdd = () => {
+      const el = L.DomUtil.create('div', 'north-arrow leaflet-control');
+      el.setAttribute('role', 'img');
+      el.setAttribute('aria-label', 'El norte está arriba');
+      el.title = 'El norte está arriba';
+      el.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5l5 10.5H7z" fill="#d93025"/><path d="M12 22.5l-5-10.5h10z" fill="#9aa5a0"/></svg><b aria-hidden="true">N</b>';
+      return el;
+    };
+    control.addTo(map);
+    return () => control.remove();
+  }, [map]);
   return null;
 }

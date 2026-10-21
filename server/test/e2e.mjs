@@ -66,9 +66,9 @@ try {
   const admin = await openAs(adminLogin, { latitude: 14.07, longitude: -87.19 }, 'admin');
   await admin.setViewport({ width: 1100, height: 800 });
 
-  // La comisión se activa con la cuenta de Jalón para transferencias (como lo haría el superadmin desde Ajustes)
+  // La comisión se activa con la cuenta de Ktracho GO para transferencias (como lo haría el superadmin desde Ajustes)
   const putSettings = (body) => fetch(`${API}/api/admin/settings`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminLogin.token}` }, body: JSON.stringify(body) }).then((r) => r.json());
-  const cfg = await putSettings({ commission_enabled: true, commission_percent: 10, welcome_credit: 0, min_balance: 0, topup_min: 100, topup_max: 1000, bank_name: 'Banco de prueba', bank_account_type: 'Ahorros', bank_account: '12-345-678', bank_holder: 'Jalón S. de R.L.' });
+  const cfg = await putSettings({ commission_enabled: true, commission_percent: 10, welcome_credit: 0, min_balance: 0, topup_min: 100, topup_max: 1000, bank_name: 'Banco de prueba', bank_account_type: 'Ahorros', bank_account: '12-345-678', bank_holder: 'Ktracho GO S. de R.L.' });
   check('la comisión queda activa con los datos bancarios', cfg.commission_enabled === '1' && cfg.bank_account === '12-345-678');
 
   // ---- Registro del pasajero por pantalla, con código por SMS ----
@@ -96,7 +96,7 @@ try {
   // ---- Páginas legales y datos de la app instalable ----
   const legal = await browser.newPage();
   await legal.goto(`${CLIENT}/terminos`, { waitUntil: 'domcontentloaded' });
-  check('página de términos de uso', await see(legal, '1. Qué es Jalón'));
+  check('página de términos de uso', await see(legal, '1. Qué es Ktracho GO'));
   await legal.goto(`${CLIENT}/privacidad`, { waitUntil: 'domcontentloaded' });
   check('página de política de privacidad', await see(legal, '3. Con quién se comparten'));
   const manifest = await legal.evaluate(async () => {
@@ -105,7 +105,7 @@ try {
     const icons = await Promise.all(m.icons.map((i) => fetch(i.src).then((r) => r.status)));
     return { name: m.name, display: m.display, icons };
   });
-  check('el manifiesto de la app es válido y sus íconos existen', manifest.name === 'Jalón' && manifest.display === 'standalone' && manifest.icons.length === 3 && manifest.icons.every((c) => c === 200));
+  check('el manifiesto de la app es válido y sus íconos existen', manifest.name === 'Ktracho GO' && manifest.display === 'standalone' && manifest.icons.length === 3 && manifest.icons.every((c) => c === 200));
   if (process.env.E2E_EXPECT_SW) {
     const sw = await legal.evaluate(async () => !!(await navigator.serviceWorker.ready).active);
     check('el service worker queda activo (app instalable)', sw);
@@ -162,14 +162,14 @@ try {
   check('aparecen sugerencias de direcciones', await see(pass, 'Mall Multiplaza', 15000));
   await click(pass, 'Mall Multiplaza');
   check('muestra distancia, tiempo y precio sugerido', await see(pass, 'sugerido', 20000));
-  check('muestra el botón para pedir', await see(pass, 'Pedir Jalón por'));
+  check('muestra el botón para pedir', await see(pass, 'Pedir Ktracho GO por'));
   await shot(pass, '1-pasajero-ruta');
   pass.promptText = 'Trabajo';
   await click(pass, 'Guardar este lugar');
   check('el destino queda guardado como "Trabajo"', await pass.waitForFunction(() => ![...document.querySelectorAll('button')].some((b) => b.textContent.includes('Guardar este lugar')), { timeout: 10000 }).then(() => true, () => false));
   pass.promptText = '';
   const basePrice = Number(await pass.$eval('.price input', (el) => el.value));
-  await click(pass, 'Pedir Jalón por');
+  await click(pass, 'Pedir Ktracho GO por');
   // El pasajero sube su oferta mientras nadie acepta: el conductor ve el precio nuevo
   await click(pass, '+ L5');
   check('al subir el precio, el conductor ve la solicitud con el precio nuevo', await see(driver, `Aceptar L ${basePrice + 5}`));
@@ -254,7 +254,7 @@ try {
   check('al terminar el viaje se descuenta la comisión (10%) del saldo del conductor', await see(driver, `Saldo: L -${commission}`, 20000));
   check('con el saldo bajo el mínimo, avisa que debe recargar', await see(driver, 'Tu saldo está por debajo del mínimo'));
   await click(driver, 'Recargar');
-  check('el conductor ve a qué cuenta transferir', (await see(driver, 'Banco de prueba')) && (await see(driver, '12-345-678')) && (await see(driver, 'Jalón S. de R.L.')));
+  check('el conductor ve a qué cuenta transferir', (await see(driver, 'Banco de prueba')) && (await see(driver, '12-345-678')) && (await see(driver, 'Ktracho GO S. de R.L.')));
   await driver.type('input[placeholder^="Monto transferido"]', '200');
   await driver.type('input[placeholder^="Banco desde"]', 'BAC Credomatic');
   await driver.type('input[placeholder^="Número de referencia"]', `E2E-${rnd}`);

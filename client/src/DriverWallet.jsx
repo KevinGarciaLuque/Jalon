@@ -60,7 +60,7 @@ export default function DriverWallet({ wallet, reload, onClose }) {
         {low && <div className="hint danger">Tu saldo está por debajo del mínimo. Recarga para volver a recibir viajes.</div>}
 
         <div className="req">
-          <b>1. Transfiere a la cuenta de Jalón</b>
+          <b>1. Transfiere a la cuenta de Ktracho GO</b>
           {bank.account ? (
             <div className="bank">
               <div><span className="muted">Banco</span> <b>{bank.name}</b></div>

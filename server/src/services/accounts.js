@@ -63,7 +63,7 @@ export async function shareWithContacts(ride) {
   const [[p]] = await pool.query('SELECT name FROM users WHERE id = ?', [ride.passenger_id]);
   const link = `${PUBLIC_URL || 'http://localhost:5173'}/t/${token}`;
   // Sin tildes ni emojis para que sea un solo SMS barato
-  const text = `Jalon: ${p.name.split(' ')[0].normalize('NFD').replace(/[\u0300-\u036f]/g, '')} inicio un viaje y te eligio como contacto de confianza. Sigue su viaje en vivo: ${link}`;
+  const text = `Ktracho GO: ${p.name.split(' ')[0].normalize('NFD').replace(/[\u0300-\u036f]/g, '')} inicio un viaje y te eligio como contacto de confianza. Sigue su viaje en vivo: ${link}`;
   const results = await Promise.allSettled(contacts.map((c) => sendSms(toE164(c.phone), text)));
   results.forEach((r, i) => r.status === 'rejected' && console.error(`Contacto de confianza: no se pudo avisar a ${contacts[i].phone}:`, r.reason?.message));
 }

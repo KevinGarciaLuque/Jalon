@@ -22,7 +22,7 @@ export default function Receipt({ rideId, token, onClose }) {
         {r && (
           <>
             <div className="receipt" data-testid="receipt">
-              <h2>Jalón</h2>
+              <h2>Ktracho GO</h2>
               <p className="muted center">Comprobante de viaje · {r.number}</p>
               <dl>
                 <dt>Fecha</dt><dd>{when(r.date)}</dd>

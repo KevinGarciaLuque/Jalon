@@ -20,7 +20,7 @@ function Proof({ id, token }) {
   return src ? <a href={src} target="_blank" rel="noreferrer"><img className="docimg" src={src} alt="Comprobante de la transferencia del alquiler" /></a> : <div className="muted small">Cargando comprobante…</div>;
 }
 
-// Personal: reservas de alquiler (pagos por transferencia, reservas de la flota) y carros de la flota de Jalón
+// Personal: reservas de alquiler (pagos por transferencia, reservas de la flota) y carros de la flota de Ktracho GO
 export default function AdminRentals({ call, token, can, onError }) {
   const [filter, setFilter] = useState('pay');
   const [list, setList] = useState(null);
@@ -43,7 +43,7 @@ export default function AdminRentals({ call, token, can, onError }) {
     try { await fn(); await load(); } catch (e) { onError(e.message); } finally { setBusy(false); }
   }
   const payment = (b, approve) => {
-    if (approve) return window.confirm(`¿El comprobante muestra ${lempiras(b.total)} en la cuenta de Jalón?`) && run(() => call(`rentals/${b.id}/payment`, { approve: true }));
+    if (approve) return window.confirm(`¿El comprobante muestra ${lempiras(b.total)} en la cuenta de Ktracho GO?`) && run(() => call(`rentals/${b.id}/payment`, { approve: true }));
     const note = window.prompt('¿Por qué se rechaza? La persona verá este motivo:', 'El comprobante no se lee o no coincide con el total');
     if (note) run(() => call(`rentals/${b.id}/payment`, { approve: false, note }));
   };
@@ -79,7 +79,7 @@ export default function AdminRentals({ call, token, can, onError }) {
             <span className="muted small">{dateHN(b.start_date)}{b.days > 1 ? ` al ${dateHN(b.end_date)}` : ''} · {b.days} día{b.days > 1 ? 's' : ''} · {PAYMENT_LABEL[b.payment]}{b.payment === 'transfer' ? ` (${PAYMENT_STATUS[b.payment_status].toLowerCase()})` : ''}</span>
           </div>
           <div className="muted small">
-            Cliente: {b.renter_name} <a href={`tel:${b.renter_phone}`}>{b.renter_phone}</a> · {b.fleet ? `Flota de Jalón${b.assigned_driver ? ` · maneja ${b.assigned_driver}` : ''}` : <>Dueño: {b.driver_name} <a href={`tel:${b.driver_phone}`}>{b.driver_phone}</a></>}
+            Cliente: {b.renter_name} <a href={`tel:${b.renter_phone}`}>{b.renter_phone}</a> · {b.fleet ? `Flota de Ktracho GO${b.assigned_driver ? ` · maneja ${b.assigned_driver}` : ''}` : <>Dueño: {b.driver_name} <a href={`tel:${b.driver_phone}`}>{b.driver_phone}</a></>}
           </div>
           {b.pickup_text && <div className="muted small">Recoger en: {b.pickup_text}</div>}
           {b.payment_status === 'pending' && (
@@ -101,7 +101,7 @@ export default function AdminRentals({ call, token, can, onError }) {
         </div>
       ))}
 
-      <b>Flota de Jalón</b>
+      <b>Flota de Ktracho GO</b>
       <p className="muted small">Carros de la empresa que se alquilan con un conductor que el equipo asigna al confirmar.</p>
       {fleet && fleet.length === 0 && !adding && <Empty title="Todavía no hay carros de la flota" />}
       {fleet?.map((v) => (

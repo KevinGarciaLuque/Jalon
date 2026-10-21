@@ -53,17 +53,17 @@ function load({ windows = [] } = {}) {
 {
   const sw = load();
   await sw.dispatch('push', { data: { json: () => { throw new Error('no es json'); }, text: () => 'mensaje en texto plano' } });
-  check('un mensaje que no es JSON igual se muestra, con el título por defecto', sw.shown[0].title === 'Jalón' && sw.shown[0].options.body === 'mensaje en texto plano');
+  check('un mensaje que no es JSON igual se muestra, con el título por defecto', sw.shown[0].title === 'Ktracho GO' && sw.shown[0].options.body === 'mensaje en texto plano');
 }
 {
   const sw = load();
   await sw.dispatch('push', {});
-  check('un push vacío no rompe nada: muestra una notificación genérica', sw.shown.length === 1 && sw.shown[0].title === 'Jalón' && sw.shown[0].options.body === '');
+  check('un push vacío no rompe nada: muestra una notificación genérica', sw.shown.length === 1 && sw.shown[0].title === 'Ktracho GO' && sw.shown[0].options.body === '');
 }
 {
   const sw = load();
   await sw.dispatch('push', { data: { json: () => ({ body: 'sin título' }), text: () => '' } });
-  check('sin título usa "Jalón"', sw.shown[0].title === 'Jalón');
+  check('sin título usa "Ktracho GO"', sw.shown[0].title === 'Ktracho GO');
 }
 
 // ---- tocar la notificación ----

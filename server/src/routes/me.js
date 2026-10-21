@@ -44,7 +44,7 @@ app.get('/api/me/export', authUser, async (req, res) => {
   const [tops] = await pool.query('SELECT amount, bank, reference, status, approved_amount, review_note, created_at FROM topups WHERE driver_id = ? ORDER BY id', [id]);
   const [points] = await pool.query('SELECT p.ride_id, p.lat, p.lng, p.at FROM ride_points p JOIN rides r ON r.id = p.ride_id WHERE r.passenger_id = ? OR r.driver_id = ? ORDER BY p.id', [id, id]);
   const [rentals] = await pool.query("SELECT id, IF(renter_id = ?, 'alquilé', 'alquilaron mi carro') AS rol, DATE_FORMAT(start_date, '%Y-%m-%d') AS desde, DATE_FORMAT(end_date, '%Y-%m-%d') AS hasta, days AS dias, total, payment AS pago, status AS estado, pickup_text AS recogida, created_at AS fecha FROM rental_bookings WHERE renter_id = ? OR owner_driver_id = ? ORDER BY id", [id, id, id]);
-  res.set('Content-Disposition', 'attachment; filename="mis-datos-jalon.json"');
+  res.set('Content-Disposition', 'attachment; filename="mis-datos-ktracho-go.json"');
   res.json({
     generadoEl: new Date().toISOString(),
     cuenta: { nombre: u.name, telefono: u.phone, correo: u.email, rol: u.role, estado: u.status, vehiculo: u.vehicle, placa: u.plate, registradoEl: u.created_at, aceptoTerminosEl: u.terms_accepted_at, versionTerminos: u.terms_version },

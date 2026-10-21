@@ -1,3 +1,5 @@
+import markImg from './assets/logo-marca.webp';
+import arrivedImg from './assets/valoracion.webp';
 import { useEffect, useRef, useState } from 'react';
 import { apiGet, apiPost, pushState, enablePush, disablePush, CATEGORIES } from './lib.js';
 
@@ -170,7 +172,13 @@ export function AddressSearch({ token, near, placeholder, value, onPick, icon })
 }
 
 // Calificar al otro participante después del viaje
-export function Rate({ token, rideId, who }) {
+// Marca: el símbolo del logo y el nombre (el nombre va como texto: se lee bien en modo oscuro y lo leen los lectores de pantalla)
+export function Brand({ size = 'sm' }) {
+  return <span className={`brand ${size}`}><img src={markImg} alt="" /><b>Ktracho <i>GO</i></b></span>;
+}
+
+// Calificar al terminar el viaje, con el carro y sus 5 estrellas
+export function Rate({ token, rideId, who, title }) {
   const [stars, setStars] = useState(0);
   const [comment, setComment] = useState('');
   const [state, setState] = useState('idle'); // idle | sending | done
@@ -188,9 +196,12 @@ export function Rate({ token, rideId, who }) {
     }
   }
 
-  if (state === 'done') return <div className="hint ok">¡Gracias por tu calificación!</div>;
+  const art = <img className="rate-art" src={arrivedImg} alt="" width="240" height="169" />;
+  if (state === 'done') return <div className="rate">{art}<div className="hint ok">¡Gracias por tu calificación!</div></div>;
   return (
     <div className="rate">
+      {art}
+      {title && <b className="rate-title">{title}</b>}
       <b>¿Cómo estuvo {who}?</b>
       <div className="starpick">
         {[1, 2, 3, 4, 5].map((n) => (
@@ -218,7 +229,7 @@ export function SafetyBar({ token, rideId, socket, getPos }) {
       const { token: t } = await apiPost(`rides/${rideId}/share`, token);
       const url = `${window.location.origin}/t/${t}`;
       if (navigator.share) {
-        await navigator.share({ title: 'Sigue mi viaje en Jalón', url }).catch(() => {});
+        await navigator.share({ title: 'Sigue mi viaje en Ktracho GO', url }).catch(() => {});
       } else if (navigator.clipboard) {
         await navigator.clipboard.writeText(url);
         setNote('Enlace copiado. Envíalo a un familiar.');

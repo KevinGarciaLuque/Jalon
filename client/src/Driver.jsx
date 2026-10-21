@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import { useGeo, distanceKm, lempiras, minutes, useChat, useNow, wazeUrl, mapsUrl, apiGet, money2, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
-import { CarMarker, FitTo, RouteLine, icons } from './mapParts.jsx';
+import { CarMarker, FitTo, RouteLine, icons, NorthArrow } from './mapParts.jsx';
 import DriverWallet from './DriverWallet.jsx';
 import DriverRental from './DriverRental.jsx';
 import Earnings from './Earnings.jsx';
@@ -123,6 +123,7 @@ export default function Driver({ socket, token, status, userId, perms = [] }) {
         {pos && (
           <MapContainer center={[pos.lat, pos.lng]} zoom={15} style={{ height: '100%' }}>
             <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
+            <NorthArrow />
             <Recenter pos={pos} />
             <CarMarker
               position={pos}
@@ -174,7 +175,7 @@ export default function Driver({ socket, token, status, userId, perms = [] }) {
             {reporting && ride && <ReportForm rideId={ride.id} token={token} onClose={() => setReporting(false)} />}
             {ride?.status === 'completed' && chat.open && <Chat chat={chat} meId={userId} quick={['Encontré tu objeto, ¿dónde nos vemos?']} />}
             {ride?.status === 'completed' && ride.passenger && (
-              <Rate token={token} rideId={ride.id} who={ride.passenger.name} />
+              <Rate token={token} rideId={ride.id} who={ride.passenger.name} title="¡Viaje terminado!" />
             )}
 
             {(status === 'pending' || notApproved) && (

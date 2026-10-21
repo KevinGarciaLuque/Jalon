@@ -20,7 +20,7 @@ function Proof({ id, token }) {
   return src ? <a href={src} target="_blank" rel="noreferrer"><img className="docimg" src={src} alt="Comprobante de transferencia" /></a> : <div className="muted small">Cargando comprobante…</div>;
 }
 
-// Recargas por transferencia: el personal compara el comprobante con la cuenta de Jalón y autoriza o rechaza
+// Recargas por transferencia: el personal compara el comprobante con la cuenta de Ktracho GO y autoriza o rechaza
 export default function Topups({ topups, status, setStatus, call, token, reload, onError }) {
   async function approve(t) {
     const v = window.prompt(`¿Cuánto muestra el comprobante? Se acreditará este monto a ${t.driver}.`, String(t.amount));

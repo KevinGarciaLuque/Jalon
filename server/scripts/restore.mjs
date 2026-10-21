@@ -44,7 +44,7 @@ try {
     if (line.startsWith('-- jalon-manifest ')) manifest = JSON.parse(line.slice(18));
     if (!line.trim() || line.startsWith('--')) continue;
     // Solo lo que escribe «npm run backup»: un archivo alterado no puede borrar ni cambiar de base (y cada línea es una sola sentencia)
-    if (!SAFE_LINE.test(line)) throw new Error(`El archivo tiene una sentencia que un respaldo de Jalón no lleva: «${line.slice(0, 60)}…». No se restaura.`);
+    if (!SAFE_LINE.test(line)) throw new Error(`El archivo tiene una sentencia que un respaldo de Ktracho GO no lleva: «${line.slice(0, 60)}…». No se restaura.`);
     await conn.query(line);
     statements++;
   }

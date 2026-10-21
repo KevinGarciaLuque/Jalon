@@ -1,4 +1,4 @@
-# Jalón
+# Ktracho GO
 
 App tipo inDrive para Honduras: el pasajero propone su precio y los conductores aceptan o contraofertan.
 
@@ -201,12 +201,12 @@ Llegan aunque la app esté cerrada (Android/Chrome, escritorio, y en iPhone **so
 
 ## Fase 9: saldo, comisión y recargas por transferencia (sin pasarela)
 
-Modelo estilo inDrive **sin pasarela de pago**: el pasajero paga en efectivo al conductor, y Jalón cobra su comisión de un **saldo prepagado** que el conductor recarga **transfiriendo a la cuenta de Jalón y subiendo el comprobante**. Un administrador lo revisa y autoriza. No hay costos de pasarela.
+Modelo estilo inDrive **sin pasarela de pago**: el pasajero paga en efectivo al conductor, y Ktracho GO cobra su comisión de un **saldo prepagado** que el conductor recarga **transfiriendo a la cuenta de Ktracho GO y subiendo el comprobante**. Un administrador lo revisa y autoriza. No hay costos de pasarela.
 
-**Está apagado por defecto.** El superadmin lo activa en el panel → **Ajustes**: comisión (%), crédito de bienvenida, saldo mínimo para recibir viajes, recarga mínima y máxima, y los datos de la cuenta bancaria de Jalón (banco, tipo, número, titular e indicaciones). No se puede activar sin los datos bancarios.
+**Está apagado por defecto.** El superadmin lo activa en el panel → **Ajustes**: comisión (%), crédito de bienvenida, saldo mínimo para recibir viajes, recarga mínima y máxima, y los datos de la cuenta bancaria de Ktracho GO (banco, tipo, número, titular e indicaciones). No se puede activar sin los datos bancarios.
 
 **Cómo funciona**
-1. **Recargar:** en la pantalla del conductor, «Recargar» muestra la cuenta de Jalón. El conductor transfiere, y sube el monto, el banco, el número de referencia y la foto o captura del comprobante.
+1. **Recargar:** en la pantalla del conductor, «Recargar» muestra la cuenta de Ktracho GO. El conductor transfiere, y sube el monto, el banco, el número de referencia y la foto o captura del comprobante.
 2. **Autorizar:** en la pestaña **Recargas** (y con un aviso arriba del panel y una notificación) el personal ve el comprobante, lo compara con el banco, y **aprueba** (acreditando el monto que *muestra el comprobante*, aunque sea distinto al que escribió el conductor) o **rechaza con un motivo**. Lo ven soporte NO; solo administrador y superadmin.
 3. **Comisión:** al completar un viaje se descuenta la comisión del saldo. Un viaje cancelado no cobra. Nunca se cobra dos veces el mismo viaje (lo impide la base de datos).
 4. **Saldo bajo:** si el saldo queda por debajo del mínimo, el conductor deja de aparecer disponible, recibe un aviso y no puede volver a conectarse hasta recargar.
@@ -274,7 +274,7 @@ Las piezas de más abajo no importan a las de más arriba (por ejemplo, `service
 
 ## Etapa 3: sistema de diseño
 
-Propuesta aprobada el 2026-10-20 (verde Jalón + mango para el dinero, letras Bricolage Grotesque y Figtree). Se aplica en tres entregas.
+Propuesta aprobada el 2026-10-20 (verde Ktracho GO + mango para el dinero, letras Bricolage Grotesque y Figtree). Se aplica en tres entregas.
 
 - **Entrega 1 (base):** las variables están al inicio de `client/src/index.css` (colores con su versión oscura, letras, esquinas `--r-1/2/3`, sombras, tiempos de animación y `--tap`, el alto mínimo de lo que se toca). Usa siempre las variables, no colores sueltos. El precio va en `.tag` (mango). Mientras cargan los datos se usa `<Loading />` y las listas vacías usan `<Empty title="…">qué hacer</Empty>` (`client/src/components.jsx`). Las letras se cargan desde Google Fonts en `client/index.html`.
 - **Entrega 2 (hecha):** en el celular (vertical) el mapa ocupa toda la pantalla y la hoja flota encima; la rayita de arriba la achica (`.sheet.compact`). `FitTo` deja libre el alto de la hoja y vuelve a encuadrar cuando la hoja cambia de alto (salvo que la persona haya movido el mapa). Componentes nuevos: `PriceStepper` (−5/+5), `TimeRing` (tiempo de la oferta) y `Avatar`. **Rechazar (conductor):** evento `ride:decline` { rideId }: se guarda en memoria (`declined` en `live.js`), no se le vuelve a mandar al reconectarse, su oferta pendiente se retira (al pasajero le llega `offer:expired`) y si el pasajero sube el precio se le vuelve a mostrar. Prueba: `test/phase13.mjs`.
@@ -284,7 +284,7 @@ Propuesta aprobada el 2026-10-20 (verde Jalón + mango para el dinero, letras Br
 
 - **Categorías:** `moto`, `car` (Carro) y `xl` (Carro amplio), definidas en `server/src/fares.js` (y sus nombres en `client/src/lib.js`). El pasajero elige una al pedir (`ride:request` acepta `category`; sin ella es `car`) y la solicitud solo les llega a los conductores cuyo vehículo es de esa categoría (también al reconectarse y al subir el precio).
 - **Tarifas:** en Ajustes, por categoría: base, por km, por minuto y mínima (`fare_<categoría>_base|km|min|minimum`). Precio sugerido = base + km × por km + minutos × por minuto, redondeado de 5 en 5 y nunca menos que la mínima. `GET /api/route` devuelve `prices` (las tres) y `suggestedPrice` (carro, para versiones anteriores de la app). La tarifa inicial del carro es la de antes (L 25 + L 12/km, mínimo L 30).
-- **Vehículos:** tabla `vehicles` (categoría, marca, modelo, color, año y placa única sin espacios ni guiones; `driver_id` NULL queda para la flota de Jalón del alquiler). `users.vehicle` y `users.plate` se siguen llenando con el texto que muestran las pantallas (`services/vehicles.js`). El conductor llena su vehículo al registrarse (la app anterior, con el texto libre `vehicle`, sigue funcionando: queda como carro con ese texto de modelo). El personal lo edita en la ficha (`PUT /api/admin/users/:id/vehicle`); si el conductor está conectado, el cambio de categoría se aplica de inmediato. Al eliminar una cuenta se borra su vehículo y la placa queda libre.
+- **Vehículos:** tabla `vehicles` (categoría, marca, modelo, color, año y placa única sin espacios ni guiones; `driver_id` NULL queda para la flota de Ktracho GO del alquiler). `users.vehicle` y `users.plate` se siguen llenando con el texto que muestran las pantallas (`services/vehicles.js`). El conductor llena su vehículo al registrarse (la app anterior, con el texto libre `vehicle`, sigue funcionando: queda como carro con ese texto de modelo). El personal lo edita en la ficha (`PUT /api/admin/users/:id/vehicle`); si el conductor está conectado, el cambio de categoría se aplica de inmediato. Al eliminar una cuenta se borra su vehículo y la placa queda libre.
 - **Migración (al arrancar, se puede repetir):** agrega `rides.category` (los viajes anteriores quedan como carro), crea `vehicles` y copia el vehículo de cada conductor existente como carro. Si dos conductores tenían la misma placa, el segundo queda sin vehículo y el arranque lo avisa; se corrige en su ficha.
 - Prueba: `test/phase14.mjs`.
 
@@ -292,11 +292,11 @@ Propuesta aprobada el 2026-10-20 (verde Jalón + mango para el dinero, letras Br
 
 Se activa en el panel → **Ajustes → Alquiler de carros por días** (apagado por defecto): precio mínimo y máximo por día que pueden poner los conductores, días máximos por alquiler y anticipación.
 
-- **Quién alquila:** un conductor ofrece su carro con él como conductor (en «Alquiler de mi carro», con su precio por día). El superadmin agrega carros de la **flota de Jalón** (pestaña Alquileres); al confirmar una reserva de la flota, el personal indica quién maneja.
+- **Quién alquila:** un conductor ofrece su carro con él como conductor (en «Alquiler de mi carro», con su precio por día). El superadmin agrega carros de la **flota de Ktracho GO** (pestaña Alquileres); al confirmar una reserva de la flota, el personal indica quién maneja.
 - **Reserva:** el pasajero elige fecha y días, ve los carros libres con el total y reserva. Las fechas se revisan dentro de una transacción con el carro bloqueado: dos personas no pueden reservar el mismo carro en fechas que se cruzan (un pedido sin responder también ocupa las fechas). Máximo 3 pedidos pendientes por persona.
-- **Pago, a elección del pasajero:** **efectivo** al empezar, o **transferencia** a la cuenta de Jalón (Ajustes) con comprobante (foto validada, sin metadatos y cifrada; la misma transferencia o comprobante no sirven dos veces, ni en recargas). El alquiler por transferencia no puede empezar hasta que el personal aprueba el pago.
+- **Pago, a elección del pasajero:** **efectivo** al empezar, o **transferencia** a la cuenta de Ktracho GO (Ajustes) con comprobante (foto validada, sin metadatos y cifrada; la misma transferencia o comprobante no sirven dos veces, ni en recargas). El alquiler por transferencia no puede empezar hasta que el personal aprueba el pago.
 - **Estados:** pedido → confirmado (o no aceptado) → en curso → terminado; también cancelado. El teléfono y la placa se comparten solo al confirmar. Mientras un conductor tiene un alquiler en curso no puede ponerse disponible para viajes. Los pedidos sin respuesta cuya fecha pasó, y los confirmados que nunca empezaron, se cancelan solos.
-- **Dinero (carro de un conductor):** en efectivo, al terminar se le descuenta la comisión del saldo (`rental_commission`); por transferencia, se le acredita el total menos la comisión (`rental_payout`). La comisión es la misma de los viajes (si está activa). Nunca dos veces por el mismo alquiler. **El saldo acreditado no se retira por la app:** pagarle al conductor lo hace Jalón por fuera y lo registra con un ajuste de saldo. En la flota todo es de Jalón y no hay movimientos de saldo.
+- **Dinero (carro de un conductor):** en efectivo, al terminar se le descuenta la comisión del saldo (`rental_commission`); por transferencia, se le acredita el total menos la comisión (`rental_payout`). La comisión es la misma de los viajes (si está activa). Nunca dos veces por el mismo alquiler. **El saldo acreditado no se retira por la app:** pagarle al conductor lo hace Ktracho GO por fuera y lo registra con un ajuste de saldo. En la flota todo es de Ktracho GO y no hay movimientos de saldo.
 - **Tablas nuevas:** `rental_listings` y `rental_bookings`; `wallet_entries` suma `rental_id` y los tipos `rental_commission` y `rental_payout`. Al eliminar una cuenta se cancelan sus reservas pendientes y se borran sus datos del alquiler; si su vehículo ya tuvo alquileres se conserva sin datos (la placa queda libre).
 - **Pendiente (4B-2):** alquiler sin conductor (licencia e identidad del cliente, depósito y revisión del carro al entregar y recibir). Antes de lanzarlo hace falta un contrato y un seguro revisados por un abogado.
 - Prueba: `test/phase15.mjs`.
@@ -452,7 +452,7 @@ las Etapas 5 a 8 están en GitHub y pasaron el CI, pero Railway no las desplegó
 | 100 conductores, 2.000 pasajeros, 400 viajes en 60 s | 2.100/2.100 | 399 de 400 | 552 ms | 0 | 153 MB |
 
 (El viaje que falta en cada caso es uno que ningún conductor tomó a tiempo, como pasaría en la calle.) Railway corre en otra máquina, pero un solo
-servidor de Jalón alcanza con holgura para el lanzamiento en una ciudad. Lo que se nota primero con más gente son los servicios de mapas gratuitos (Etapa 7.3).
+servidor de Ktracho GO alcanza con holgura para el lanzamiento en una ciudad. Lo que se nota primero con más gente son los servicios de mapas gratuitos (Etapa 7.3).
 
 **Revisión de seguridad** de las Etapas 5 a 8: el camino de un viaje solo lo ven su pasajero y su conductor, y solo el conductor del viaje en curso
 lo registra; los comprobantes y la exportación exigen su permiso y la exportación queda en el Registro; la sesión en cookie tiene protección CSRF;
@@ -462,7 +462,7 @@ Se corrigió una cosa: `npm run restore` ahora solo acepta las sentencias que es
 
 ## Etapa 8.5: lista de lanzamiento
 
-Lo que falta antes de abrir Jalón al público. Casi todo es configuración en Railway o decisiones del negocio; el panel → **Sistema** marca en
+Lo que falta antes de abrir Ktracho GO al público. Casi todo es configuración en Railway o decisiones del negocio; el panel → **Sistema** marca en
 «✕ Falta» lo que el servidor puede comprobar solo.
 
 ### 1. Que Railway publique la versión actual (bloquea todo lo demás)
@@ -514,3 +514,21 @@ Lo que falta antes de abrir Jalón al público. Casi todo es configuración en R
 - Las listas de Reportes, Recargas y Alquileres del panel muestran hasta 200 elementos sin «Ver más» (el servidor ya acepta páginas).
 - Mapas de pago: solo LocationIQ está integrado; Geoapify o Stadia necesitarían su propio formato de rutas.
 - La verificación de LocationIQ contra el servicio real queda para cuando haya una clave.
+
+## Nueva marca: Ktracho GO
+
+La app se llamaba **Jalón** y ahora se llama **Ktracho GO**. Cambió todo lo que la gente ve: pantallas, nombre de la app instalada (PWA),
+íconos y favicon (el símbolo del logo sobre blanco), correos, SMS y notificaciones, términos y privacidad (versión **1.8**: todos ven el aviso
+«Jalón ahora se llama Ktracho GO» y aceptan con un toque, Etapa 8.3), recibos, archivos descargados, el nombre en Google Authenticator y este README.
+
+**Lo interno se quedó igual a propósito**, porque cambiarlo cerraría todas las sesiones o dejaría ilegible lo cifrado: la cookie de sesión
+(`__Host-jalon`), la cabecera `X-Jalon-Session`, las llaves guardadas en el teléfono (`jalon`, `jalon:news-seen`), la llave de cifrado
+derivada (`jalon-data-key`), el resumen de los respaldos (`jalon-manifest`), el nombre de la base, la carpeta del proyecto, el repositorio
+y la dirección `jalon.up.railway.app`. La dirección se puede cambiar en Railway (o poner un dominio propio), pero la gente tendría que volver
+a entrar y a instalar la app: conviene hacerlo una sola vez, con el dominio definitivo.
+
+- **Colores:** `--brand` es el verde del logo oscurecido a `#14802f` (texto blanco encima: contraste 5,0; sobre el fondo: 4,7). En modo oscuro, `#3ccf68`.
+- **Imágenes** (hechas con Higgsfield a partir del logo, en `client/src/assets`): `carro.png` (el carro del mapa visto desde arriba, con las
+  5 estrellas en el techo; 11 kB), `valoracion.webp` (el carro con 5 estrellas al calificar el viaje; 54 kB, solo se descarga al terminar un viaje)
+  y `logo-marca.webp` (el símbolo; 7 kB). Los íconos de la app instalada están en `client/public/icons`.
+- **Brújula:** todos los mapas muestran una flecha con la «N». El mapa siempre tiene el norte arriba (no gira).

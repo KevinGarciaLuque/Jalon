@@ -46,7 +46,7 @@ try {
   check('apagado, el pasajero no ve carros', off.enabled === false && off.results.length === 0);
 
   // Encendido, con comisión del 10% y cuenta para transferencias
-  const on = await http('PUT', 'admin/settings', SA, { rental_enabled: true, commission_enabled: true, commission_percent: 10, bank_name: 'BAC', bank_account: '123456', bank_holder: 'Jalón', rental_max_days: 7 });
+  const on = await http('PUT', 'admin/settings', SA, { rental_enabled: true, commission_enabled: true, commission_percent: 10, bank_name: 'BAC', bank_account: '123456', bank_holder: 'Ktracho GO', rental_max_days: 7 });
   check('el superadmin activa el alquiler', on.rental_enabled === '1', on.error || '');
   check('el precio por día debe estar en el rango', (await http('PUT', 'driver/rental', D.token, { price: 50 })).status === 400);
   check('el conductor ofrece su carro a L 800 por día', (await http('PUT', 'driver/rental', D.token, { price: 800 })).ok === true);
@@ -123,7 +123,7 @@ try {
   check('el conductor rechaza una solicitud', (await http('POST', `driver/rentals/${r.booking.id}/decide`, D.token, { accept: false, note: 'Ese día no puedo' })).booking?.status === 'rejected');
   check('el personal no responde por el carro de un conductor', (await http('POST', `admin/rentals/${r.booking.id}/decide`, SA, { accept: true })).status === 409);
 
-  // Flota de Jalón
+  // Flota de Ktracho GO
   const fleet = await http('POST', 'admin/fleet', SA, { category: 'xl', make: 'Toyota', model: 'Hiace', color: 'Blanca', year: 2021, plate: `F${rnd}`, price: 1500 });
   check('el superadmin agrega un carro de la flota', fleet.ok === true, fleet.error || '');
   const ff = await http('GET', `rentals/search?start=${addDays(today, 3)}&days=1`, P.token);

@@ -10,7 +10,7 @@ export const REPORT_TYPES = [
 ];
 export const REPORT_LABEL = Object.fromEntries(REPORT_TYPES);
 
-// Cuéntale al equipo de Jalón qué pasó en un viaje
+// Cuéntale al equipo de Ktracho GO qué pasó en un viaje
 export default function ReportForm({ rideId, token, defaultType = 'other', onClose }) {
   const [type, setType] = useState(defaultType);
   const [text, setText] = useState('');

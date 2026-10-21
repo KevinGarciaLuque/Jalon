@@ -23,7 +23,7 @@ try {
   await conn.query('SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ');
   await conn.query('START TRANSACTION WITH CONSISTENT SNAPSHOT');
   const startedAt = new Date().toISOString();
-  await write(`-- Respaldo de Jalón · base ${DB_NAME} · ${startedAt} (UTC)\n-- Restaurar: npm run restore -- <este archivo>   (o: gunzip -c archivo | mysql <base vacía>)\n`);
+  await write(`-- Respaldo de Ktracho GO · base ${DB_NAME} · ${startedAt} (UTC)\n-- Restaurar: npm run restore -- <este archivo>   (o: gunzip -c archivo | mysql <base vacía>)\n`);
   await write("SET NAMES utf8mb4;\nSET time_zone = '+00:00';\nSET FOREIGN_KEY_CHECKS = 0;\nSET UNIQUE_CHECKS = 0;\n");
   const manifest = { format: FORMAT, database: DB_NAME, at: startedAt, tables: {} };
   for (const t of await tablesOf(conn, DB_NAME)) {

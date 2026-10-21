@@ -52,7 +52,7 @@ export default function Account({ user, token, onToken, onClose, onLogout, force
       const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'mis-datos-jalon.json';
+      a.download = 'mis-datos-ktracho-go.json';
       a.click();
       URL.revokeObjectURL(url);
       setNote({ ok: true, text: 'Se descargó el archivo con tus datos.' });
@@ -68,7 +68,7 @@ export default function Account({ user, token, onToken, onClose, onLogout, force
     if (!password) return;
     try {
       await apiPost('me/delete', token, { password });
-      onLogout('Tu cuenta fue eliminada. Gracias por haber usado Jalón.');
+      onLogout('Tu cuenta fue eliminada. Gracias por haber usado Ktracho GO.');
     } catch (err) {
       setNote({ ok: false, text: err.message });
     }
@@ -100,7 +100,7 @@ export default function Account({ user, token, onToken, onClose, onLogout, force
 
         {!forced && (install.canInstall || install.ios) && (
           <div className="req">
-            <b>📲 Instalar Jalón en tu celular</b>
+            <b>📲 Instalar Ktracho GO en tu celular</b>
             {install.canInstall ? (
               <button className="primary" onClick={install.prompt}>Instalar la app</button>
             ) : (

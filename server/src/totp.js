@@ -55,7 +55,7 @@ export function verifyTotp(secret, code, { now = Date.now(), window = 1, lastSte
   return null;
 }
 
-export const otpauthUrl = ({ secret, account, issuer = 'Jalón' }) =>
+export const otpauthUrl = ({ secret, account, issuer = 'Ktracho GO' }) =>
   `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(account)}?secret=${secret}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=30`;
 
 // Códigos de respaldo de un solo uso por si se pierde el teléfono: XXXX-XXXX (sin letras que se confunden)

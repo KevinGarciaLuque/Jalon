@@ -1,5 +1,5 @@
 // Service worker mínimo: hace la web instalable y abre rápido. Nunca guarda la API ni los sockets.
-const VERSION = 'jalon-v2';
+const VERSION = 'ktracho-v3'; // cambió la marca: caché nueva
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(VERSION).then((c) => c.addAll(['/', '/manifest.webmanifest', '/icons/icon-192.png'])).then(() => self.skipWaiting()));
@@ -14,9 +14,9 @@ self.addEventListener('activate', (e) => {
 // ---- Notificaciones push: llegan aunque la app esté cerrada ----
 self.addEventListener('push', (e) => {
   let data = {};
-  try { data = e.data ? e.data.json() : {}; } catch { data = { title: 'Jalón', body: e.data ? e.data.text() : '' }; }
+  try { data = e.data ? e.data.json() : {}; } catch { data = { title: 'Ktracho GO', body: e.data ? e.data.text() : '' }; }
   e.waitUntil(
-    self.registration.showNotification(data.title || 'Jalón', {
+    self.registration.showNotification(data.title || 'Ktracho GO', {
       body: data.body || '',
       icon: '/icons/icon-192.png',
       badge: '/icons/icon-192.png',

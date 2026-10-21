@@ -76,7 +76,7 @@ check('soporte no ve los ajustes de dinero', (await http('GET', 'admin/settings'
 check('solo el superadmin cambia los ajustes', (await http('PUT', 'admin/settings', ADM, { commission_percent: 12 })).status === 403);
 check('una comisión absurda se rechaza', (await http('PUT', 'admin/settings', SA, { commission_percent: 60 })).status === 400);
 check('un ajuste inventado se rechaza', (await http('PUT', 'admin/settings', SA, { puerta_trasera: 1 })).status === 400);
-check('no se puede activar la comisión sin los datos bancarios', /cuenta de Jalón/.test((await http('PUT', 'admin/settings', SA, { commission_enabled: true })).error || ''));
+check('no se puede activar la comisión sin los datos bancarios', /cuenta de Ktracho GO/.test((await http('PUT', 'admin/settings', SA, { commission_enabled: true })).error || ''));
 check('la recarga máxima no puede ser menor que la mínima', (await http('PUT', 'admin/settings', SA, { topup_min: 500, topup_max: 200 })).status === 400);
 
 // Con la comisión apagada, todo sigue como antes: no hay comisión ni se exige saldo
@@ -92,7 +92,7 @@ check('y no se cobra comisión', (await balanceOf(D0.user.id)) === 0 && (await l
 d0s.emit('driver:offline');
 
 // ================= Activar la comisión =================
-const bank = { bank_name: 'Banco de prueba', bank_account_type: 'Ahorros', bank_account: '12-345-678', bank_holder: 'Jalón S. de R.L.', bank_note: 'Usa tu nombre como referencia' };
+const bank = { bank_name: 'Banco de prueba', bank_account_type: 'Ahorros', bank_account: '12-345-678', bank_holder: 'Ktracho GO S. de R.L.', bank_note: 'Usa tu nombre como referencia' };
 const set = await http('PUT', 'admin/settings', SA, { commission_enabled: true, commission_percent: 10, welcome_credit: 50, min_balance: 30, topup_min: 100, topup_max: 1000, ...bank });
 check('el superadmin activa la comisión (10%, crédito de bienvenida L 50, saldo mínimo L 30)', set.commission_enabled === '1' && set.welcome_credit === '50' && set.bank_account === '12-345-678');
 
@@ -105,7 +105,7 @@ await http('POST', `admin/users/${D.user.id}/status`, ADM, { status: 'active' })
 await wait(300);
 check('bloquear y desbloquear no repite el crédito', (await balanceOf(D.user.id)) === 50);
 const dw = await http('GET', 'driver/wallet', D.token);
-check('el conductor ve su saldo, la comisión, el mínimo y a dónde transferir', dw.enabled && dw.balance === 50 && dw.percent === 10 && dw.minBalance === 30 && dw.topupMin === 100 && dw.bank.account === '12-345-678' && dw.bank.holder === 'Jalón S. de R.L.');
+check('el conductor ve su saldo, la comisión, el mínimo y a dónde transferir', dw.enabled && dw.balance === 50 && dw.percent === 10 && dw.minBalance === 30 && dw.topupMin === 100 && dw.bank.account === '12-345-678' && dw.bank.holder === 'Ktracho GO S. de R.L.');
 check('el crédito de bienvenida aparece en sus movimientos', dw.entries.some((e) => e.kind === 'bonus' && Number(e.amount) === 50));
 check('la billetera exige sesión de conductor', (await http('GET', 'driver/wallet', null)).status === 401 && (await http('GET', 'driver/wallet', P.token)).status === 403);
 

@@ -61,7 +61,7 @@ export default function Settings({ call, onError }) {
       <b>Alquiler de carros por días</b>
       <label className="check">
         <input type="checkbox" checked={s.rental_enabled === '1'} onChange={set('rental_enabled')} />
-        <span><b>Activar el alquiler</b>: los conductores pueden ofrecer su carro (con ellos como conductor) y los pasajeros alquilarlo por días. También se alquilan los carros de la flota de Jalón.</span>
+        <span><b>Activar el alquiler</b>: los conductores pueden ofrecer su carro (con ellos como conductor) y los pasajeros alquilarlo por días. También se alquilan los carros de la flota de Ktracho GO.</span>
       </label>
       <div className="row">
         <label className="grow">Precio mínimo por día (L)<input inputMode="decimal" value={s.rental_price_min} onChange={set('rental_price_min')} /></label>
@@ -71,9 +71,9 @@ export default function Settings({ call, onError }) {
         <label className="grow">Días máximos por alquiler<input inputMode="numeric" value={s.rental_max_days} onChange={set('rental_max_days')} /></label>
         <label className="grow">Reservar hasta con (días de anticipación)<input inputMode="numeric" value={s.rental_advance_days} onChange={set('rental_advance_days')} /></label>
       </div>
-      <p className="muted small">La comisión de los alquileres es la misma de los viajes. El pago por transferencia usa la cuenta de Jalón de abajo.</p>
+      <p className="muted small">La comisión de los alquileres es la misma de los viajes. El pago por transferencia usa la cuenta de Ktracho GO de abajo.</p>
 
-      <b>Cuenta de Jalón para recibir las transferencias</b>
+      <b>Cuenta de Ktracho GO para recibir las transferencias</b>
       <label>Banco<input value={s.bank_name} onChange={set('bank_name')} placeholder="Ej. BAC Credomatic" /></label>
       <label>Tipo de cuenta<input value={s.bank_account_type} onChange={set('bank_account_type')} placeholder="Ahorros o Cheques" /></label>
       <label>Número de cuenta<input value={s.bank_account} onChange={set('bank_account')} /></label>

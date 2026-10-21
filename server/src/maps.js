@@ -13,7 +13,7 @@ const OSRM = process.env.OSRM_URL || 'https://router.project-osrm.org';
 const LIQ_SEARCH = process.env.LOCATIONIQ_URL || 'https://api.locationiq.com';
 const LIQ = process.env.LOCATIONIQ_URL || `https://${process.env.LOCATIONIQ_REGION || 'us1'}.locationiq.com`;
 const HONDURAS_BBOX = '-89.4,12.9,-83.1,16.6'; // oeste,sur,este,norte
-const UA = { 'User-Agent': 'Jalon/0.1' };
+const UA = { 'User-Agent': 'KtrachoGO/0.1' };
 export const mapsProvider = PROVIDER;
 
 // ---- caché en memoria: lo más usado se queda y lo más viejo sale (así se repiten muchas menos consultas al proveedor) ----

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
 import { lempiras, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
-import { CAR_SVG, icons } from './mapParts.jsx';
+import { CAR_HTML, icons, NorthArrow } from './mapParts.jsx';
 import { Empty, Loading } from './components.jsx';
 
 const REFRESH_MS = 5000;
@@ -14,7 +14,7 @@ const CANCEL_BY = { passenger: 'el pasajero', driver: 'el conductor', admin: 'un
 const driverIcon = (state, plate, selected) =>
   L.divIcon({
     className: '',
-    html: `<div class="mk ${state}${selected ? ' sel' : ''}"><span class="car">${CAR_SVG}</span><span class="plate">${String(plate || '').replace(/[<>&"]/g, '')}</span></div>`,
+    html: `<div class="mk ${state}${selected ? ' sel' : ''}"><span class="car">${CAR_HTML}</span><span class="plate">${String(plate || '').replace(/[<>&"]/g, '')}</span></div>`,
     iconSize: [64, 58],
     iconAnchor: [32, 22],
   });
@@ -101,6 +101,7 @@ export default function Monitor({ call, onError }) {
         <div className="monmap">
           <MapContainer center={[14.0723, -87.1921]} zoom={12} style={{ height: '100%' }}>
             <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
+            <NorthArrow />
             {withPos.map((d) => (
               <Marker key={d.id} position={[d.lat, d.lng]} icon={driverIcon(d.state, d.plate, d.id === sel)} eventHandlers={{ click: () => pick(d.id) }} />
             ))}

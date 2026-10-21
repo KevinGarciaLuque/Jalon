@@ -1,4 +1,4 @@
-// Alquiler de carros por días: lo que usa el pasajero, el conductor que ofrece su carro y el personal (flota de Jalón, pagos y reservas)
+// Alquiler de carros por días: lo que usa el pasajero, el conductor que ofrece su carro y el personal (flota de Ktracho GO, pagos y reservas)
 import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
@@ -224,7 +224,7 @@ app.post('/api/admin/rentals/:id/cancel', staffOnly('rentals'), handle(async (re
   res.json({ ok: true, booking: next });
 }));
 
-// Flota de Jalón: carros sin conductor dueño, que el personal alquila (con un conductor que asigna al confirmar)
+// Flota de Ktracho GO: carros sin conductor dueño, que el personal alquila (con un conductor que asigna al confirmar)
 app.get('/api/admin/fleet', staffOnly('rentals'), handle(async (_req, res) => {
   const [rows] = await pool.query(
     `SELECT v.id, v.category, v.make, v.model, v.color, v.year, v.plate, l.active, l.price_with_driver, l.notes

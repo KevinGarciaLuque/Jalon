@@ -50,7 +50,7 @@ const EXPORTS = {
     label: 'alquileres',
     sql: `SELECT b.id AS alquiler, ${at('b.created_at')} AS pedido, DATE_FORMAT(b.start_date, '%Y-%m-%d') AS desde, DATE_FORMAT(b.end_date, '%Y-%m-%d') AS hasta,
                  b.days AS dias, b.status AS estado, b.payment AS pago, b.payment_status AS estado_pago, b.total, r.name AS cliente, r.phone AS telefono_cliente,
-                 IF(b.owner_driver_id IS NULL, 'Flota de Jalón', d.name) AS dueno, v.plate AS placa
+                 IF(b.owner_driver_id IS NULL, 'Flota de Ktracho GO', d.name) AS dueno, v.plate AS placa
           FROM rental_bookings b JOIN users r ON r.id = b.renter_id LEFT JOIN users d ON d.id = b.owner_driver_id JOIN vehicles v ON v.id = b.vehicle_id
           WHERE ${inDay('b.created_at')} ORDER BY b.id`,
   },
@@ -79,7 +79,7 @@ app.get('/api/admin/export/:kind', staffOnly('export'), handle(async (req, res) 
   const header = fields.map((f) => f.name);
   const csv = [header.join(','), ...rows.map((r) => header.map((h) => cell(r[h])).join(','))].join('\r\n');
   res.set('Content-Type', 'text/csv; charset=utf-8');
-  res.set('Content-Disposition', `attachment; filename="jalon-${ex.label}-${range.from}-a-${range.to}.csv"`);
+  res.set('Content-Disposition', `attachment; filename="ktracho-go-${ex.label}-${range.from}-a-${range.to}.csv"`);
   res.set('Cache-Control', 'private, no-store');
   res.send(`﻿${csv}\r\n`); // la marca inicial hace que Excel lea bien las tildes
 }));

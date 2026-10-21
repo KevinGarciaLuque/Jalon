@@ -1,5 +1,5 @@
 // Términos de uso y política de privacidad. Si cambias el contenido, sube TERMS_VERSION en server/src/legal.js (y VERSION aquí).
-const VERSION = '1.7';
+const VERSION = '1.8';
 const UPDATED = '21 de octubre de 2026';
 const CONTACT = import.meta.env.VITE_CONTACT_EMAIL; // se define al compilar (variable en Railway)
 
@@ -11,9 +11,9 @@ function Terms() {
       <h1>Términos de uso</h1>
       <p className="muted">Versión {VERSION} · Última actualización: {UPDATED}</p>
 
-      <h2>1. Qué es Jalón</h2>
+      <h2>1. Qué es Ktracho GO</h2>
       <p>
-        Jalón es una plataforma tecnológica que pone en contacto a pasajeros con conductores independientes. Jalón no presta el servicio de
+        Ktracho GO es una plataforma tecnológica que pone en contacto a pasajeros con conductores independientes. Ktracho GO no presta el servicio de
         transporte, no es dueña de los vehículos y no emplea a los conductores: el viaje es un acuerdo entre el pasajero y el conductor.
       </p>
 
@@ -35,14 +35,14 @@ function Terms() {
       <h2>4. Viajes y precios</h2>
       <ul>
         <li>El pasajero propone un precio; los conductores pueden aceptarlo o contraofertar. El precio que aceptas es el precio del viaje.</li>
-        <li>Por ahora el pago es en efectivo, directamente al conductor al terminar el viaje. Jalón no cobra ni procesa pagos entre usuarios.</li>
+        <li>Por ahora el pago es en efectivo, directamente al conductor al terminar el viaje. Ktracho GO no cobra ni procesa pagos entre usuarios.</li>
         <li>La ruta, la distancia y el tiempo que ves son estimaciones y pueden variar.</li>
         <li>
-          <b>Conductores:</b> mientras estés conectado o en un viaje, el personal autorizado de Jalón puede ver tu ubicación en un mapa y tu historial de desempeño (viajes, cancelaciones, calificaciones y reportes) para operar el servicio, dar seguridad y atender reclamos. Cada consulta queda registrada.
+          <b>Conductores:</b> mientras estés conectado o en un viaje, el personal autorizado de Ktracho GO puede ver tu ubicación en un mapa y tu historial de desempeño (viajes, cancelaciones, calificaciones y reportes) para operar el servicio, dar seguridad y atender reclamos. Cada consulta queda registrada.
         </li>
         <li>
-          <b>Conductores:</b> Jalón puede cobrar una comisión por cada viaje, que se descuenta de un saldo que el conductor recarga transfiriendo a la cuenta de
-          Jalón y subiendo su comprobante, que el equipo revisa. Con el saldo por debajo del mínimo no se reciben viajes. La comisión vigente y los datos de la cuenta
+          <b>Conductores:</b> Ktracho GO puede cobrar una comisión por cada viaje, que se descuenta de un saldo que el conductor recarga transfiriendo a la cuenta de
+          Ktracho GO y subiendo su comprobante, que el equipo revisa. Con el saldo por debajo del mínimo no se reciben viajes. La comisión vigente y los datos de la cuenta
           se muestran en la aplicación antes de recargar.
         </li>
       </ul>
@@ -67,7 +67,7 @@ function Terms() {
         <li>Antes de subir a un vehículo, comprueba que la placa y el conductor coinciden con los que ves en la app.</li>
         <li>Puedes compartir tu viaje en vivo con una persona de confianza.</li>
         <li>
-          El botón de emergencia avisa al equipo de Jalón con tu ubicación, pero <b>no sustituye llamar al 911</b>. No garantizamos un tiempo de
+          El botón de emergencia avisa al equipo de Ktracho GO con tu ubicación, pero <b>no sustituye llamar al 911</b>. No garantizamos un tiempo de
           respuesta. Si estás en peligro, llama primero al 911.
         </li>
       </ul>
@@ -80,13 +80,13 @@ function Terms() {
 
       <h2>10. Límites de responsabilidad</h2>
       <p>
-        Jalón se ofrece &quot;tal como está&quot; y según su disponibilidad. En la medida que permita la ley, Jalón no responde por la conducta de los
+        Ktracho GO se ofrece &quot;tal como está&quot; y según su disponibilidad. En la medida que permita la ley, Ktracho GO no responde por la conducta de los
         usuarios, ni por daños, pérdidas o accidentes ocurridos durante un viaje entre pasajero y conductor, ni por interrupciones del servicio.
       </p>
 
       <h2>11. Cambios</h2>
       <p>
-        Podemos actualizar estos términos. Cuando haya cambios importantes lo avisaremos en la aplicación; si sigues usando Jalón después, aceptas la
+        Podemos actualizar estos términos. Cuando haya cambios importantes lo avisaremos en la aplicación; si sigues usando Ktracho GO después, aceptas la
         versión nueva.
       </p>
 
@@ -101,7 +101,7 @@ function Privacy() {
     <>
       <h1>Política de privacidad</h1>
       <p className="muted">Versión {VERSION} · Última actualización: {UPDATED}</p>
-      <p>Explicamos qué datos usa Jalón, para qué y con quién se comparten. Para cualquier duda escríbenos a <Contact />.</p>
+      <p>Explicamos qué datos usa Ktracho GO, para qué y con quién se comparten. Para cualquier duda escríbenos a <Contact />.</p>
 
       <h2>1. Qué datos recopilamos</h2>
       <ul>
@@ -125,7 +125,7 @@ function Privacy() {
           <b>Contactos de confianza:</b> el nombre y teléfono de hasta 3 personas que tú agregues. Cuando empieza un viaje les enviamos un SMS con el enlace para
           seguirlo. Solo los agregas tú, y puedes quitarlos en cualquier momento.
         </li>
-        <li><b>Reportes:</b> lo que nos cuentes sobre un viaje (un objeto olvidado, un cobro, un problema). Lo ve el personal de Jalón para atenderte.</li>
+        <li><b>Reportes:</b> lo que nos cuentes sobre un viaje (un objeto olvidado, un cobro, un problema). Lo ve el personal de Ktracho GO para atenderte.</li>
         <li><b>Notificaciones:</b> si las activas, guardamos un identificador de tu dispositivo para enviártelas (puedes desactivarlas en Cuenta).</li>
         <li><b>Técnicos:</b> tu dirección IP y registros del servidor, para seguridad y para limitar intentos de acceso abusivos.</li>
         <li>Tu sesión se guarda en una cookie segura que solo sirve para mantenerte dentro de tu cuenta (la página no puede leerla). En tu navegador guardamos tu nombre y tus preferencias. No usamos cookies de publicidad ni rastreadores de terceros.</li>
@@ -149,7 +149,7 @@ function Privacy() {
           <b>Enlace de viaje compartido:</b> quien reciba el enlace ve el nombre de pila del conductor, su vehículo y placa, la ruta y la ubicación en vivo,
           mientras el viaje está activo y hasta una hora después de terminar. Tú decides con quién lo compartes.
         </li>
-        <li><b>Administradores de Jalón:</b> pueden ver cuentas, viajes y documentos para operar el servicio, verificar conductores y atender emergencias.</li>
+        <li><b>Administradores de Ktracho GO:</b> pueden ver cuentas, viajes y documentos para operar el servicio, verificar conductores y atender emergencias.</li>
         <li>
           <b>Proveedores que nos ayudan a operar:</b> el alojamiento del servicio (Railway); el envío de correos (nuestro proveedor de correo, que recibe tu correo y el código) y de SMS (Twilio, que recibe tu teléfono y el código); y
           los mapas y la búsqueda de direcciones y rutas (OpenStreetMap, Photon y OSRM, que reciben el texto que buscas y coordenadas).
@@ -188,7 +188,7 @@ function Privacy() {
       </p>
 
       <h2>7. Menores de edad</h2>
-      <p>Jalón es solo para mayores de 18 años.</p>
+      <p>Ktracho GO es solo para mayores de 18 años.</p>
 
       <h2>8. Cambios</h2>
       <p>Si cambiamos esta política de forma importante, te lo avisaremos en la aplicación.</p>
@@ -199,7 +199,7 @@ function Privacy() {
 export default function Legal({ doc }) {
   return (
     <div className="legal">
-      <a className="back" href="/">← Volver a Jalón</a>
+      <a className="back" href="/">← Volver a Ktracho GO</a>
       {doc === 'privacy' ? <Privacy /> : <Terms />}
       <p className="muted small">
         <a href="/terminos">Términos de uso</a> · <a href="/privacidad">Política de privacidad</a>

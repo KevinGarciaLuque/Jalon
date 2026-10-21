@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import { apiGet, lempiras, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
-import { FitTo, RouteLine, icons } from './mapParts.jsx';
+import { FitTo, RouteLine, icons, NorthArrow } from './mapParts.jsx';
 import { Loading } from './components.jsx';
 
 const STATUS = { requested: 'Solicitado', accepted: 'Aceptado', arrived: 'Llegó', started: 'En curso', completed: 'Completado', cancelled: 'Cancelado' };
@@ -10,7 +10,7 @@ const when = (d) => new Date(d).toLocaleString('es-HN', { dateStyle: 'medium', t
 const time = (d) => new Date(d).toLocaleTimeString('es-HN', { hour: 'numeric', minute: '2-digit' });
 // Colores de las dos líneas del mapa (Leaflet los necesita como valor, no como variable de CSS)
 const PLANNED = '#7a8a82';
-const REAL = '#0a7d4f';
+const REAL = '#14802f';
 
 // Detalle de un viaje: mapa con la ruta planeada y el camino real, horarios, distancias, precio y calificaciones
 export default function RideDetail({ rideId, token, onClose, onReceipt, onReport }) {
@@ -34,6 +34,7 @@ export default function RideDetail({ rideId, token, onClose, onReceipt, onReport
             <div className="detail-map">
               <MapContainer center={fit[0]} zoom={14} style={{ height: '100%' }}>
                 <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
+                <NorthArrow />
                 <FitTo points={fit} />
                 {r.route?.length > 1 && <RouteLine positions={r.route} color={PLANNED} dashed />}
                 {r.track?.length > 1 && <RouteLine positions={r.track} color={REAL} />}

@@ -131,13 +131,13 @@ export default function Admin({ token, onGate }) {
       if (fresh.length) {
         if (audio.current) beep(audio.current);
         if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification('🆘 Emergencia en Jalón', { body: `${fresh[0].user_name} pidió ayuda (viaje #${fresh[0].ride_id})`, requireInteraction: true });
+          new Notification('🆘 Emergencia en Ktracho GO', { body: `${fresh[0].user_name} pidió ayuda (viaje #${fresh[0].ride_id})`, requireInteraction: true });
         }
       }
     }
     seen.current = ids;
-    document.title = alerts.length ? `🆘 (${alerts.length}) EMERGENCIA · Jalón` : 'Jalón';
-    return () => { document.title = 'Jalón'; };
+    document.title = alerts.length ? `🆘 (${alerts.length}) EMERGENCIA · Ktracho GO` : 'Ktracho GO';
+    return () => { document.title = 'Ktracho GO'; };
   }, [alerts]);
 
   async function enableAlerts() {

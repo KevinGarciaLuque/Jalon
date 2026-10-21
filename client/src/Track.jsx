@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import { apiGet, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
-import { CarMarker, FitTo, RouteLine, icons } from './mapParts.jsx';
+import { CarMarker, FitTo, RouteLine, icons, NorthArrow } from './mapParts.jsx';
+import { Brand } from './components.jsx';
 
 const STATUS = {
   accepted: 'El conductor va en camino a recoger al pasajero',
@@ -28,7 +29,7 @@ export default function Track({ token }) {
   }, [token]);
 
   if (error && !data) {
-    return <div className="auth"><h1>Jalón</h1><p className="tagline">{error}</p></div>;
+    return <div className="auth"><h1><Brand size="lg" /></h1><p className="tagline">{error}</p></div>;
   }
   if (!data) return <div className="auth"><p className="tagline pulse">Cargando viaje…</p></div>;
 
@@ -37,13 +38,14 @@ export default function Track({ token }) {
   return (
     <div className="app">
       <header>
-        <b>Jalón</b>
+        <Brand />
         <span>Seguimiento de viaje</span>
       </header>
       <div className="screen">
         <div className="map">
           <MapContainer center={points[0]} zoom={14} style={{ height: '100%' }}>
             <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
+            <NorthArrow />
             <FitTo points={points} />
             <RouteLine positions={points} />
             <Marker position={[data.origin.lat, data.origin.lng]} icon={icons.me} />

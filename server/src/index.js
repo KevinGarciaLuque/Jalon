@@ -1,4 +1,4 @@
-// Arranque del servidor de Jalón. Cada parte vive en su propio archivo; aquí solo se cargan en orden:
+// Arranque del servidor de Ktracho GO. Cada parte vive en su propio archivo; aquí solo se cargan en orden:
 // primero la configuración y Express, después las rutas y los sockets, y al final la web compilada y el manejo de errores.
 import express from 'express';
 import { existsSync } from 'fs';
@@ -83,4 +83,4 @@ for (const sig of ['SIGTERM', 'SIGINT']) {
   });
 }
 
-server.listen(PORT, () => console.log(`Jalón API en http://localhost:${PORT}`));
+server.listen(PORT, () => console.log(`Ktracho GO API en http://localhost:${PORT}`));

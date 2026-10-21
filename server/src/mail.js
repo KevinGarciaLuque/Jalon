@@ -27,7 +27,7 @@ export async function sendMail(to, subject, text) {
     if (process.env.NODE_ENV !== 'production') appendFileSync(new URL('../.mail-dev.log', import.meta.url), `${JSON.stringify({ to, subject, text, at: Date.now() })}\n`);
     return;
   }
-  await transport.sendMail({ from: SMTP_FROM || `Jalón <${SMTP_USER}>`, to, subject, text });
+  await transport.sendMail({ from: SMTP_FROM || `Ktracho GO <${SMTP_USER}>`, to, subject, text });
 }
 
 // Correo bien escrito (una sola dirección, sin espacios ni saltos de línea que permitan inyectar cabeceras)

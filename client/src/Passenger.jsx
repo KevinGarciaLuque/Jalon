@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import { useGeo, apiGet, apiPost, lempiras, minutes, useChat, useNow, CATEGORIES, CATEGORY_LABEL, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
-import { CarMarker, FitTo, RouteLine, icons } from './mapParts.jsx';
+import { CarMarker, FitTo, RouteLine, icons, NorthArrow } from './mapParts.jsx';
 import ReportForm from './ReportForm.jsx';
 import Rentals from './Rentals.jsx';
 import { AddressSearch, Avatar, Chat, PriceStepper, Rate, SafetyBar, Stars, TimeRing } from './components.jsx';
@@ -171,6 +171,7 @@ export default function Passenger({ socket, token, userId, perms = [] }) {
         {pos && (
           <MapContainer center={[pos.lat, pos.lng]} zoom={15} style={{ height: '100%' }}>
             <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
+            <NorthArrow />
             <Recenter pos={pos} />
             <FitTo points={fitPoints} />
             <Picker onPick={pickDest} enabled={!active} />
@@ -234,7 +235,7 @@ export default function Passenger({ socket, token, userId, perms = [] }) {
                 </div>
                 <PriceStepper value={price} label="Tu oferta en lempiras" onChange={(v) => { priceEdited.current = true; setPrice(v); }} />
                 {error && <div className="error">{error}</div>}
-                <button className="primary" disabled={!price} onClick={request}>Pedir Jalón por {lempiras(price || 0)}</button>
+                <button className="primary" disabled={!price} onClick={request}>Pedir viaje por {lempiras(price || 0)}</button>
               </>
             )}
           </>
@@ -314,7 +315,7 @@ export default function Passenger({ socket, token, userId, perms = [] }) {
             {ride.status === 'completed' && (
               <>
                 <p>Total a pagar en efectivo: <b>{lempiras(ride.final_price)}</b></p>
-                {ride.driver && <Rate token={token} rideId={ride.id} who={ride.driver.name} />}
+                {ride.driver && <Rate token={token} rideId={ride.id} who={ride.driver.name} title="¡Llegaste!" />}
                 {chat.chatable && !chat.closed && (
                   <button onClick={chat.open ? chat.closeChat : chat.openChat}>💬 ¿Olvidaste algo? Escribe al conductor{chat.unread ? ` (${chat.unread})` : ''}</button>
                 )}

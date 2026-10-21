@@ -38,7 +38,7 @@ export default function TwoFactorSetup({ token, onDone, onLogout }) {
     }
   }
 
-  const text = codes ? `Códigos de respaldo de Jalón\nCada uno sirve una sola vez.\n\n${codes.join('\n')}\n` : '';
+  const text = codes ? `Códigos de respaldo de Ktracho GO\nCada uno sirve una sola vez.\n\n${codes.join('\n')}\n` : '';
   async function copy() {
     try { await navigator.clipboard.writeText(text); setCopied(true); } catch { window.prompt('Copia los códigos:', codes.join(' ')); }
   }
@@ -46,7 +46,7 @@ export default function TwoFactorSetup({ token, onDone, onLogout }) {
     const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'jalon-codigos-de-respaldo.txt';
+    a.download = 'ktracho-go-codigos-de-respaldo.txt';
     a.click();
     URL.revokeObjectURL(url);
   }

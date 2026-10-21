@@ -4,7 +4,7 @@ import { Empty, Loading } from './components.jsx';
 
 const addDays = (d, n) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86400e3).toISOString().slice(0, 10);
 
-// Comprobante de la transferencia de un alquiler: datos de la cuenta de Jalón y el formulario para subirlo
+// Comprobante de la transferencia de un alquiler: datos de la cuenta de Ktracho GO y el formulario para subirlo
 function TransferProof({ booking, bank, token, onDone }) {
   const [f, setF] = useState({ bank: '', reference: '' });
   const [file, setFile] = useState(null);
@@ -26,7 +26,7 @@ function TransferProof({ booking, bank, token, onDone }) {
   }
   return (
     <form className="req" onSubmit={submit}>
-      <b>Transfiere {lempiras(booking.total)} a la cuenta de Jalón</b>
+      <b>Transfiere {lempiras(booking.total)} a la cuenta de Ktracho GO</b>
       <div className="bank">
         <div><span className="muted">Banco</span> <b>{bank.name}</b></div>
         {bank.type && <div><span className="muted">Tipo</span> <b>{bank.type}</b></div>}
@@ -150,7 +150,7 @@ export default function Rentals({ token, socket, onClose }) {
                 <span className="tag">{lempiras(r.total)}</span>
               </div>
               <div className="muted small">
-                {r.vehicle.categoryLabel} · {r.owner === 'fleet' ? 'Carro de Jalón, con conductor' : `Con su dueño, ${r.driverName}`}{r.rating ? ` · ★ ${r.rating}` : ''} · {lempiras(r.priceDay)} por día
+                {r.vehicle.categoryLabel} · {r.owner === 'fleet' ? 'Carro de Ktracho GO, con conductor' : `Con su dueño, ${r.driverName}`}{r.rating ? ` · ★ ${r.rating}` : ''} · {lempiras(r.priceDay)} por día
               </div>
               {r.notes && <div className="muted small">{r.notes}</div>}
               <button className="primary sm" onClick={() => setPick(r)}>Reservar</button>
@@ -170,7 +170,7 @@ export default function Rentals({ token, socket, onClose }) {
           <fieldset className="pay">
             <legend>¿Cómo vas a pagar?</legend>
             <label className="check"><input type="radio" name="pay" checked={form.payment === 'cash'} onChange={() => setForm({ ...form, payment: 'cash' })} /> <span><b>Efectivo</b>: pagas al conductor al empezar.</span></label>
-            <label className="check"><input type="radio" name="pay" disabled={!info.transfer} checked={form.payment === 'transfer'} onChange={() => setForm({ ...form, payment: 'transfer' })} /> <span><b>Transferencia</b>: a la cuenta de Jalón; subes el comprobante y el equipo lo aprueba.{!info.transfer && ' (No disponible por ahora.)'}</span></label>
+            <label className="check"><input type="radio" name="pay" disabled={!info.transfer} checked={form.payment === 'transfer'} onChange={() => setForm({ ...form, payment: 'transfer' })} /> <span><b>Transferencia</b>: a la cuenta de Ktracho GO; subes el comprobante y el equipo lo aprueba.{!info.transfer && ' (No disponible por ahora.)'}</span></label>
           </fieldset>
           <textarea aria-label="Nota para el conductor" placeholder="Nota para el conductor (opcional): a dónde quieres ir, horario…" rows={2} maxLength={300} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
           <div className="row">

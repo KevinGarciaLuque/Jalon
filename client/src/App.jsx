@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useState } from 'react';
 import News, { useNews } from './News.jsx';
-import { Loading } from './components.jsx';
+import { Brand, Loading } from './components.jsx';
 import { apiGet, apiPost, authFetch, API, lazyPage } from './lib.js';
 
 // Cada pantalla se descarga cuando se usa: el panel solo lo baja el personal; el mapa, pasajeros y conductores
@@ -122,7 +122,7 @@ export default function App() {
   return (
     <div className="app">
       <header>
-        <b>Jalón</b>
+        <Brand />
         <span>{session.user.name} · {ROLE_NAME[session.user.role]}</span>
         {!STAFF.includes(session.user.role) && !session.user.mustChangePassword && <button className="link" onClick={() => setShowHistory(true)}>Historial</button>}
         <button className="link news-btn" aria-label={unseen ? 'Novedades (hay algo nuevo)' : 'Novedades'} onClick={() => { setShowNews(true); markSeen(); }}>

@@ -1,5 +1,5 @@
 // Saldo de los conductores y comisión por viaje (estilo inDrive, sin pasarela de pago).
-// El conductor recarga transfiriendo a la cuenta de Jalón y subiendo el comprobante; el personal lo autoriza y se acredita el saldo.
+// El conductor recarga transfiriendo a la cuenta de Ktracho GO y subiendo el comprobante; el personal lo autoriza y se acredita el saldo.
 // De ese saldo se descuenta la comisión de cada viaje cobrado en efectivo. Todo movimiento queda en un libro de cuentas que nunca se edita.
 import { CATEGORIES, CATEGORY_LABEL, FARE_DEFAULTS } from './fares.js';
 
@@ -92,7 +92,7 @@ export function validateSettings(input, current) {
   if (Number(next.rental_price_max) < Number(next.rental_price_min)) return { error: 'El precio máximo por día no puede ser menor que el mínimo' };
   // Con la comisión activa los conductores tienen que saber a dónde transferir
   if (next.commission_enabled === '1' && !(next.bank_name && next.bank_account && next.bank_holder))
-    return { error: 'Antes de activar la comisión completa los datos de la cuenta de Jalón (banco, número y titular)' };
+    return { error: 'Antes de activar la comisión completa los datos de la cuenta de Ktracho GO (banco, número y titular)' };
   return { values };
 }
 

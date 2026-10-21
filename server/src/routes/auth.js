@@ -101,9 +101,9 @@ app.post('/api/login', loginLimiter, async (req, res) => {
 // Envía el código por los canales activos. El correo va a `email`; el SMS al teléfono. Con al menos un envío logrado alcanza.
 async function sendCode(phone, purpose, email) {
   const code = await createOtp(phone, purpose, email);
-  const text = `Jalón: tu código es ${code}. Vence en 10 minutos. No lo compartas con nadie.`;
+  const text = `Ktracho GO: tu código es ${code}. Vence en 10 minutos. No lo compartas con nadie.`;
   const jobs = [];
-  if (OTP_CHANNELS.includes('email') && email) jobs.push(sendMail(email, `Tu código de Jalón: ${code}`, `${text}\n\nSi no lo pediste tú, ignora este mensaje.`));
+  if (OTP_CHANNELS.includes('email') && email) jobs.push(sendMail(email, `Tu código de Ktracho GO: ${code}`, `${text}\n\nSi no lo pediste tú, ignora este mensaje.`));
   if (OTP_CHANNELS.includes('sms')) jobs.push(sendSms(toE164(phone), text));
   const results = await Promise.allSettled(jobs);
   results.filter((r) => r.status === 'rejected').forEach((r) => console.error('Código de verificación:', r.reason?.message));

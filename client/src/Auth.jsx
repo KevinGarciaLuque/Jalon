@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, useInstall } from './lib.js';
-import { PasswordInput, VehicleFields } from './components.jsx';
+import { Brand, PasswordInput, VehicleFields } from './components.jsx';
 
 const RESEND_SECONDS = 60;
 const friendly = (e) => (e.message === 'Failed to fetch' ? 'No se pudo conectar con el servidor' : e.message);
@@ -95,7 +95,7 @@ export default function Auth({ onAuth, notice }) {
 
   return (
     <div className="auth">
-      <h1>Jalón</h1>
+      <h1><Brand size="lg" /></h1>
       <p className="tagline">Tú pones el precio. Tu conductor llega.</p>
       <form onSubmit={submit} className="card">
         <b>{title}</b>

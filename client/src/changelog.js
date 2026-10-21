@@ -3,6 +3,18 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-21-ktracho-go',
+    date: '2026-10-21',
+    title: '¡Ahora somos Ktracho GO!',
+    for: ['all'],
+    items: [
+      'Jalón cambió de nombre: ahora es Ktracho GO, con logo y colores nuevos. Tu cuenta, tus viajes y tu saldo siguen igual.',
+      'El carro del mapa es nuevo: verde Ktracho GO, con las 5 estrellas de nuestra bandera en el techo.',
+      'Al terminar un viaje te recibe el carro con sus 5 estrellas para que califiques.',
+      'Los mapas muestran una brújula con la N: el norte siempre está arriba.',
+    ],
+  },
+  {
     id: '2026-10-21-lista-lanzamiento',
     date: '2026-10-21',
     title: 'Lista de lanzamiento',
@@ -125,7 +137,7 @@ export const CHANGELOG = [
     title: 'Mis ganancias',
     for: ['driver'],
     items: [
-      'Nueva pantalla «Mis ganancias»: lo que te quedó hoy, esta semana o este mes, con tus viajes, kilómetros, promedio por viaje y la comisión de Jalón.',
+      'Nueva pantalla «Mis ganancias»: lo que te quedó hoy, esta semana o este mes, con tus viajes, kilómetros, promedio por viaje y la comisión de Ktracho GO.',
       'Tus horas conectado y cuánto ganas por hora (cuentan mientras tienes la app abierta y estás disponible o en un viaje).',
       'Un gráfico con lo cobrado por hora o por día; toca una barra para ver el detalle.',
     ],
@@ -167,7 +179,7 @@ export const CHANGELOG = [
     for: ['passenger'],
     items: [
       'Elige la fecha y cuántos días, mira los carros libres con su precio total y resérvalo.',
-      'Pagas en efectivo al empezar o por transferencia a Jalón (subes el comprobante y el equipo lo aprueba).',
+      'Pagas en efectivo al empezar o por transferencia a Ktracho GO (subes el comprobante y el equipo lo aprueba).',
       'Cuando te confirman ves el teléfono del conductor y la placa. Lo encuentras en «¿Necesitas un carro todo el día?».',
     ],
   },
@@ -179,7 +191,7 @@ export const CHANGELOG = [
     items: [
       'En «Alquiler de mi carro» publicas tu carro, contigo como conductor, con tu precio por día.',
       'Aceptas o rechazas cada reserva, y la inicias y terminas desde ahí. Mientras dura un alquiler no recibes viajes.',
-      'En efectivo cobras tú y Jalón descuenta su comisión del saldo; por transferencia, te acreditamos el total menos la comisión.',
+      'En efectivo cobras tú y Ktracho GO descuenta su comisión del saldo; por transferencia, te acreditamos el total menos la comisión.',
     ],
   },
   {
@@ -189,7 +201,7 @@ export const CHANGELOG = [
     for: ['staff'],
     items: [
       'Pestaña «Alquileres»: pagos por transferencia por revisar (con el comprobante), y las reservas por estado.',
-      'Flota de Jalón: el superadmin agrega carros de la empresa con su precio; el equipo confirma esas reservas indicando quién maneja.',
+      'Flota de Ktracho GO: el superadmin agrega carros de la empresa con su precio; el equipo confirma esas reservas indicando quién maneja.',
       'Se activa en Ajustes → Alquiler de carros por días (precio mínimo y máximo, días máximos y anticipación).',
     ],
   },
@@ -272,10 +284,10 @@ export const CHANGELOG = [
   {
     id: '2026-10-20-diseno-base',
     date: '2026-10-20',
-    title: 'Nueva imagen de Jalón',
+    title: 'Nueva imagen de Ktracho GO',
     for: ['all'],
     items: [
-      'Letras propias de Jalón que se ven igual en cualquier celular.',
+      'Letras propias de Ktracho GO que se ven igual en cualquier celular.',
       'Los precios ahora se destacan en color mango para encontrarlos de un vistazo.',
       'Botones más grandes y fáciles de tocar, y campos que se marcan en verde al escribir.',
       'Mensajes de aviso, de éxito y de error más claros, y nuevas pantallas para cuando todavía no hay nada que mostrar.',
@@ -298,7 +310,7 @@ export const CHANGELOG = [
     title: 'Mapa más bonito: el carro se mueve y gira',
     for: ['all'],
     items: [
-      'El conductor ahora es un carro dibujado visto desde arriba, en el verde de Jalón, que se ve igual en cualquier celular.',
+      'El conductor ahora es un carro dibujado visto desde arriba, en el verde de Ktracho GO, que se ve igual en cualquier celular.',
       'El carro se desliza por el mapa en vez de saltar, y gira hacia la dirección en la que va.',
       'Nuevos pines para el punto de recogida (verde) y el destino (bandera de cuadros).',
       'La ruta tiene borde y sombra para que resalte sobre las calles.',
@@ -309,7 +321,7 @@ export const CHANGELOG = [
     date: '2026-10-20',
     title: 'Nueva sección de Novedades',
     for: ['all'],
-    items: ['Aquí verás un resumen de cada mejora que hagamos en Jalón. El punto verde en «Novedades» avisa cuando hay algo nuevo.'],
+    items: ['Aquí verás un resumen de cada mejora que hagamos en Ktracho GO. El punto verde en «Novedades» avisa cuando hay algo nuevo.'],
   },
   {
     id: '2026-10-20-viajes-confiables',

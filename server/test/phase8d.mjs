@@ -95,7 +95,7 @@ await started;
 await wait(1200);
 const sent = sms().slice(before);
 check('al empezar el viaje cada contacto recibe un SMS', sent.length === 2 && sent.every((m) => /^\+504\d{8}$/.test(m.to)) && sent.some((m) => m.to === `+504${mama}`));
-check('el SMS dice quién viaja y trae el enlace para seguirlo', sent.every((m) => m.body.startsWith('Jalon: P8D inicio un viaje') && /\/t\/[\w-]{16,}$/.test(m.body)));
+check('el SMS dice quién viaja y trae el enlace para seguirlo', sent.every((m) => m.body.startsWith('Ktracho GO: P8D inicio un viaje') && /\/t\/[\w-]{16,}$/.test(m.body)));
 check('el SMS es barato (una parte, sin tildes ni emojis)', sent.every((m) => /^[\x20-\x7e]+$/.test(m.body) && m.body.length <= 200), `(${sent[0]?.body.length} caracteres)`);
 const link = sent[0].body.match(/\/t\/([\w-]+)$/)[1];
 const tr = await http('GET', `track/${link}`);

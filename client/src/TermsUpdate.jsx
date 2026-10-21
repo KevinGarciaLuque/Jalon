@@ -3,6 +3,7 @@ import { apiPost } from './lib.js';
 
 // Lo más importante que cambió en la última versión (la lista completa está en cada página)
 const CHANGES = [
+  'Jalón ahora se llama Ktracho GO. Tu cuenta, tus viajes, tu saldo y la forma de usar la app siguen igual.',
   'Mientras un viaje está en curso guardamos el camino que sigue el carro, para mostrártelo en tu historial y en el recibo y para atender reclamos. Se borra a los 90 días.',
   'Si eres conductor, guardamos cuándo te pones disponible y cuándo te desconectas, para mostrarte tus horas y tu ganancia por hora (no dónde estabas).',
   'Tu sesión se guarda en una cookie segura que solo sirve para mantenerte dentro de tu cuenta.',

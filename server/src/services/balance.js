@@ -6,7 +6,7 @@ import { drivers, room } from '../live.js';
 import { push } from '../notify.js';
 
 // ---------- Saldo, comisión y recargas por transferencia ----------
-// Con la comisión activa, el conductor necesita saldo para ponerse disponible. El saldo se recarga transfiriendo a la cuenta de Jalón
+// Con la comisión activa, el conductor necesita saldo para ponerse disponible. El saldo se recarga transfiriendo a la cuenta de Ktracho GO
 // y subiendo el comprobante; el personal lo autoriza. De ese saldo se descuenta la comisión de cada viaje cobrado en efectivo.
 export async function walletGate(userId) {
   const s = await getSettings(pool);

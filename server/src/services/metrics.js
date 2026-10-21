@@ -87,7 +87,7 @@ export async function metrics(range) {
   };
 }
 
-// Reporte de dinero: lo que entró a Jalón y lo que se movió en los saldos de los conductores, por día
+// Reporte de dinero: lo que entró a Ktracho GO y lo que se movió en los saldos de los conductores, por día
 export async function finance(range) {
   const { from, to } = range;
   const [ledger] = await pool.query(
@@ -104,7 +104,7 @@ export async function finance(range) {
   const add = (d, k, v) => { const row = rows.get(d); if (row) row[k] = money(row[k] + Number(v)); };
   for (const l of ledger) {
     const key = { commission: 'commission', rental_commission: 'rentalCommission', topup: 'topups', bonus: 'bonuses', adjustment: 'adjustments', rental_payout: 'rentalPayouts' }[l.kind];
-    // Las comisiones se guardan en negativo (salen del saldo del conductor): aquí se muestran como lo que entra a Jalón
+    // Las comisiones se guardan en negativo (salen del saldo del conductor): aquí se muestran como lo que entra a Ktracho GO
     if (key) add(l.d, key, ['commission', 'rental_commission'].includes(l.kind) ? -l.total : l.total);
   }
   for (const r of rentals) {

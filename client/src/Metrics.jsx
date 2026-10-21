@@ -73,7 +73,7 @@ export default function Metrics({ call, can, onError }) {
     try {
       const res = await authFetch(`${API}/api/admin/export/${kind}?${query}`);
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'No se pudo exportar');
-      const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] || `jalon-${kind}.csv`;
+      const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] || `ktracho-go-${kind}.csv`;
       const url = URL.createObjectURL(await res.blob());
       const a = document.createElement('a');
       a.href = url;
@@ -118,7 +118,7 @@ export default function Metrics({ call, can, onError }) {
           <div className="stats kpis">
             <div><b>{m.kpis.completed}</b><span>Viajes completados</span><Delta now={m.kpis.completed} before={m.previous.completed} /></div>
             <div><b>{lempiras(m.kpis.gmv)}</b><span>Movido en viajes</span><Delta now={m.kpis.gmv} before={m.previous.gmv} /></div>
-            <div><b>{lempiras(m.kpis.commission)}</b><span>Comisión de Jalón</span><Delta now={m.kpis.commission} before={m.previous.commission} /></div>
+            <div><b>{lempiras(m.kpis.commission)}</b><span>Comisión de Ktracho GO</span><Delta now={m.kpis.commission} before={m.previous.commission} /></div>
             <div><b>{m.kpis.cancelRate == null ? '—' : `${m.kpis.cancelRate}%`}</b><span>Cancelados ({m.kpis.cancelled})</span><Delta now={m.kpis.cancelRate} before={m.previous.cancelRate} goodUp={false} points /></div>
             <div><b>{m.kpis.requested}</b><span>Solicitudes</span><Delta now={m.kpis.requested} before={m.previous.requested} /></div>
             <div><b>{minSec(m.kpis.firstOfferSeconds)}</b><span>Hasta la primera oferta</span><Delta now={m.kpis.firstOfferSeconds} before={m.previous.firstOfferSeconds} goodUp={false} /></div>
@@ -151,7 +151,7 @@ export default function Metrics({ call, can, onError }) {
             <div><b>{lempiras(fin.totals.rentalPayouts)}</b><span>Acreditado a conductores por alquileres</span></div>
             <div><b>{lempiras(fin.driversBalance.total)}</b><span>Saldo actual de {fin.driversBalance.drivers} conductores</span></div>
           </div>
-          <p className="muted small">Las recargas son transferencias a la cuenta de Jalón: compáralas con el estado de cuenta del banco. Bonos y ajustes: {lempiras(fin.totals.bonuses)} y {lempiras(fin.totals.adjustments)}.</p>
+          <p className="muted small">Las recargas son transferencias a la cuenta de Ktracho GO: compáralas con el estado de cuenta del banco. Bonos y ajustes: {lempiras(fin.totals.bonuses)} y {lempiras(fin.totals.adjustments)}.</p>
           <div className="tablewrap">
             <table>
               <thead><tr><th>Día</th><th>Comisión viajes</th><th>Comisión alquileres</th><th>Recargas</th><th>Alquileres (efectivo)</th><th>Alquileres (transferencia)</th><th>Flota</th><th>Acreditado</th><th>Ajustes</th></tr></thead>

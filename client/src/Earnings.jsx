@@ -83,7 +83,7 @@ export default function Earnings({ token, onClose }) {
               <span className="muted">Te quedaron · {range}</span>
               <b className="num">{lempiras(data.net)}</b>
               <span className="muted small">
-                Cobrado {lempiras(data.gross + data.rentals.gross)}{data.commission + data.rentals.commission > 0 ? ` − comisión de Jalón ${lempiras(data.commission + data.rentals.commission)}` : ''}
+                Cobrado {lempiras(data.gross + data.rentals.gross)}{data.commission + data.rentals.commission > 0 ? ` − comisión de Ktracho GO ${lempiras(data.commission + data.rentals.commission)}` : ''}
               </span>
             </div>
             <div className="stats">

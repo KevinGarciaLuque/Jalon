@@ -32,7 +32,7 @@ check('antes de activarla, el personal no puede usar el panel', (await http('GET
 check('sin ella tampoco puede ver la lista de usuarios ni documentos', (await http('GET', 'admin/users', S.token)).status === 403);
 
 const setup = await http('POST', '2fa/setup', S.token, {});
-check('se genera un secreto y el enlace para el código QR', /^[A-Z2-7]{32}$/.test(setup.secret) && setup.otpauthUrl.startsWith('otpauth://totp/Jal%C3%B3n:') && setup.otpauthUrl.includes(`secret=${setup.secret}`));
+check('se genera un secreto y el enlace para el código QR', /^[A-Z2-7]{32}$/.test(setup.secret) && setup.otpauthUrl.startsWith('otpauth://totp/Ktracho%20GO:') && setup.otpauthUrl.includes(`secret=${setup.secret}`));
 const [[row]] = await pool.query('SELECT totp_secret, totp_enabled FROM users WHERE id = ?', [S.id]);
 check('el secreto se guarda cifrado en la base de datos', row.totp_secret && row.totp_secret !== setup.secret && !row.totp_secret.includes(setup.secret) && row.totp_enabled === 0);
 check('un código incorrecto no activa nada', (await http('POST', '2fa/enable', S.token, { code: '000000' })).status === 400 || totpNow(setup.secret) === '000000');

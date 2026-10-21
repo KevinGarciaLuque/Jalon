@@ -370,7 +370,7 @@ await conn.query(`
 // ---- Etapa 4: categorías de servicio y vehículos ----
 // Cada viaje es de una categoría (moto, carro o carro amplio). Los viajes anteriores quedan como carro.
 await addColumn('rides', 'category', "ENUM('moto','car','xl') NOT NULL DEFAULT 'car'");
-// El vehículo como dato propio. driver_id NULL = carro de la flota de Jalón (para el alquiler).
+// El vehículo como dato propio. driver_id NULL = carro de la flota de Ktracho GO (para el alquiler).
 // users.vehicle y users.plate se siguen llenando con el texto que muestran las pantallas.
 await conn.query(`
   CREATE TABLE IF NOT EXISTS vehicles (
@@ -413,7 +413,7 @@ await conn.query(`
 }
 
 // ---- Etapa 4B: alquiler de carros por días ----
-// Qué carros se alquilan y a qué precio por día. El carro puede ser de un conductor (lo maneja él) o de la flota de Jalón (vehicles.driver_id NULL).
+// Qué carros se alquilan y a qué precio por día. El carro puede ser de un conductor (lo maneja él) o de la flota de Ktracho GO (vehicles.driver_id NULL).
 // self_drive y deposit quedan listos para el alquiler sin conductor.
 await conn.query(`
   CREATE TABLE IF NOT EXISTS rental_listings (
