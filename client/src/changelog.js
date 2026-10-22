@@ -3,6 +3,17 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-22-revision',
+    date: '2026-10-22',
+    title: 'Ajustes después de la revisión',
+    for: ['all'],
+    items: [
+      'Si lo guardado en tu celular se daña, la app vuelve a la pantalla de entrada en lugar de quedarse en blanco.',
+      'La campanita espera a que tu sesión esté lista antes de cargar, así muestra bien el número desde el principio.',
+      'Conductores: las solicitudes dicen «Recoger en» y «Destino» también a los lectores de pantalla.',
+    ],
+  },
+  {
     id: '2026-10-22-celular',
     date: '2026-10-22',
     title: 'Mejor en el celular',

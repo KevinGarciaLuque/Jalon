@@ -225,8 +225,8 @@ export default function Driver({ socket, token, status, userId, perms = [] }) {
                         <span className="tag">{lempiras(r.offered_price)}</span>
                       </div>
                       <div className="route-list">
-                        <div><i className="dot-o" />{r.origin_text || 'Punto marcado en el mapa'} <span className="muted small">· a {away.toFixed(1)} km</span></div>
-                        <div><i className="dot-d" />{r.dest_text || 'Punto marcado en el mapa'} <span className="muted small">· {r.distance_km.toFixed(1)} km{r.duration_min ? `, ${minutes(r.duration_min)}` : ''}</span></div>
+                        <div><i className="dot-o" /><span className="sr-only">Recoger en: </span>{r.origin_text || 'Punto marcado en el mapa'} <span className="muted small">· a {away.toFixed(1)} km</span></div>
+                        <div><i className="dot-d" /><span className="sr-only">Destino: </span>{r.dest_text || 'Punto marcado en el mapa'} <span className="muted small">· {r.distance_km.toFixed(1)} km{r.duration_min ? `, ${minutes(r.duration_min)}` : ''}</span></div>
                       </div>
                       <button className="sm" onClick={() => setPreviewId(r.id === previewId ? null : r.id)}>
                         {r.id === previewId ? 'Ocultar ruta' : 'Ver ruta en el mapa'}

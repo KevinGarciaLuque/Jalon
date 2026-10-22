@@ -527,3 +527,6 @@ header .brand { flex: none; overflow: visible; min-width: auto; }
 }
 /* La barrita de la hoja queda fija arriba aunque se desplace el contenido */
 .screen .sheet > .grab { position: sticky; top: -4px; z-index: 2; background: var(--card); min-height: 30px; touch-action: none; }
+
+/* Texto solo para lectores de pantalla (p. ej. «Recoger en» junto al punto verde) */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }

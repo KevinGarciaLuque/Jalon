@@ -20,7 +20,8 @@ const ROLE_NAME = { passenger: 'Pasajero', driver: 'Conductor', superadmin: 'Sup
 // En el teléfono solo queda quién es la persona (nombre, rol); la sesión misma está en la cookie, que JavaScript no puede leer.
 // `token` aparece solo en sesiones guardadas antes de la cookie: al abrir la app se pasa a la cookie y se borra.
 function loadSession() {
-  try { return JSON.parse(localStorage.getItem('jalon')) || null; } catch { return null; }
+  // Si lo guardado está dañado o incompleto (sin la persona), se vuelve a la pantalla de entrada en vez de quedar en blanco
+  try { const s = JSON.parse(localStorage.getItem('jalon')); return s?.user?.id && s.user.role ? s : null; } catch { return null; }
 }
 
 export default function App() {
@@ -139,7 +140,8 @@ export default function App() {
         <Brand />
         <span>{session.user.name} · {ROLE_NAME[session.user.role]}</span>
         {!STAFF.includes(session.user.role) && !session.user.mustChangePassword && <button className="link" aria-label="Historial" onClick={() => setShowHistory(true)}><span className="hdr-icon" aria-hidden="true">🕘</span><span className="hdr-label">Historial</span></button>}
-        {!session.user.mustChangePassword && <Bell socket={staff ? null : socket} onGo={goTo} />}
+        {/* La campanita espera a que la sesión esté en la cookie (las de antes de la cookie se pasan al abrir la app) */}
+        {!session.user.mustChangePassword && !session.token && <Bell socket={staff ? null : socket} onGo={goTo} />}
         <button className="link news-btn" aria-label={unseen ? 'Novedades (hay algo nuevo)' : 'Novedades'} onClick={() => { setShowNews(true); markSeen(); }}>
           <span className="news-icon" aria-hidden="true">✨</span><span className="news-label">Novedades</span>{unseen && <i className="news-dot" />}
         </button>

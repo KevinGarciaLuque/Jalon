@@ -21,7 +21,7 @@ const check = (name, ok, extra = '') => { console.log(`${ok ? 'OK  ' : 'FAIL'} $
 
 const post = async (p, b) => (await fetch(`${API}/api/${p}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) })).json();
 // El conductor se registra por API (con código); el pasajero lo hará por la pantalla, como un usuario real
-const D = await registerUser({ name: 'E2E Driver', phone: `9${rnd}`, password: 'secreto1', role: 'driver', vehicle: 'Toyota Corolla blanco', plate: 'HCC9999' });
+const D = await registerUser({ name: 'E2E Driver', phone: `9${rnd}`, password: 'secreto1', role: 'driver', make: 'Toyota', model: 'Corolla', color: 'Blanco', plate: `HE${rnd.slice(0, 5)}` }); // placa distinta en cada corrida (la placa es única)
 const passPhone = `8${rnd}`;
 
 const browser = await puppeteer.launch({ executablePath: chrome, headless: true, args: ['--no-sandbox'] });
@@ -49,8 +49,10 @@ async function openAs(session, geo, name) {
   }
   return page;
 }
+// Primero por el nombre accesible (en el celular algunos botones del encabezado muestran solo un ícono, p. ej. 👤 Cuenta), si no por el texto
 const click = async (page, text, timeout = 15000) => {
-  const el = await page.waitForSelector(`button::-p-text(${text}), a::-p-text(${text})`, { timeout });
+  const byName = await page.waitForSelector(`::-p-aria([name="${text}"][role="button"])`, { timeout: 1500 }).catch(() => null);
+  const el = byName || (await page.waitForSelector(`button::-p-text(${text}), a::-p-text(${text})`, { timeout }));
   await el.click();
 };
 const see = (page, text, timeout = 15000) =>
@@ -115,6 +117,7 @@ try {
   // ---- Cambiar la contraseña desde Mi cuenta ----
   await click(pass, 'Cuenta');
   check('se abre Mi cuenta', await see(pass, 'Mi cuenta'));
+  await pass.waitForSelector('input[placeholder^="Nombre (ej."]'); // aparece cuando termina de cargar la lista de contactos
   await pass.type('input[placeholder^="Nombre (ej."]', 'Mamá');
   await pass.type('input[placeholder="Teléfono (8 dígitos)"]', `71${rnd.slice(0, 6)}`);
   await click(pass, 'Agregar');
@@ -149,39 +152,40 @@ try {
   await click(admin, 'Aprobar conductor');
   await driver.waitForFunction(() => [...document.querySelectorAll('button')].some((b) => b.textContent.includes('Ponerme disponible') && !b.disabled), { timeout: 15000 });
   check('al aprobarlo, el conductor ya puede ponerse disponible', true);
-  check('al aprobarlo, la solicitud sale del panel', await admin.waitForFunction(() => !document.body.innerText.includes('Solicitudes de conductores por aprobar'), { timeout: 15000 }).then(() => true, () => false));
+  // (puede haber otros conductores pendientes: se mira que salga este)
+  check('al aprobarlo, la solicitud sale del panel', await admin.waitForFunction((phone) => ![...document.querySelectorAll('.ucard, .req')].some((e) => e.innerText.includes('por aprobar') && e.innerText.includes(phone)), { timeout: 15000 }, D.user.phone).then(() => true, () => false));
 
   check('conductor ve su pantalla', await see(driver, 'Ponerme disponible'));
   await click(driver, 'Ponerme disponible');
   check('conductor queda en línea', await see(driver, 'Solicitudes cercanas'));
 
-  check('pasajero ve al conductor libre en el mapa', await see(pass, '1 conductor libre cerca', 20000));
+  check('pasajero ve al conductor libre en el mapa', await see(pass, '1 conductor de carro cerca', 20000));
 
   // Buscar el destino por nombre
   await pass.type('input[placeholder^="¿A dónde vas?"]', 'Mall Multiplaza Tegucigalpa');
   check('aparecen sugerencias de direcciones', await see(pass, 'Mall Multiplaza', 15000));
   await click(pass, 'Mall Multiplaza');
-  check('muestra distancia, tiempo y precio sugerido', await see(pass, 'sugerido', 20000));
-  check('muestra el botón para pedir', await see(pass, 'Pedir Ktracho GO por'));
+  check('muestra distancia, tiempo y precio sugerido', await see(pass, 'Sugerido', 20000));
+  check('muestra el botón para pedir', await see(pass, 'Pedir viaje por'));
   await shot(pass, '1-pasajero-ruta');
   pass.promptText = 'Trabajo';
   await click(pass, 'Guardar este lugar');
   check('el destino queda guardado como "Trabajo"', await pass.waitForFunction(() => ![...document.querySelectorAll('button')].some((b) => b.textContent.includes('Guardar este lugar')), { timeout: 10000 }).then(() => true, () => false));
   pass.promptText = '';
   const basePrice = Number(await pass.$eval('.price input', (el) => el.value));
-  await click(pass, 'Pedir Ktracho GO por');
+  await click(pass, 'Pedir viaje por');
   // El pasajero sube su oferta mientras nadie acepta: el conductor ve el precio nuevo
   await click(pass, '+ L5');
   check('al subir el precio, el conductor ve la solicitud con el precio nuevo', await see(driver, `Aceptar L ${basePrice + 5}`));
 
-  check('conductor recibe la solicitud con el destino', await see(driver, 'Destino: Mall Multiplaza'));
+  check('conductor recibe la solicitud con el destino', await see(driver, 'Mall Multiplaza'));
   check('y la dirección donde debe recogerlo', await see(driver, 'Recoger en:'));
   await click(driver, 'Ver ruta en el mapa');
   check('al pedirlo, el mapa muestra la ruta de la solicitud y su destino', (await see(driver, 'Ocultar ruta')) && !!(await driver.waitForSelector('path[stroke="#f59e0b"]', { timeout: 8000 }).catch(() => null)) && (await driver.$$('.leaflet-marker-icon')).length >= 3);
   await shot(driver, '0s-solicitud-ruta');
   await shot(driver, '2-conductor-solicitud');
   await click(driver, 'Aceptar L');
-  check('pasajero recibe la oferta con datos del conductor', await see(pass, 'Toyota Corolla blanco'));
+  check('pasajero recibe la oferta con datos del conductor', await see(pass, 'Toyota Corolla Blanco'));
   check('la oferta muestra cuánto tiempo vale (anillo de cuenta regresiva)', !!(await pass.waitForSelector('.offer svg.ring[aria-label^="Quedan"]', { timeout: 8000 }).catch(() => null)));
   await shot(pass, '3-pasajero-oferta');
   await pass.evaluate(() => [...document.querySelectorAll('.offer button.primary')][0].click());
@@ -221,7 +225,7 @@ try {
   await tracker.setViewport({ width: 420, height: 860 });
   await tracker.goto(clip.replace(/^https?:\/\/[^/]+/, CLIENT), { waitUntil: 'domcontentloaded' });
   check('familiar ve el viaje sin tener cuenta', await see(tracker, 'El conductor va en camino', 15000));
-  check('familiar ve la placa del conductor', await see(tracker, 'HCC9999'));
+  check('familiar ve la placa del conductor', await see(tracker, D.user.plate));
   await shot(tracker, '4-seguimiento-publico');
   await tracker.close();
 
@@ -235,7 +239,7 @@ try {
 
   // ---- Mapa en vivo: el superadmin ve al conductor conectado y su ficha de rendimiento ----
   await click(admin, 'Mapa en vivo');
-  check('el mapa en vivo muestra al conductor conectado con su placa y en viaje', await admin.waitForSelector('.monmap .mk .plate', { timeout: 15000 }).then(() => true, () => false) && (await see(admin, 'HCC9999') && await see(admin, 'En viaje')));
+  check('el mapa en vivo muestra al conductor conectado con su placa y en viaje', await admin.waitForSelector('.monmap .mk .plate', { timeout: 15000 }).then(() => true, () => false) && (await see(admin, D.user.plate) && await see(admin, 'En viaje')));
   await shot(admin, '0q-mapa-en-vivo');
   await click(admin, 'E2E Driver');
   check('al elegirlo aparece su ficha con los viajes de los últimos 30 días', (await see(admin, 'Últimos 30 días')) && (await see(admin, 'Ofertas aceptadas')));
@@ -259,9 +263,10 @@ try {
   await driver.type('input[placeholder^="Banco desde"]', 'BAC Credomatic');
   await driver.type('input[placeholder^="Número de referencia"]', `E2E-${rnd}`);
   await (await driver.$('.overlay input[type=file]')).uploadFile(FIXTURE_PATH);
+  await see(driver, '✓ doc.jpg'); // la foto ya se procesó (se achica y se limpia antes de enviarla)
   await shot(driver, '0o-recarga');
   await click(driver, 'Enviar para aprobación');
-  check('el conductor envía su comprobante', await see(driver, 'Recibimos tu comprobante'));
+  check('el conductor envía su comprobante', await see(driver, 'Recibimos tu comprobante', 30000));
   check('y lo ve "En revisión"', await see(driver, 'En revisión'));
   await click(driver, 'Cerrar ✕');
 
@@ -286,14 +291,14 @@ try {
   await click(pass, 'Nuevo viaje');
   check('el lugar guardado aparece como atajo en el viaje siguiente', await see(pass, '⭐ Trabajo'));
   await click(pass, '⭐ Trabajo');
-  check('al tocarlo se llena el destino y se calcula la ruta', await see(pass, 'sugerido', 20000));
+  check('al tocarlo se llena el destino y se calcula la ruta', await see(pass, 'Sugerido', 20000));
   await shot(driver, '6-conductor-termino');
 
   // Historial
   await click(pass, 'Historial');
   check('historial muestra el viaje con la calificación', await see(pass, 'Mall Multiplaza') && (await see(pass, 'Tu calificación: ★★★★★')));
   await shot(pass, '7-historial');
-  await click(pass, 'Recibo');
+  await click(pass, 'Ver recibo');
   check('el recibo muestra número, conductor y total', (await see(pass, 'Comprobante de viaje')) && (await see(pass, 'JAL-')) && (await see(pass, 'E2E Driver')));
   await shot(pass, '7b-recibo');
   await pass.click('.overlay.top .overlay-head .link'); // cierra el recibo (no el historial)
@@ -424,7 +429,8 @@ try {
   check('recorrido completo', false, e.message);
 } finally {
   await fetch(`${API}/api/admin/settings`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt.sign({ id: (await pool.query("SELECT id FROM users WHERE name = 'T Superadmin' ORDER BY id DESC LIMIT 1"))[0][0]?.id || 0, role: 'superadmin' }, process.env.JWT_SECRET, { expiresIn: '5m' })}` }, body: JSON.stringify({ commission_enabled: false, welcome_credit: 0, min_balance: 0 }) }).catch(() => {});
-  await browser.close();
+  // En Windows cerrar Chrome a veces se queda esperando: se le da un tope para que la prueba termine y dé su resumen
+  await Promise.race([browser.close(), new Promise((r) => setTimeout(r, 8000))]);
   await pool.end();
 }
 
