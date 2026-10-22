@@ -19,6 +19,7 @@ import './routes/permissions.js';
 import './routes/history.js';
 import './routes/metrics.js';
 import './routes/system.js';
+import './routes/share.js';
 import './sockets.js';
 import './jobs.js';
 

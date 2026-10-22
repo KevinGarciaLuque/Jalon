@@ -532,3 +532,13 @@ a entrar y a instalar la app: conviene hacerlo una sola vez, con el dominio defi
   5 estrellas en el techo; 11 kB), `valoracion.webp` (el carro con 5 estrellas al calificar el viaje; 54 kB, solo se descarga al terminar un viaje)
   y `logo-marca.webp` (el símbolo; 7 kB). Los íconos de la app instalada están en `client/public/icons`.
 - **Brújula:** todos los mapas muestran una flecha con la «N». El mapa siempre tiene el norte arriba (no gira).
+
+## Compartir la app (QR y enlace)
+
+Panel → **Compartir** (permiso `share`; al principio solo el superadmin, que puede dárselo a otros en «Permisos»). Hay dos tarjetas:
+**para pasajeros** (`https://ktrachogo.com/`) y **para conductores** (`https://ktrachogo.com/?registro=conductor`, que abre el registro con
+«Soy conductor» ya elegido). Cada una tiene una imagen de 1080×1350 con el logo y el QR (corrección alta, con el símbolo al centro;
+comprobado que se lee también en tamaño chico), y los botones **Compartir imagen** (en el celular abre el menú de compartir, donde está
+WhatsApp; en la computadora la descarga), **Descargar imagen**, **Copiar enlace** y **Enviar por WhatsApp** (abre WhatsApp con el mensaje y
+el enlace). La dirección sale de `PUBLIC_URL` (si es https); si no, de la del sitio donde se abrió el panel (`GET /api/admin/share`).
+Prueba: `test/phase24.mjs`.

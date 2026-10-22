@@ -493,3 +493,11 @@ table.perms input[type=checkbox] { width: 20px; height: 20px; }
 .rate-title { font-size: 22px; text-align: center; }
 @keyframes rate-pop { from { transform: translateY(14px) scale(.9); opacity: 0; } to { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .rate-art { animation: none; } }
+
+/* Compartir la app: dos tarjetas con su QR */
+.share-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.share-card { gap: 10px; }
+.share-preview { width: 100%; max-width: 360px; height: auto; margin: 0 auto; display: block; border-radius: var(--r-2); box-shadow: 0 0 0 1px var(--line); }
+.share-url { display: block; text-align: center; word-break: break-all; font-size: 13px; color: var(--muted); }
+.share-card .row button { flex: 1 1 140px; }
+button.whatsapp { background: #128c4a; border-color: #128c4a; color: #fff; }

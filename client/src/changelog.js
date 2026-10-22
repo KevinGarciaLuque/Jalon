@@ -3,6 +3,24 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-22-compartir',
+    date: '2026-10-22',
+    title: 'Comparte Ktracho GO con un QR',
+    for: ['staff'],
+    items: [
+      'Nueva pestaña «Compartir» (al principio solo el superadmin): un QR para pasajeros y otro para conductores, con el logo.',
+      'Comparte la imagen por WhatsApp o en estados, descárgala para imprimirla, copia el enlace o envíalo directo por WhatsApp.',
+      'El QR de conductores abre el registro con «Soy conductor» ya elegido.',
+    ],
+  },
+  {
+    id: '2026-10-22-registro-conductor',
+    date: '2026-10-22',
+    title: 'Registro de conductor más directo',
+    for: ['all'],
+    items: ['Si te invitaron como conductor, el enlace te lleva directo a crear tu cuenta de conductor.'],
+  },
+  {
     id: '2026-10-21-ktracho-go',
     date: '2026-10-21',
     title: '¡Ahora somos Ktracho GO!',

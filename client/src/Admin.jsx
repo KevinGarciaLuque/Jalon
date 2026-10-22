@@ -7,6 +7,7 @@ import Settings from './Settings.jsx';
 // El mapa en vivo trae Leaflet: se descarga solo al abrir esa pestaña
 const Monitor = lazyPage(() => import('./Monitor.jsx'));
 const System = lazyPage(() => import('./System.jsx'));
+const Share = lazyPage(() => import('./Share.jsx'));
 import AdminRentals from './AdminRentals.jsx';
 import Permissions from './Permissions.jsx';
 import Metrics from './Metrics.jsx';
@@ -232,6 +233,7 @@ export default function Admin({ token, onGate }) {
     ...(can('wallet') ? [['topups', `Recargas${stats?.pendingTopups ? ` (${stats.pendingTopups})` : ''}`]] : []),
     ...(can('rentals') ? [['rentals', 'Alquileres']] : []),
     ...(can('monitor') ? [['monitor', 'Mapa en vivo']] : []),
+    ...(can('share') ? [['share', 'Compartir']] : []),
     ...(can('settings') ? [['settings', 'Ajustes'], ['system', 'Sistema']] : []),
     ...(can('staff.manage') ? [['staff', 'Personal']] : []),
     ...(can('staff.manage') ? [['perms', 'Permisos']] : []),
@@ -401,6 +403,7 @@ export default function Admin({ token, onGate }) {
       {tab === 'topups' && <Topups topups={topups} status={topStatus} setStatus={setTopStatus} call={call} token={token} reload={load} onError={setError} />}
       {tab === 'settings' && <Settings call={call} onError={setError} />}
       {tab === 'system' && can('settings') && <Suspense fallback={<Loading />}><System call={call} onError={setError} /></Suspense>}
+      {tab === 'share' && can('share') && <Suspense fallback={<Loading />}><Share call={call} onError={setError} /></Suspense>}
       {tab === 'rentals' && can('rentals') && <AdminRentals call={call} token={token} can={can} onError={setError} />}
       {tab === 'monitor' && can('monitor') && <Suspense fallback={<Loading />}><Monitor call={call} onError={setError} /></Suspense>}
 

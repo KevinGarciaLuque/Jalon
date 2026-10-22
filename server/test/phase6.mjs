@@ -54,7 +54,7 @@ await wait(1500);
 const sent = sms().slice(before);
 check('cada alerta avisa a cada teléfono del equipo (2 alertas x 2 teléfonos)', sent.length === 4, `(${sent.length})`);
 const first = sent.find((m) => m.body.includes('P6 Pasajero'));
-check('el SMS dice quién pide ayuda, su teléfono y el mapa', !!first && first.body.includes(P.user.phone) && first.body.includes('maps.google.com/?q=14.0723,-87.1921') && first.body.startsWith('JALON SOS'));
+check('el SMS dice quién pide ayuda, su teléfono y el mapa', !!first && first.body.includes(P.user.phone) && first.body.includes('maps.google.com/?q=14.0723,-87.1921') && first.body.startsWith('KTRACHO GO SOS'));
 check('el SMS no gasta caracteres de más (una sola parte, sin tildes ni emojis)', sent.every((m) => m.body.length <= 160 && /^[\x20-\x7e]+$/.test(m.body)), `(${Math.max(...sent.map((m) => m.body.length))} caracteres)`);
 check('van al número internacional de Honduras', sent.every((m) => /^\+504\d{8}$/.test(m.to)));
 
@@ -69,7 +69,7 @@ console.log('… esperando el recordatorio (hasta 40 s)');
 for (let i = 0; i < 40 && sms().length === mark; i++) await wait(1000);
 await wait(1500);
 const reminders = sms().slice(mark);
-check('la emergencia sin atender se vuelve a avisar', reminders.length === 2 && reminders.every((m) => m.body.startsWith('RECORDATORIO JALON SOS')), `(${reminders.length})`);
+check('la emergencia sin atender se vuelve a avisar', reminders.length === 2 && reminders.every((m) => m.body.startsWith('RECORDATORIO KTRACHO GO SOS')), `(${reminders.length})`);
 check('el recordatorio es de la alerta abierta, no de la atendida', reminders.every((m) => m.body.includes(`#${openAlert.id}:`)) && reminders.every((m) => !m.body.includes(`#${resolvedAlert.id}:`)));
 const [[row]] = await pool.query('SELECT notified_count FROM alerts WHERE id = ?', [openAlert.id]);
 check('queda anotado cuántas veces se avisó', row.notified_count === 2);

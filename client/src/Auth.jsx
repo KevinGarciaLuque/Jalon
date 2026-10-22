@@ -3,12 +3,14 @@ import { api, useInstall } from './lib.js';
 import { Brand, PasswordInput, VehicleFields } from './components.jsx';
 
 const RESEND_SECONDS = 60;
+// Enlace de invitación (QR de «Compartir» del panel): ?registro=conductor abre el registro con «Soy conductor» elegido
+const invite = new URLSearchParams(window.location.search).get('registro');
 const friendly = (e) => (e.message === 'Failed to fetch' ? 'No se pudo conectar con el servidor' : e.message);
 
 export default function Auth({ onAuth, notice }) {
-  const [mode, setMode] = useState('login'); // login | register | forgot
+  const [mode, setMode] = useState(invite ? 'register' : 'login'); // login | register | forgot
   const [step, setStep] = useState(1); // 1: datos · 2: código recibido por correo
-  const [role, setRole] = useState('passenger');
+  const [role, setRole] = useState(invite === 'conductor' ? 'driver' : 'passenger');
   const [f, setF] = useState({ name: '', phone: '', email: '', password: '', code: '', category: 'car', make: '', model: '', color: '', year: '', plate: '' });
   const [error, setError] = useState('');
   const [info, setInfo] = useState(notice || '');

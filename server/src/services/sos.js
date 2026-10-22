@@ -12,7 +12,7 @@ export async function notifySos(alertId, reminder) {
   );
   if (!a || a.status !== 'open') return;
   const where = a.lat != null ? ` Mapa: https://maps.google.com/?q=${a.lat},${a.lng}` : ' Sin ubicacion.';
-  const text = `${reminder ? 'RECORDATORIO ' : ''}JALON SOS #${a.id}: ${a.name} (${a.role === 'driver' ? 'conductor' : 'pasajero'}) en viaje ${a.ride_id}. Tel ${a.phone}.${where}${PUBLIC_URL ? ` Panel: ${PUBLIC_URL}` : ''}`;
+  const text = `${reminder ? 'RECORDATORIO ' : ''}KTRACHO GO SOS #${a.id}: ${a.name} (${a.role === 'driver' ? 'conductor' : 'pasajero'}) en viaje ${a.ride_id}. Tel ${a.phone}.${where}${PUBLIC_URL ? ` Panel: ${PUBLIC_URL}` : ''}`;
   await pool.query('UPDATE alerts SET notified_count = notified_count + 1, last_notified_at = NOW() WHERE id = ?', [alertId]);
   if (!SOS_PHONES.length) return console.warn('⚠ SOS sin SMS: define SOS_ALERT_PHONES para que alguien reciba las emergencias');
   const results = await Promise.allSettled(SOS_PHONES.map((p) => sendSms(toE164(p), text)));

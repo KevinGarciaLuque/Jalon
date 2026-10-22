@@ -19,6 +19,7 @@ export const MODULES = [
   { key: 'fleet', label: 'Flota de Ktracho GO: agregar carros y precios', group: 'panel', roles: ['admin'] },
   { key: 'metrics', label: 'Indicadores y reporte de dinero por fecha', group: 'panel', roles: ['admin', 'support'] },
   { key: 'export', label: 'Exportar datos a CSV (Excel)', group: 'panel', roles: ['admin'] },
+  { key: 'share', label: 'Compartir la app: QR e enlace para pasajeros y conductores', group: 'panel', roles: ['admin', 'support'] },
   { key: 'rent', label: 'Alquilar un carro por días', group: 'app', roles: ['passenger'] },
   { key: 'rent.offer', label: 'Ofrecer su carro en alquiler', group: 'app', roles: ['driver'] },
 ];
