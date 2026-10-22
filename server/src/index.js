@@ -20,6 +20,7 @@ import './routes/history.js';
 import './routes/metrics.js';
 import './routes/system.js';
 import './routes/share.js';
+import './routes/notifications.js';
 import './sockets.js';
 import './jobs.js';
 

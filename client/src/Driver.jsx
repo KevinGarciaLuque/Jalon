@@ -55,6 +55,12 @@ export default function Driver({ socket, token, status, userId, perms = [] }) {
 
   const loadWallet = () => apiGet('driver/wallet', token).then(setWallet).catch(() => {});
   useEffect(() => { if (status !== 'pending') loadWallet(); }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
+  // La campanita: un aviso de recarga o de saldo abre «Mi saldo»
+  useEffect(() => {
+    const go = (e) => { if (e.detail === 'wallet') { loadWallet(); setShowWallet(true); } };
+    window.addEventListener('ktracho:go', go);
+    return () => window.removeEventListener('ktracho:go', go);
+  }); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     socket.on('rides:open', setRequests);

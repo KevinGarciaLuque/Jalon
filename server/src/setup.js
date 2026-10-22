@@ -551,5 +551,27 @@ for (const [table, name, cols] of [
   if (!ix.length) await conn.query(`CREATE INDEX ${name} ON ${table} (${cols})`);
 }
 
+// ---- Campanita: las notificaciones de cada persona (se borran a los 30 días; las de una cuenta eliminada, al eliminarla) ----
+await conn.query(`
+  CREATE TABLE IF NOT EXISTS notifications (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    kind VARCHAR(30) NOT NULL,
+    title VARCHAR(120) NOT NULL,
+    body VARCHAR(300) NULL,
+    tag VARCHAR(80) NULL,
+    target VARCHAR(40) NULL,
+    count INT NOT NULL DEFAULT 1,
+    read_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY by_user (user_id, updated_at),
+    KEY unread (user_id, read_at),
+    KEY by_tag (user_id, tag),
+    KEY by_time (updated_at),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  )
+`);
+
 console.log(`Base de datos "${DB_NAME}" lista.`);
 await conn.end();

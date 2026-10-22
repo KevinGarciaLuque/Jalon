@@ -15,7 +15,7 @@ import { drivers, room } from '../live.js';
 import { isPoint, clean, num, parsePoint } from '../util.js';
 import { startSession, authUser, passengerOnly, isStaff, audit, publicUser, twoFactorRequired } from '../access.js';
 import { permsFor } from '../perms.js';
-import { pushStaff } from '../notify.js';
+import { push, pushStaff } from '../notify.js';
 import { getRide, activeRideFor } from '../services/rides.js';
 import { anonymizeUser } from '../services/accounts.js';
 import { trackOf, trackKm } from '../services/activity.js';
@@ -278,6 +278,7 @@ app.post('/api/rides/:id/rate', authUser, async (req, res) => {
   const ratee = me === ride.passenger_id ? ride.driver_id : ride.passenger_id;
   try {
     await pool.query('INSERT INTO ratings (ride_id, rater_id, ratee_id, stars, comment) VALUES (?,?,?,?,?)', [ride.id, me, ratee, stars, comment]);
+    push(ratee, { title: `Te calificaron con ${'★'.repeat(stars)}${'☆'.repeat(5 - stars)}`, body: comment || `Viaje #${ride.id}`, tag: `rate-${ride.id}`, url: '/' });
     res.json({ ok: true });
   } catch (e) {
     if (e.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'Ya calificaste este viaje' });

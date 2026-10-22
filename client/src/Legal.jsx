@@ -160,7 +160,7 @@ function Privacy() {
       <h2>4. Cuánto tiempo los conservamos</h2>
       <p>
         Mientras tengas cuenta y el tiempo necesario para cumplir obligaciones legales, resolver reclamos y mantener la seguridad. Los documentos de los
-        conductores se conservan mientras sean necesarios para su verificación. Los mensajes del chat y el camino de cada viaje se borran a los 90 días.
+        conductores se conservan mientras sean necesarios para su verificación. Los mensajes del chat y el camino de cada viaje se borran a los 90 días; las notificaciones de la campanita, a los 30 días.
       </p>
 
       <h2>5. Tus derechos</h2>

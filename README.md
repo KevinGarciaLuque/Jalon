@@ -542,3 +542,21 @@ comprobado que se lee también en tamaño chico), y los botones **Compartir imag
 WhatsApp; en la computadora la descarga), **Descargar imagen**, **Copiar enlace** y **Enviar por WhatsApp** (abre WhatsApp con el mensaje y
 el enlace). La dirección sale de `PUBLIC_URL` (si es https); si no, de la del sitio donde se abrió el panel (`GET /api/admin/share`).
 Prueba: `test/phase24.mjs`.
+
+## Campanita de notificaciones
+
+Todos (pasajero, conductor, soporte, administrador y superadmin) tienen una 🔔 en el encabezado con el número de avisos sin leer.
+Cada aviso que antes solo llegaba al celular (`push()` / `pushStaff()` en `server/src/notify.js`) ahora también se guarda en la tabla
+**`notifications`** (migración que solo agrega; se crea al arrancar). Tocar un aviso lo marca como leído y lleva a su lugar
+(historial, «Mi saldo» del conductor o la pestaña del panel).
+
+- **Al celular aunque la app esté cerrada o minimizada:** la app avisa por el socket si está a la vista (`app:visible`); si no lo está
+  (otra app, pantalla bloqueada) el aviso va por Web Push aunque el socket siga conectado. Hace falta que la persona active las
+  notificaciones (botón dentro de la campanita; en iPhone, con la app instalada en la pantalla de inicio) y que `VAPID_*` esté configurado.
+- **Se agrupan** los mensajes del chat y las ofertas de un mismo viaje («(3)»); al abrir el chat, su aviso queda leído.
+- **No se guardan** los avisos que vencen en segundos («Nuevo viaje cerca de ti», «El pasajero subió su oferta»): solo van al celular.
+- **Avisos nuevos:** tu viaje empezó, llegaste a tu destino, tu cuenta fue aprobada, un documento fue rechazado (con el motivo), te calificaron.
+- **Personal:** le llegan a todos los que tienen el permiso del aviso, aunque no hayan activado las notificaciones del celular; el panel
+  consulta el número cada 20 s.
+- `GET /api/notifications` (las últimas 50 y el número sin leer), `GET /api/notifications/unread`, `POST /api/notifications/read`
+  (`{ ids }` o todas). Se borran a los 30 días y al eliminar la cuenta (dicho en la política de privacidad). Prueba: `test/phase25.mjs`.

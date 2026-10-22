@@ -9,7 +9,7 @@ import { reportError, SESSION_COOKIE, trustedOrigin, NEARBY_KM, OFFER_TTL_SECOND
 import { io } from './app.js';
 import { drivers, passengers, openRides, declined, room } from './live.js';
 import { isPoint, isPrice, serial, clean } from './util.js';
-import { push, pushStaff, hasPushSub } from './notify.js';
+import { push, pushStaff, hasPushSub, unreadCount } from './notify.js';
 import { getRide, activeRideFor, ratingsOf, rideView, nearbyDrivers, openRidesNear, closeOpenRide, releaseDriver, sendEta, cancelRide } from './services/rides.js';
 import { walletGate, chargeCommission } from './services/balance.js';
 import { shareWithContacts } from './services/accounts.js';
@@ -57,6 +57,9 @@ io.on('connection', async (socket) => {
     return Promise.resolve(fn(...args)).catch((e) => reportError(Object.assign(e, { event: ev })));
   });
   socket.join(room(user.id));
+  // La app avisa cuando pasa a segundo plano o vuelve: con la app minimizada igual se manda la notificación al celular
+  socket.data.visible = true;
+  on('app:visible', (visible) => { socket.data.visible = visible !== false; });
   if (user.role === 'driver') socket.join('drivers');
   socket.emit('account:status', { status: user.status });
   console.log(`+ ${user.role} ${user.name}`);
@@ -177,6 +180,8 @@ io.on('connection', async (socket) => {
       }
       if (status === 'completed') forgetTrack(ride.id);
       if (status === 'arrived') push(ride.passenger_id, { title: 'Tu conductor llegó', body: `${user.name} te espera · ${user.vehicle || ''} ${user.plate || ''}`.trim(), tag: `ride-${rideId}`, url: '/' });
+      if (status === 'started') push(ride.passenger_id, { title: 'Tu viaje empezó', body: `Vas con ${user.name}${ride.dest_text ? ` a ${ride.dest_text}` : ''}. Puedes compartir tu viaje desde la app.`, tag: `ride-${rideId}`, url: '/' });
+      if (status === 'completed') push(ride.passenger_id, { title: 'Llegaste a tu destino', body: `Total a pagar: L ${Math.round(ride.final_price ?? ride.offered_price)}. Califica a ${user.name} y mira el recibo en tu historial.`, tag: `ride-${rideId}`, target: 'history', url: '/' });
     });
   }
 
@@ -213,7 +218,7 @@ io.on('connection', async (socket) => {
         for (const d of drivers.values()) {
           if (!d.available || (d.category || 'car') !== category || distanceKm(d.lat, d.lng, origin.lat, origin.lng) > NEARBY_KM) continue;
           if (!d.disconnected) io.to(room(d.id)).emit('ride:new', ride);
-          else push(d.id, { title: 'Nuevo viaje cerca de ti', body: `${ride.dest_text ? `A ${ride.dest_text}` : 'Viaje disponible'} · L ${Math.round(ride.offered_price)}`, tag: `ride-${ride.id}`, url: '/' });
+          else push(d.id, { bell: false, title: 'Nuevo viaje cerca de ti', body: `${ride.dest_text ? `A ${ride.dest_text}` : 'Viaje disponible'} · L ${Math.round(ride.offered_price)}`, tag: `ride-${ride.id}`, url: '/' });
         }
         socket.emit('ride:state', ride);
         ack?.({ ok: true });
@@ -269,7 +274,7 @@ io.on('connection', async (socket) => {
       for (const d of drivers.values()) {
         if (!d.available || (d.category || 'car') !== ride.category || distanceKm(d.lat, d.lng, ride.origin_lat, ride.origin_lng) > NEARBY_KM) continue;
         if (!d.disconnected) io.to(room(d.id)).emit('ride:new', view); // el cliente reemplaza la solicitud por la del precio nuevo
-        else push(d.id, { title: 'El pasajero subió su oferta', body: `${ride.dest_text ? `A ${ride.dest_text}` : 'Viaje cercano'} · L ${Math.round(price)}`, tag: `ride-${ride.id}`, url: '/' });
+        else push(d.id, { bell: false, title: 'El pasajero subió su oferta', body: `${ride.dest_text ? `A ${ride.dest_text}` : 'Viaje cercano'} · L ${Math.round(price)}`, tag: `ride-${ride.id}`, url: '/' });
       }
       socket.emit('ride:state', view);
       ack?.({ ok: true, price });
@@ -322,6 +327,9 @@ io.on('connection', async (socket) => {
     await pool.query('UPDATE messages SET read_at = NOW() WHERE ride_id = ? AND sender_id <> ? AND read_at IS NULL', [ride.id, user.id]);
     const other = user.id === ride.passenger_id ? ride.driver_id : ride.passenger_id;
     if (other) io.to(room(other)).emit('chat:read', { rideId: ride.id, by: user.id });
+    // Quien abrió el chat ya vio los mensajes: el aviso de la campanita de ese chat queda leído
+    const [seen] = await pool.query('UPDATE notifications SET read_at = NOW(), updated_at = updated_at WHERE user_id = ? AND tag = ? AND read_at IS NULL', [user.id, `chat-${ride.id}`]);
+    if (seen.affectedRows) io.to(room(user.id)).emit('notify:read', { unread: await unreadCount(user.id) });
   });
 
   // Botón de emergencia: registra la alerta para el administrador junto con la ubicación

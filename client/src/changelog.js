@@ -3,6 +3,25 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-22-campanita',
+    date: '2026-10-22',
+    title: 'Nueva campanita de notificaciones',
+    for: ['all'],
+    items: [
+      'Toca la 🔔 de arriba para ver tus avisos: mensajes del chat, ofertas, tu conductor llegó, tu viaje empezó y terminó, tu saldo y tus alquileres.',
+      'Los mensajes de un mismo chat se juntan en un solo aviso, y al abrir el chat quedan leídos.',
+      'Activa las notificaciones desde la campanita para que te lleguen al celular aunque tengas la app cerrada o minimizada.',
+      'Conductores: ahora te avisamos cuando aprueban tu cuenta, si rechazan un documento y cuando te califican.',
+    ],
+  },
+  {
+    id: '2026-10-22-campanita-staff',
+    date: '2026-10-22',
+    title: 'Campanita en el panel',
+    for: ['staff'],
+    items: ['Emergencias, reportes, recargas, conductores por aprobar y comprobantes de alquiler llegan a la campanita de quien tiene ese permiso, aunque no haya activado las notificaciones del celular. Tocar un aviso abre su pestaña.'],
+  },
+  {
     id: '2026-10-22-compartir',
     date: '2026-10-22',
     title: 'Comparte Ktracho GO con un QR',

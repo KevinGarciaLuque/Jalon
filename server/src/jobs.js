@@ -1,5 +1,6 @@
 // Tareas que corren solas cada cierto tiempo, y la recuperación de las solicitudes abiertas al arrancar
 import { pool } from './db.js';
+import { purgeNotifications } from './notify.js';
 import { purgeOldMessages } from './chat.js';
 import { reportError, CHAT_RETENTION_DAYS, REQUEST_TTL_MIN } from './config.js';
 import { io } from './app.js';
@@ -16,6 +17,10 @@ setInterval(() => expireOffers().catch(reportError), Number(process.env.OFFER_SW
 const purgeChat = () => purgeOldMessages(pool, CHAT_RETENTION_DAYS).then((n) => n && console.log(`Se borraron ${n} mensajes antiguos del chat`)).catch(reportError);
 purgeChat();
 setInterval(purgeChat, 6 * 3600 * 1000).unref();
+// Las notificaciones de la campanita se borran a los 30 días
+const purgeBell = () => purgeNotifications().then((n) => n && console.log(`Se borraron ${n} notificaciones antiguas`)).catch(reportError);
+purgeBell();
+setInterval(purgeBell, 6 * 3600 * 1000).unref();
 
 // Un conductor que cerró la app solo se conserva 30 minutos (después su ubicación ya no es confiable)
 setInterval(() => {

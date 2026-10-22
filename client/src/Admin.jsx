@@ -225,6 +225,16 @@ export default function Admin({ token, onGate }) {
   const staff = staffList.items;
   const shown = usersList.items;
 
+  // La campanita lleva a la pestaña del aviso (si esta persona la puede ver)
+  useEffect(() => {
+    const go = (e) => {
+      if (e.detail === 'alerts') return window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (tabs.some(([key]) => key === e.detail)) setTab(e.detail);
+    };
+    window.addEventListener('ktracho:go', go);
+    return () => window.removeEventListener('ktracho:go', go);
+  });
+
   const tabs = [
     ...(can('metrics') ? [['metrics', 'Indicadores']] : []),
     ['rides', 'Viajes'],

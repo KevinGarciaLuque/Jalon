@@ -21,6 +21,7 @@ export async function anonymizeUser(t) {
   await pool.query("UPDATE messages SET text = '[mensaje eliminado]' WHERE sender_id = ?", [t.id]);
   await pool.query('DELETE FROM favorite_places WHERE user_id = ?', [t.id]);
   await pool.query('DELETE FROM trusted_contacts WHERE user_id = ?', [t.id]);
+  await pool.query('DELETE FROM notifications WHERE user_id = ?', [t.id]);
   // Alquileres: los pendientes se cancelan y se borran sus datos personales (recogida, notas y comprobantes); los montos se conservan
   await pool.query("UPDATE rental_bookings SET status = 'cancelled', cancelled_by = 'admin' WHERE (renter_id = ? OR owner_driver_id = ?) AND status IN ('requested','confirmed')", [t.id, t.id]);
   const [rentalReceipts] = await pool.query('SELECT receipt_file FROM rental_bookings WHERE renter_id = ? AND receipt_file IS NOT NULL', [t.id]);

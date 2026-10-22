@@ -1,5 +1,6 @@
 import { Suspense, useEffect, useState } from 'react';
 import News, { useNews } from './News.jsx';
+import Bell from './Bell.jsx';
 import { Brand, Loading } from './components.jsx';
 import { apiGet, apiPost, authFetch, API, lazyPage } from './lib.js';
 
@@ -67,8 +68,12 @@ export default function App() {
       if (closed) return;
       s = connectSocket(session.token);
       listen(s);
+      s.on('connect', reportVisible);
     }).catch(() => setConnError('Sin conexión con el servidor…'));
-    return () => { closed = true; s?.close(); };
+    // Si la app pasa a segundo plano o se bloquea la pantalla, el servidor manda los avisos al celular
+    const reportVisible = () => s?.emit('app:visible', document.visibilityState === 'visible');
+    document.addEventListener('visibilitychange', reportVisible);
+    return () => { closed = true; document.removeEventListener('visibilitychange', reportVisible); s?.close(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
@@ -109,6 +114,15 @@ export default function App() {
 
   const staff = STAFF.includes(session?.user.role);
 
+  // Al tocar un aviso de la campanita: el historial se abre aquí; lo demás lo atiende su pantalla (pestaña del panel, saldo del conductor)
+  function goTo(target) {
+    setShowNews(false);
+    setShowAccount(false);
+    if (target === 'history') return setShowHistory(true);
+    setShowHistory(false);
+    if (target) window.dispatchEvent(new CustomEvent('ktracho:go', { detail: target }));
+  }
+
   function logout(message = '') {
     apiPost('logout').catch(() => {}); // el servidor borra la cookie
     localStorage.removeItem('jalon');
@@ -125,6 +139,7 @@ export default function App() {
         <Brand />
         <span>{session.user.name} · {ROLE_NAME[session.user.role]}</span>
         {!STAFF.includes(session.user.role) && !session.user.mustChangePassword && <button className="link" onClick={() => setShowHistory(true)}>Historial</button>}
+        {!session.user.mustChangePassword && <Bell socket={staff ? null : socket} onGo={goTo} />}
         <button className="link news-btn" aria-label={unseen ? 'Novedades (hay algo nuevo)' : 'Novedades'} onClick={() => { setShowNews(true); markSeen(); }}>
           <span className="news-icon" aria-hidden="true">✨</span><span className="news-label">Novedades</span>{unseen && <i className="news-dot" />}
         </button>

@@ -9,6 +9,7 @@ import { decryptBuffer, isEncrypted } from '../secure.js';
 import { reportError, UPLOADS, DOC_TYPES, SOS_PHONES } from '../config.js';
 import { app, io } from '../app.js';
 import { drivers, room } from '../live.js';
+import { push } from '../notify.js';
 import { clean, tempPassword, pageOf } from '../util.js';
 import { isStaff, staffOnly, audit, auditOnce, actOn } from '../access.js';
 import { ratingsOf, kickUser } from '../services/rides.js';
@@ -235,7 +236,10 @@ app.post('/api/admin/users/:id/status', staffOnly('users.manage'), async (req, r
   io.to(room(t.id)).emit('account:status', { status });
   if (status === 'blocked') await kickUser(t.id);
   await audit(req.staff, status === 'blocked' ? 'user.block' : t.status === 'pending' ? 'user.approve' : 'user.unblock', { target: t.id });
-  if (status === 'active' && t.role === 'driver' && t.status === 'pending') grantWelcome(t.id).catch(reportError);
+  if (status === 'active' && t.role === 'driver' && t.status === 'pending') {
+    grantWelcome(t.id).catch(reportError);
+    push(t.id, { title: '¡Tu cuenta fue aprobada!', body: 'Ya puedes ponerte disponible y recibir viajes.', tag: 'account', url: '/' }, { always: true });
+  }
   res.json({ ok: true });
 });
 
@@ -345,6 +349,7 @@ app.post('/api/admin/documents/:id/reject', staffOnly('docs'), async (req, res) 
   const note = clean(req.body?.note);
   await pool.query("UPDATE documents SET status = 'rejected', note = ? WHERE id = ?", [note, Number(req.params.id)]);
   io.to(room(rows[0].user_id)).emit('docs:changed');
+  push(rows[0].user_id, { title: 'Un documento fue rechazado', body: `${{ photo: 'Tu foto', license: 'Tu licencia', registration: 'La matrícula' }[rows[0].type] || 'Un documento'}${note ? `: ${note}` : ''}. Súbelo de nuevo desde la app.`, tag: 'docs', target: 'docs', url: '/' }, { always: true });
   await audit(req.staff, 'doc.reject', { target: rows[0].user_id, details: { type: rows[0].type, note } });
   res.json({ ok: true });
 });
