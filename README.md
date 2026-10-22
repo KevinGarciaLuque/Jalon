@@ -553,6 +553,7 @@ Cada aviso que antes solo llegaba al celular (`push()` / `pushStaff()` en `serve
 - **Al celular aunque la app esté cerrada o minimizada:** la app avisa por el socket si está a la vista (`app:visible`); si no lo está
   (otra app, pantalla bloqueada) el aviso va por Web Push aunque el socket siga conectado. Hace falta que la persona active las
   notificaciones (botón dentro de la campanita; en iPhone, con la app instalada en la pantalla de inicio) y que `VAPID_*` esté configurado.
+- **Sonido:** con la app abierta, cada aviso nuevo suena (dos notas cortas con Web Audio, sin archivos); se apaga con 🔊/🔇 dentro de la campanita (se guarda en el teléfono). Con la app cerrada suena la notificación del celular (`renotify` y vibración en `sw.js`).
 - **Se agrupan** los mensajes del chat y las ofertas de un mismo viaje («(3)»); al abrir el chat, su aviso queda leído.
 - **No se guardan** los avisos que vencen en segundos («Nuevo viaje cerca de ti», «El pasajero subió su oferta»): solo van al celular.
 - **Avisos nuevos:** tu viaje empezó, llegaste a tu destino, tu cuenta fue aprobada, un documento fue rechazado (con el motivo), te calificaron.

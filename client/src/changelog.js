@@ -3,6 +3,16 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-22-campanita-sonido',
+    date: '2026-10-22',
+    title: 'La campanita ahora suena',
+    for: ['all'],
+    items: [
+      'Con la app abierta, cada aviso nuevo suena con un tono corto. Con la app cerrada suena la notificación de tu celular, como siempre.',
+      'Si prefieres silencio, apágalo dentro de la campanita (🔊 / 🔇). Se recuerda en tu celular.',
+    ],
+  },
+  {
     id: '2026-10-22-campanita',
     date: '2026-10-22',
     title: 'Nueva campanita de notificaciones',
