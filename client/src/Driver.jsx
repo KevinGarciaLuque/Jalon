@@ -225,8 +225,8 @@ export default function Driver({ socket, token, status, userId, perms = [] }) {
                         <span className="tag">{lempiras(r.offered_price)}</span>
                       </div>
                       <div className="route-list">
-                        <div><i className="dot-o" /><span className="sr-only">Recoger en: </span>{r.origin_text || 'Punto marcado en el mapa'} <span className="muted small">· a {away.toFixed(1)} km</span></div>
-                        <div><i className="dot-d" /><span className="sr-only">Destino: </span>{r.dest_text || 'Punto marcado en el mapa'} <span className="muted small">· {r.distance_km.toFixed(1)} km{r.duration_min ? `, ${minutes(r.duration_min)}` : ''}</span></div>
+                        <div><i className="dot-o" /><span><span className="sr-only">Recoger en: </span>{r.origin_text || 'Punto marcado en el mapa'} <span className="muted small">· a {away.toFixed(1)} km</span></span></div>
+                        <div><i className="dot-d" /><span><span className="sr-only">Destino: </span>{r.dest_text || 'Punto marcado en el mapa'} <span className="muted small">· {r.distance_km.toFixed(1)} km{r.duration_min ? `, ${minutes(r.duration_min)}` : ''}</span></span></div>
                       </div>
                       <button className="sm" onClick={() => setPreviewId(r.id === previewId ? null : r.id)}>
                         {r.id === previewId ? 'Ocultar ruta' : 'Ver ruta en el mapa'}
@@ -265,7 +265,11 @@ export default function Driver({ socket, token, status, userId, perms = [] }) {
               <Avatar name={ride.passenger?.name} />
               <div className="who">
                 <span><b>{ride.passenger?.name}</b> <Stars rating={ride.passenger?.rating} /></span>
-                <span className="muted small">{ride.dest_text ? `${ride.dest_text} · ` : ''}{ride.distance_km.toFixed(1)} km · efectivo</span>
+                {/* Mientras va por el pasajero importa dónde recogerlo; con el viaje en curso, a dónde va */}
+                {ride.status === 'started'
+                  ? <span className="small"><span className="muted">Destino:</span> {ride.dest_text || 'Punto marcado en el mapa'}</span>
+                  : <span className="small"><span className="muted">Recoger en:</span> {ride.origin_text || 'Punto marcado en el mapa'}</span>}
+                <span className="muted small">{ride.distance_km.toFixed(1)} km de viaje · efectivo</span>
               </div>
               <div className="row">
                 {ride.passenger?.phone && <a className="sm" href={`tel:${ride.passenger.phone}`}>Llamar</a>}

@@ -3,6 +3,28 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-22-recoger',
+    date: '2026-10-22',
+    title: 'Dónde recoger, más claro',
+    for: ['driver'],
+    items: [
+      'Si el pasajero pide desde su GPS, ves la dirección aproximada («Cerca de …») en lugar de «Mi ubicación».',
+      'Con el viaje aceptado, la tarjeta dice «Recoger en: …» hasta que lo recojas; luego muestra el destino.',
+      'El punto de color y la dirección quedan alineados aunque la dirección sea larga.',
+    ],
+  },
+  {
+    id: '2026-10-22-oferta',
+    date: '2026-10-22',
+    title: 'Ofertas y varios aparatos',
+    for: ['passenger'],
+    items: [
+      'El botón de cada oferta dice «Aceptar · L …», para que quede claro qué hace.',
+      'Si tienes la app abierta en dos aparatos, el viaje que pidas en uno aparece también en el otro.',
+      'Si intentas pedir con un viaje ya en curso, la app te lo muestra en vez de solo dar un aviso.',
+    ],
+  },
+  {
     id: '2026-10-22-revision',
     date: '2026-10-22',
     title: 'Ajustes después de la revisión',

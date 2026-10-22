@@ -369,7 +369,9 @@ header span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-spa
 .dot-o { border-radius: 50%; background: var(--brand); }
 .dot-d { border-radius: 2px; background: var(--text); }
 .route-list { display: flex; flex-direction: column; gap: 6px; font-size: 15px; }
-.route-list div { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.route-list div { display: flex; align-items: flex-start; gap: 10px; }
+.route-list div > span { flex: 1; min-width: 0; } /* la dirección larga se acomoda al lado del punto, no debajo */
+.route-list .dot-o, .route-list .dot-d { margin-top: .4em; }
 
 /* Precio: −5 / +5 alrededor de un número grande en mango (también se puede escribir) */
 .price { display: flex; align-items: center; gap: 10px; background: var(--mango-soft); border-radius: var(--r-2); padding: 8px; }

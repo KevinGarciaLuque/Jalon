@@ -280,7 +280,7 @@ export default function Passenger({ socket, token, userId, perms = [] }) {
                       <span className="muted small">{o.driver.vehicle} · {o.driver.plate}{o.distanceToPickupKm != null && ` · a ${o.distanceToPickupKm.toFixed(1)} km`}</span>
                     </div>
                     <TimeRing left={(o.expiresAt - now) / 1000} total={o.ttl || 90} />
-                    <button className="primary sm" aria-label={`Aceptar a ${o.driver.name} por ${lempiras(o.price)}`} onClick={() => socket.emit('offer:accept', { offerId: o.id })}>{lempiras(o.price)}</button>
+                    <button className="primary sm" aria-label={`Aceptar a ${o.driver.name} por ${lempiras(o.price)}`} onClick={() => socket.emit('offer:accept', { offerId: o.id })}>Aceptar · {lempiras(o.price)}</button>
                   </div>
                 ))}
               </>
