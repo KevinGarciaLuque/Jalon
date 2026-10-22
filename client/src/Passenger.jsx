@@ -4,7 +4,7 @@ import { useGeo, apiGet, apiPost, lempiras, minutes, useChat, useNow, CATEGORIES
 import { CarMarker, FitTo, RouteLine, icons, NorthArrow } from './mapParts.jsx';
 import ReportForm from './ReportForm.jsx';
 import Rentals from './Rentals.jsx';
-import { AddressSearch, Avatar, Chat, PriceStepper, Rate, SafetyBar, Stars, TimeRing } from './components.jsx';
+import { AddressSearch, Avatar, Chat, PriceStepper, Rate, SafetyBar, Stars, TimeRing, Grab } from './components.jsx';
 
 function Recenter({ pos }) {
   const map = useMap();
@@ -194,7 +194,7 @@ export default function Passenger({ socket, token, userId, perms = [] }) {
       </div>
 
       <div className={`sheet${compact ? ' compact' : ''}`}>
-        <button type="button" className="grab" aria-label={compact ? 'Mostrar más' : 'Ver más mapa'} aria-expanded={!compact} onClick={() => setCompact(!compact)} />
+        <Grab compact={compact} setCompact={setCompact} />
         {denied && <div className="hint">Sin GPS: arrastra el pin verde para fijar tu posición, o busca tu dirección.</div>}
 
         {!active && !ended && (

@@ -5,7 +5,7 @@ import { CarMarker, FitTo, RouteLine, icons, NorthArrow } from './mapParts.jsx';
 import DriverWallet from './DriverWallet.jsx';
 import DriverRental from './DriverRental.jsx';
 import Earnings from './Earnings.jsx';
-import { Avatar, Chat, PriceStepper, PushToggle, Rate, SafetyBar, Stars, TimeRing } from './components.jsx';
+import { Avatar, Chat, PriceStepper, PushToggle, Rate, SafetyBar, Stars, TimeRing, Grab } from './components.jsx';
 import ReportForm from './ReportForm.jsx';
 import DriverDocs from './DriverDocs.jsx';
 
@@ -157,7 +157,7 @@ export default function Driver({ socket, token, status, userId, perms = [] }) {
       </div>
 
       <div className={`sheet${compact ? ' compact' : ''}`}>
-        <button type="button" className="grab" aria-label={compact ? 'Mostrar más' : 'Ver más mapa'} aria-expanded={!compact} onClick={() => setCompact(!compact)} />
+        <Grab compact={compact} setCompact={setCompact} />
         {denied && <div className="hint">Sin GPS: arrastra tu carro para simular tu posición.</div>}
 
         {!active && (

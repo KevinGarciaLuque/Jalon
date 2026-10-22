@@ -511,3 +511,19 @@ button.whatsapp { background: #128c4a; border-color: #128c4a; color: #fff; }
 .bell-icon { font-size: 22px; line-height: 1.2; }
 .bell-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .bell-text > span:not(.muted) { overflow-wrap: anywhere; }
+
+/* ---- Celular ---- */
+/* Las listas con su propio desplazamiento (panel, hoja de abajo, ventanas) no aplastan a sus tarjetas: cada una ocupa lo que necesita */
+.admin > *, .overlay-body > *, .sheet > * { flex-shrink: 0; }
+/* La marca no se recorta como el resto de los textos del encabezado */
+header .brand { flex: none; overflow: visible; min-width: auto; }
+.hdr-icon { display: none; }
+@media (max-width: 480px) {
+  header { gap: 4px; padding-left: 12px; padding-right: 12px; }
+  header .brand b { display: none; } /* solo el símbolo: el nombre no cabe junto a los botones */
+  header button.link { padding: 6px 7px; }
+  .hdr-icon { display: inline; font-size: 19px; line-height: 1; }
+  .hdr-label { display: none; }
+}
+/* La barrita de la hoja queda fija arriba aunque se desplace el contenido */
+.screen .sheet > .grab { position: sticky; top: -4px; z-index: 2; background: var(--card); min-height: 30px; touch-action: none; }

@@ -3,6 +3,23 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-22-celular',
+    date: '2026-10-22',
+    title: 'Mejor en el celular',
+    for: ['all'],
+    items: [
+      'La barrita de la parte de abajo del mapa ya no se esconde al desplazarte: tócala o deslízala hacia arriba para ver más, o hacia abajo para ver más mapa.',
+      'El encabezado cabe en pantallas chicas: se ve el logo y botones con ícono (🕘 Historial, 🔔, ✨ Novedades, 👤 Cuenta).',
+    ],
+  },
+  {
+    id: '2026-10-22-celular-panel',
+    date: '2026-10-22',
+    title: 'Panel en el celular',
+    for: ['staff'],
+    items: ['Las tarjetas de usuarios (y las demás listas del panel) ya no se enciman en el celular: cada una muestra completo el nombre, el vehículo, la placa y el estado.'],
+  },
+  {
     id: '2026-10-22-campanita-sonido',
     date: '2026-10-22',
     title: 'La campanita ahora suena',

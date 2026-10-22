@@ -4,6 +4,30 @@ import { useEffect, useRef, useState } from 'react';
 import { apiGet, apiPost, pushState, enablePush, disablePush, CATEGORIES } from './lib.js';
 
 // Mientras llegan los datos: líneas que brillan en lugar de un texto suelto. `label` lo leen los lectores de pantalla.
+// Barrita de la hoja de abajo (celular): queda fija arriba aunque se desplace el contenido.
+// Tocarla alterna entre hoja grande y chica; deslizarla hacia arriba la agranda y hacia abajo deja más mapa.
+export function Grab({ compact, setCompact }) {
+  const start = useRef(null);
+  return (
+    <button
+      type="button"
+      className="grab"
+      aria-label={compact ? 'Mostrar más' : 'Ver más mapa'}
+      aria-expanded={!compact}
+      onClick={() => setCompact(!compact)}
+      onTouchStart={(e) => { start.current = e.touches[0].clientY; }}
+      onTouchEnd={(e) => {
+        if (start.current == null) return;
+        const dy = e.changedTouches[0].clientY - start.current;
+        start.current = null;
+        if (Math.abs(dy) < 25) return; // un toque normal lo maneja onClick
+        e.preventDefault(); // que no cuente además como toque
+        setCompact(dy > 0);
+      }}
+    />
+  );
+}
+
 export function Loading({ label = 'Cargando…' }) {
   return (
     <div className="loading" role="status" aria-live="polite">

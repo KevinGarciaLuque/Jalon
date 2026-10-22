@@ -138,12 +138,12 @@ export default function App() {
       <header>
         <Brand />
         <span>{session.user.name} · {ROLE_NAME[session.user.role]}</span>
-        {!STAFF.includes(session.user.role) && !session.user.mustChangePassword && <button className="link" onClick={() => setShowHistory(true)}>Historial</button>}
+        {!STAFF.includes(session.user.role) && !session.user.mustChangePassword && <button className="link" aria-label="Historial" onClick={() => setShowHistory(true)}><span className="hdr-icon" aria-hidden="true">🕘</span><span className="hdr-label">Historial</span></button>}
         {!session.user.mustChangePassword && <Bell socket={staff ? null : socket} onGo={goTo} />}
         <button className="link news-btn" aria-label={unseen ? 'Novedades (hay algo nuevo)' : 'Novedades'} onClick={() => { setShowNews(true); markSeen(); }}>
           <span className="news-icon" aria-hidden="true">✨</span><span className="news-label">Novedades</span>{unseen && <i className="news-dot" />}
         </button>
-        <button className="link" onClick={() => setShowAccount(true)}>Cuenta</button>
+        <button className="link" aria-label="Cuenta" onClick={() => setShowAccount(true)}><span className="hdr-icon" aria-hidden="true">👤</span><span className="hdr-label">Cuenta</span></button>
         <button className="link" onClick={() => logout()}>Salir</button>
       </header>
       {connError && <div className="banner">{connError}</div>}
