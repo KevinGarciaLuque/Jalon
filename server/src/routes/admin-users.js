@@ -234,7 +234,10 @@ app.post('/api/admin/users/:id/status', staffOnly('users.manage'), async (req, r
   }
   await pool.query('UPDATE users SET status = ? WHERE id = ?', [status, t.id]);
   io.to(room(t.id)).emit('account:status', { status });
-  if (status === 'blocked') await kickUser(t.id);
+  if (status === 'blocked') {
+    await kickUser(t.id);
+    await pool.query('DELETE FROM passkeys WHERE user_id = ?', [t.id]); // ya no puede entrar con Face ID
+  }
   await audit(req.staff, status === 'blocked' ? 'user.block' : t.status === 'pending' ? 'user.approve' : 'user.unblock', { target: t.id });
   if (status === 'active' && t.role === 'driver' && t.status === 'pending') {
     grantWelcome(t.id).catch(reportError);

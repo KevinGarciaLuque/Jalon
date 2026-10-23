@@ -220,6 +220,7 @@ app.post('/api/terms/accept', authUser, async (req, res) => {
 
 app.post('/api/logout-all', authUser, async (req, res) => {
   await pool.query('UPDATE users SET token_version = token_version + 1 WHERE id = ?', [req.user.id]);
+  await pool.query('DELETE FROM passkeys WHERE user_id = ?', [req.user.id]); // Face ID también se desactiva en todos los aparatos
   io.in(room(req.user.id)).disconnectSockets(true);
   const [[u]] = await pool.query('SELECT * FROM users WHERE id = ?', [req.user.id]);
   res.json({ ok: true, ...startSession(req, res, u) });

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, useInstall } from './lib.js';
 import { Brand, PasswordInput, VehicleFields } from './components.jsx';
+import { loginWithPasskey, passkeyName, passkeysSupported } from './passkeys.js';
 
 const RESEND_SECONDS = 60;
 // Enlace de invitación (QR de «Compartir» del panel): ?registro=conductor abre el registro con «Soy conductor» elegido
@@ -19,6 +20,8 @@ export default function Auth({ onAuth, notice }) {
   const [busy, setBusy] = useState(false);
   const [terms, setTerms] = useState(false);
   const [challenge, setChallenge] = useState(null); // el personal con verificación en dos pasos: tras la contraseña falta el código
+  const [via, setVia] = useState('password'); // con qué entró (después de la contraseña se ofrece activar Face ID)
+  const canPasskey = passkeysSupported();
   const install = useInstall();
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
 
@@ -54,14 +57,15 @@ export default function Auth({ onAuth, notice }) {
     setBusy(true);
     try {
       if (mode === 'login' && challenge) {
-        onAuth(await api('login/2fa', { challenge, code: f.code.trim() }));
+        onAuth(await api('login/2fa', { challenge, code: f.code.trim() }), via);
       } else if (mode === 'login') {
         const res = await api('login', { phone: f.phone, password: f.password });
         if (res.twoFactor) {
+          setVia('password');
           setChallenge(res.challenge);
           setF((cur) => ({ ...cur, code: '' }));
         } else {
-          onAuth(res);
+          onAuth(res, 'password');
         }
       } else if (step === 1) {
         if (f.password.length < 8) throw new Error('La contraseña debe tener al menos 8 caracteres');
@@ -76,6 +80,27 @@ export default function Auth({ onAuth, notice }) {
       }
     } catch (err) {
       if (challenge && /venció/.test(err.message)) setChallenge(null);
+      setError(friendly(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Entrar con Face ID / huella: el celular ofrece las cuentas guardadas para Ktracho GO
+  async function passkeyLogin() {
+    setError('');
+    setBusy(true);
+    try {
+      const res = await loginWithPasskey();
+      if (!res) return; // la persona canceló
+      if (res.twoFactor) {
+        setVia('passkey');
+        setChallenge(res.challenge);
+        setF((cur) => ({ ...cur, code: '' }));
+      } else {
+        onAuth(res, 'passkey');
+      }
+    } catch (err) {
       setError(friendly(err));
     } finally {
       setBusy(false);
@@ -194,6 +219,17 @@ export default function Auth({ onAuth, notice }) {
         {error && <div className="error">{error}</div>}
         <button className="primary" disabled={busy || (step === 2 && f.code.length !== 6)}>{busy ? 'Un momento…' : button}</button>
 
+        {mode === 'login' && !challenge && canPasskey && (
+          <>
+            <div className="or"><span>o</span></div>
+            <button type="button" className="passkey-btn" disabled={busy} onClick={passkeyLogin}>
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M9 9.5v1M15 9.5v1M12 9v4h-1M9.5 15.5c1.5 1.2 3.5 1.2 5 0" />
+              </svg>
+              Entrar con {passkeyName}
+            </button>
+          </>
+        )}
         {mode === 'login' && !challenge && (
           <>
             <button type="button" className="link" onClick={() => go('forgot')}>¿Olvidaste tu contraseña?</button>

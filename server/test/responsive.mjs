@@ -16,7 +16,7 @@ let fails = 0;
 const check = (name, ok, extra = '') => { console.log(`${ok ? 'OK  ' : 'FAIL'} ${name} ${extra}`); if (!ok) fails++; };
 
 const VIEWS = [['telefono-pequeno', 320, 640], ['telefono', 390, 844], ['telefono-horizontal', 844, 390], ['tablet', 768, 1024], ['escritorio', 1366, 768]];
-const D = await registerUser({ name: 'R Driver', phone: `9${rnd}`, password: 'secreto1', role: 'driver', vehicle: 'Toyota', plate: 'HCC1111' });
+const D = await registerUser({ name: 'R Driver', phone: `9${rnd}`, password: 'secreto1', role: 'driver', vehicle: 'Toyota', plate: `HCC${rnd.slice(0, 4)}` });
 const P = await registerUser({ name: 'R Pasajero', phone: `8${rnd}`, password: 'secreto1', role: 'passenger' });
 const adm = await createTestSuperadmin(pool);
 const A = { token: jwt.sign({ id: adm.id, role: 'superadmin' }, process.env.JWT_SECRET, { expiresIn: '10m' }), user: { ...adm, role: 'superadmin', status: 'active' } };

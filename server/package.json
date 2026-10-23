@@ -15,12 +15,14 @@
     "test:e2e": "node test/e2e.mjs",
     "test:responsive": "node test/responsive.mjs",
     "test:update": "node test/update.mjs",
+    "test:passkey": "node test/passkey-ui.mjs",
     "test:tiles": "node test/tiles.mjs",
     "test:load": "node test/load.mjs",
     "test:prod": "node test/prod-smoke.mjs"
   },
   "dependencies": {
     "@sentry/node": "^11.6.0",
+    "@simplewebauthn/server": "^14.0.3",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^18.0.6",

@@ -3,6 +3,24 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-22-face-id',
+    date: '2026-10-22',
+    title: 'Entra con Face ID o tu huella',
+    for: ['all'],
+    items: [
+      'Después de entrar con tu contraseña te preguntamos si quieres entrar con Face ID (o tu huella) la próxima vez. Tócalo y listo.',
+      'En la pantalla de entrada toca «Entrar con Face ID» y entras sin escribir nada. Tu cara o tu huella nunca salen de tu celular.',
+      'En Mi cuenta ves tus aparatos con Face ID o huella y puedes quitar cualquiera (por ejemplo, si pierdes el celular). Tu contraseña sigue funcionando.',
+    ],
+  },
+  {
+    id: '2026-10-22-face-id-panel',
+    date: '2026-10-22',
+    title: 'Face ID en el panel',
+    for: ['staff'],
+    items: ['El personal también puede entrar con Face ID o huella, pero el panel sigue pidiendo el código de 6 dígitos de la app de verificación.'],
+  },
+  {
     id: '2026-10-22-actualizar',
     date: '2026-10-22',
     title: 'Actualiza con un toque',

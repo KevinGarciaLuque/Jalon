@@ -573,5 +573,23 @@ await conn.query(`
   )
 `);
 
+// ---- Entrar con Face ID / huella (llaves de acceso): solo la llave pública de cada aparato; se borran con la cuenta ----
+await conn.query(`
+  CREATE TABLE IF NOT EXISTS passkeys (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    credential_id VARCHAR(512) NOT NULL,
+    public_key BLOB NOT NULL,
+    counter BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    transports VARCHAR(100) NULL,
+    device_name VARCHAR(80) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_used_at TIMESTAMP NULL,
+    UNIQUE KEY one_credential (credential_id(255)),
+    KEY by_user (user_id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )
+`);
+
 console.log(`Base de datos "${DB_NAME}" lista.`);
 await conn.end();

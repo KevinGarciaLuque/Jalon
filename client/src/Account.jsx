@@ -3,6 +3,7 @@ import { apiGet, apiPost, useInstall } from './lib.js';
 import { PushToggle, PasswordInput } from './components.jsx';
 import { SavedPlaces, TrustedContacts } from './PersonalLists.jsx';
 import { Panel } from './Menu.jsx';
+import { PasskeySection } from './PasskeyParts.jsx';
 
 const ROLE = { passenger: 'Pasajero', driver: 'Conductor', admin: 'Administrador', superadmin: 'Superadministrador', support: 'Soporte' };
 const STAFF = ['superadmin', 'admin', 'support'];
@@ -109,6 +110,8 @@ export default function Account({ user, token, onToken, onClose, onLogout, force
             )}
           </div>
         )}
+
+        {!forced && <PasskeySection token={token} />}
 
         <form className="req" onSubmit={changePassword}>
           <b>Cambiar contraseña</b>

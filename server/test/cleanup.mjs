@@ -17,6 +17,7 @@ if (ids.length) {
   await pool.query('DELETE FROM rental_bookings WHERE renter_id IN (?) OR owner_driver_id IN (?) OR vehicle_id IN (SELECT id FROM vehicles WHERE driver_id IN (?))', [ids, ids, ids]);
   await pool.query("DELETE v FROM vehicles v LEFT JOIN rental_bookings b ON b.vehicle_id = v.id WHERE v.driver_id IS NULL AND v.model = 'Hiace' AND v.plate LIKE 'F%' AND b.id IS NULL");
   await pool.query('DELETE FROM push_subscriptions WHERE user_id IN (?)', [ids]);
+  await pool.query('DELETE FROM passkeys WHERE user_id IN (?)', [ids]);
   await pool.query('DELETE FROM favorite_places WHERE user_id IN (?)', [ids]);
   await pool.query('DELETE FROM trusted_contacts WHERE user_id IN (?)', [ids]);
   await pool.query('DELETE FROM reports WHERE user_id IN (?) OR ride_id IN (SELECT id FROM rides WHERE passenger_id IN (?) OR driver_id IN (?))', [ids, ids, ids]);

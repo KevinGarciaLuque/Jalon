@@ -14,6 +14,7 @@ const History = lazyPage(() => import('./History.jsx'));
 const Account = lazyPage(() => import('./Account.jsx'));
 const TwoFactorSetup = lazyPage(() => import('./TwoFactorSetup.jsx'));
 const TermsUpdate = lazyPage(() => import('./TermsUpdate.jsx'));
+const PasskeyOffer = lazyPage(() => import('./PasskeyParts.jsx').then((m) => ({ default: m.PasskeyOffer })));
 
 const STAFF = ['superadmin', 'admin', 'support'];
 
@@ -47,6 +48,7 @@ export default function App() {
   const [showAccount, setShowAccount] = useState(false);
   const [showNews, setShowNews] = useState(false);
   const [adminNav, setAdminNav] = useState({ sections: null, current: null }); // secciones del panel para el menú
+  const [pkOffer, setPkOffer] = useState(false); // tras entrar con la contraseña se ofrece Face ID / huella
   const [wallet, setWallet] = useState(null); // saldo del conductor para el menú (si la comisión está activa)
   const wide = useWide();
   const { news, unseen, markSeen } = useNews(session?.user.role);
@@ -109,7 +111,8 @@ export default function App() {
     setSocket(s);
   }
 
-  function onAuth(data) {
+  function onAuth(data, via) {
+    setPkOffer(via === 'password');
     const next = { user: data.user }; // la sesión llegó en la cookie
     localStorage.setItem('jalon', JSON.stringify(next));
     setNotice('');
@@ -211,6 +214,9 @@ export default function App() {
           onAccount={() => setShowAccount(true)}
           onLogout={() => logout()}
         />
+      )}
+      {pkOffer && !session.token && !session.user.mustChangePassword && !session.user.mustEnrollTwoFactor && !session.user.mustAcceptTerms && (
+        <PasskeyOffer userId={session.user.id} onClose={() => setPkOffer(false)} />
       )}
       {showNews && <News news={news} onClose={() => setShowNews(false)} />}
       {showHistory && <History token={session.token} role={session.user.role} onClose={() => setShowHistory(false)} />}

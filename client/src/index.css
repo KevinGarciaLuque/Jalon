@@ -610,3 +610,13 @@ header .bell-count { top: -3px; right: -3px; box-shadow: 0 0 0 2px var(--card); 
 .update-bar { position: fixed; z-index: 2900; left: 50%; transform: translateX(-50%); top: calc(max(10px, env(safe-area-inset-top)) + 66px); width: min(560px, calc(100% - 24px)); display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 14px; background: var(--card); color: var(--text); border: 1px solid var(--brand); border-radius: var(--r-2); box-shadow: var(--shadow); animation: fade-in var(--slow) ease-out; }
 .update-bar > span { flex: 1; min-width: 180px; font-weight: 600; }
 .update-bar .link { padding: 4px; }
+
+/* ---- Entrar con Face ID / huella ---- */
+.or { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
+.or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.passkey-btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; }
+/* Oferta de activarlo después de entrar: una tarjeta sobre la app */
+.offer-pop { position: fixed; inset: 0; z-index: 4200; display: grid; place-items: end center; padding: 16px; padding-bottom: max(16px, env(safe-area-inset-bottom)); background: rgba(4, 10, 7, .55); animation: fade-in var(--slow) ease-out; }
+.offer-pop .card { width: min(440px, 100%); display: flex; flex-direction: column; gap: 10px; animation: rate-pop var(--slow) ease-out; }
+.offer-pop .card p { margin: 0; }
+@media (min-width: 768px) { .offer-pop { place-items: center; } }

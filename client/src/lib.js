@@ -63,6 +63,7 @@ async function request(method, path, token, body) {
 export const apiGet = (path, token) => request('GET', path, token);
 export const apiPost = (path, token, body) => request('POST', path, token, body || {});
 export const apiPut = (path, token, body) => request('PUT', path, token, body || {});
+export const apiDelete = (path, token) => request('DELETE', path, token);
 
 // Alquiler de carros por días: estados, forma de pago y cómo se nombra el vehículo
 export const RENTAL_STATUS = { requested: 'Pedido', confirmed: 'Confirmado', active: 'En curso', completed: 'Terminado', cancelled: 'Cancelado', rejected: 'No aceptado' };

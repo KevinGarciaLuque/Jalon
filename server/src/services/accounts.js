@@ -16,6 +16,7 @@ export async function anonymizeUser(t) {
   const [docs] = await pool.query('SELECT file FROM documents WHERE user_id = ?', [t.id]);
   for (const d of docs) await fs.rm(path.join(UPLOADS, d.file), { force: true });
   await pool.query('DELETE FROM documents WHERE user_id = ?', [t.id]);
+  await pool.query('DELETE FROM passkeys WHERE user_id = ?', [t.id]); // sus llaves de Face ID / huella
   await pool.query('DELETE FROM otp_codes WHERE phone = ?', [t.phone]);
   await pool.query('UPDATE ratings SET comment = NULL WHERE rater_id = ?', [t.id]);
   await pool.query("UPDATE messages SET text = '[mensaje eliminado]' WHERE sender_id = ?", [t.id]);
