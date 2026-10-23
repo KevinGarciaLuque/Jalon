@@ -689,3 +689,5 @@ header { gap: 8px; background: linear-gradient(135deg, var(--card), var(--bg)); 
 .map-btn.compass.on { box-shadow: 0 0 0 2px #1a73e8, 0 1px 5px rgba(0, 0, 0, .35); }
 .map-toast { position: absolute; right: 50px; top: 8px; white-space: nowrap; background: rgba(20, 23, 28, .88); color: #fff; font-size: 13px; font-weight: 600; padding: 6px 10px; border-radius: 999px; pointer-events: none; animation: fade-in var(--fast) ease-out; }
 @media (prefers-reduced-motion: reduce) { .map-btn.compass svg, .map-btn.compass b { transition: none; } }
+/* «Escríbenos» en Recuperar contraseña: con el color de la marca */
+.auth .card .muted a { color: var(--brand); font-weight: 700; }

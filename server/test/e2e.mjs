@@ -465,13 +465,24 @@ try {
   await click(pass, 'Cerrar ✕');
   await profile(pass, 'Cerrar sesión');
   await click(pass, '¿Olvidaste tu contraseña?');
-  await pass.type('input[placeholder^="Teléfono"]', passPhone);
+  // Paso 1: solo el teléfono o el correo · Paso 2: el código y la contraseña nueva (dos veces) · y entra directo
+  check('recuperación: pide «Teléfono o correo» (sin contraseña todavía)', !!(await pass.waitForSelector('input[placeholder="Teléfono o correo"]', { timeout: 15000 }).catch(() => null)) && !(await pass.$('input[placeholder="Nueva contraseña"]')));
+  check('recuperación: ofrece escribirle a soporte si ya no tiene el correo', process.env.VITE_CONTACT_EMAIL ? await see(pass, '¿Ya no tienes acceso a tu correo?') : true);
+  await pass.type('input[placeholder="Teléfono o correo"]', passPhone);
+  await click(pass, 'Enviar código');
+  check('recuperación: pide el código', await see(pass, 'te enviamos un código de 6 dígitos al correo registrado'));
   await pass.type('input[placeholder="Nueva contraseña"]', 'clave-nueva-9');
-  await click(pass, 'Enviar código a mi correo');
-  check('recuperación: pide el código', await see(pass, 'enviamos un código al correo registrado'));
-  await click(pass, 'Cambiar contraseña');
-  check('recuperación: contraseña actualizada', await see(pass, 'Contraseña actualizada'));
-  // El teléfono se conserva en el formulario tras cambiar la contraseña; solo falta escribir la nueva
+  await pass.type('input[placeholder="Repite la contraseña nueva"]', 'clave-nueva-8');
+  await click(pass, 'Cambiar contraseña y entrar');
+  check('recuperación: avisa si las dos contraseñas no coinciden', await see(pass, 'no coinciden'));
+  await pass.$eval('input[placeholder="Repite la contraseña nueva"]', (el) => el.select());
+  await pass.type('input[placeholder="Repite la contraseña nueva"]', 'clave-nueva-9');
+  await click(pass, 'Cambiar contraseña y entrar');
+  check('recuperación: cambia la contraseña y entra directo', await entered(pass));
+  // Y la contraseña nueva sirve para entrar
+  await profile(pass, 'Cerrar sesión');
+  await pass.waitForSelector('input[name="username"]', { timeout: 15000 });
+  await pass.type('input[name="username"]', passPhone);
   await pass.type('input[placeholder="Contraseña"]', 'clave-nueva-9');
   await click(pass, 'Entrar');
   check('puede entrar con la contraseña nueva', await entered(pass));

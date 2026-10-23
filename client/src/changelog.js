@@ -3,6 +3,17 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-23-recuperar',
+    date: '2026-10-23',
+    title: 'Recuperar tu contraseña, más fácil',
+    for: ['passenger', 'driver'],
+    items: [
+      'Escribe tu teléfono o tu correo y te enviamos un código.',
+      'Con el código eliges tu contraseña nueva (dos veces, para no equivocarte) y entras directo.',
+      'Si ya no tienes acceso a tu correo, toca «Escríbenos» y te ayudamos.',
+    ],
+  },
+  {
     id: '2026-10-23-mapa-gira',
     date: '2026-10-23',
     title: 'El mapa gira como Waze',

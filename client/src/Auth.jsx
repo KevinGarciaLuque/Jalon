@@ -6,13 +6,19 @@ import { loginWithPasskey, passkeyName, passkeysSupported } from './passkeys.js'
 const RESEND_SECONDS = 60;
 // Enlace de invitación (QR de «Compartir» del panel): ?registro=conductor abre el registro con «Soy conductor» elegido
 const invite = new URLSearchParams(window.location.search).get('registro');
+// Si ya no tiene acceso a su correo: escribirle a soporte (variables de Railway, se ponen al compilar)
+const SUPPORT_EMAIL = import.meta.env.VITE_CONTACT_EMAIL;
+const SUPPORT_WHATSAPP = (import.meta.env.VITE_SUPPORT_WHATSAPP || '').replace(/\D/g, '');
+const supportLink = SUPPORT_WHATSAPP
+  ? `https://wa.me/${SUPPORT_WHATSAPP.length === 8 ? `504${SUPPORT_WHATSAPP}` : SUPPORT_WHATSAPP}?text=${encodeURIComponent('Hola, no puedo entrar a mi cuenta de Ktracho GO y ya no tengo acceso a mi correo.')}`
+  : SUPPORT_EMAIL ? `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('No puedo entrar a mi cuenta')}` : '';
 const friendly = (e) => (e.message === 'Failed to fetch' ? 'No se pudo conectar con el servidor' : e.message);
 
 export default function Auth({ onAuth, notice }) {
   const [mode, setMode] = useState(invite ? 'register' : 'login'); // login | register | forgot
   const [step, setStep] = useState(1); // 1: datos · 2: código recibido por correo
   const [role, setRole] = useState(invite === 'conductor' ? 'driver' : 'passenger');
-  const [f, setF] = useState({ name: '', phone: '', email: '', password: '', code: '', category: 'car', make: '', model: '', color: '', year: '', plate: '' });
+  const [f, setF] = useState({ name: '', phone: '', email: '', password: '', again: '', code: '', category: 'car', make: '', model: '', color: '', year: '', plate: '' });
   const [error, setError] = useState('');
   const [info, setInfo] = useState(notice || '');
   const [devCode, setDevCode] = useState('');
@@ -37,18 +43,18 @@ export default function Auth({ onAuth, notice }) {
     setError('');
     setInfo('');
     setDevCode('');
-    setF({ ...f, code: '', password: '' });
+    setF({ ...f, code: '', password: '', again: '' });
   }
 
   // Envía el código por correo (registro o recuperación)
   async function sendCode() {
     const path = mode === 'register' ? 'otp/send' : 'password/forgot';
-    const res = await api(path, mode === 'register' ? { phone: f.phone, email: f.email } : { phone: f.phone });
+    const res = await api(path, mode === 'register' ? { phone: f.phone, email: f.email } : { login: f.phone });
     setDevCode(res.devCode || '');
     setF((cur) => ({ ...cur, code: res.devCode || '' }));
     setWait(RESEND_SECONDS);
     setStep(2);
-    setInfo(mode === 'register' ? `Te enviamos un código de 6 dígitos a ${f.email.trim()}. Revisa también la carpeta de spam.` : 'Si ese teléfono tiene una cuenta, enviamos un código al correo registrado. Revisa también la carpeta de spam.');
+    setInfo(mode === 'register' ? `Te enviamos un código de 6 dígitos a ${f.email.trim()}. Revisa también la carpeta de spam.` : 'Si ese teléfono o correo tiene una cuenta, te enviamos un código de 6 dígitos al correo registrado. Revisa también la carpeta de spam.');
   }
 
   async function submit(e) {
@@ -68,15 +74,15 @@ export default function Auth({ onAuth, notice }) {
           onAuth(res, 'password');
         }
       } else if (step === 1) {
-        if (f.password.length < 8) throw new Error('La contraseña debe tener al menos 8 caracteres');
+        if (mode === 'register' && f.password.length < 8) throw new Error('La contraseña debe tener al menos 8 caracteres');
         if (mode === 'register' && !terms) throw new Error('Debes aceptar los Términos y la Política de Privacidad');
         await sendCode();
       } else if (mode === 'register') {
         onAuth(await api('register', { ...f, role, acceptTerms: terms }));
       } else {
-        await api('password/reset', { phone: f.phone, code: f.code, password: f.password });
-        go('login');
-        setInfo('Contraseña actualizada. Ya puedes entrar.');
+        // Recuperar: con el código se elige la contraseña nueva y se entra directo
+        if (f.password !== f.again) throw new Error('Las dos contraseñas nuevas no coinciden');
+        onAuth(await api('password/reset', { login: f.phone, code: f.code, password: f.password }), 'password');
       }
     } catch (err) {
       if (challenge && /venció/.test(err.message)) setChallenge(null);
@@ -116,9 +122,9 @@ export default function Auth({ onAuth, notice }) {
   const title = challenge ? 'Verificación en dos pasos' : { login: 'Entrar', register: 'Crear cuenta', forgot: 'Recuperar contraseña' }[mode];
   const button =
     challenge ? 'Verificar' : mode === 'login' ? 'Entrar'
-    : step === 1 ? 'Enviar código a mi correo'
+    : step === 1 ? (mode === 'forgot' ? 'Enviar código' : 'Enviar código a mi correo')
     : mode === 'register' ? 'Verificar y crear cuenta'
-    : 'Cambiar contraseña';
+    : 'Cambiar contraseña y entrar';
 
   return (
     <div className="auth">
@@ -158,18 +164,27 @@ export default function Auth({ onAuth, notice }) {
         {step === 1 && !challenge && (
           <>
             {/* El teléfono es el usuario de la cuenta: «username» (no «tel») para que el iPhone lo guarde junto con la contraseña */}
-            <input id="username" name="username" aria-label="Teléfono (8 dígitos)" placeholder="Teléfono (8 dígitos)" inputMode="tel" autoComplete="username" value={f.phone} onChange={set('phone')} required />
+            {mode === 'forgot' ? (
+              <>
+                <p className="muted small">Escribe tu teléfono o el correo de tu cuenta. Te enviaremos un código para que elijas una contraseña nueva.</p>
+                <input id="username" name="username" aria-label="Teléfono o correo" placeholder="Teléfono o correo" autoComplete="username" autoCapitalize="off" spellCheck={false} maxLength={160} value={f.phone} onChange={set('phone')} required />
+              </>
+            ) : (
+              <input id="username" name="username" aria-label="Teléfono (8 dígitos)" placeholder="Teléfono (8 dígitos)" inputMode="tel" autoComplete="username" value={f.phone} onChange={set('phone')} required />
+            )}
             {mode === 'register' && (
               <input aria-label="Correo electrónico" placeholder="Correo electrónico" type="email" inputMode="email" autoComplete="email" maxLength={160} value={f.email} onChange={set('email')} required />
             )}
-            <PasswordInput
-              id="password" name="password"
-              aria-label={mode === 'forgot' ? 'Nueva contraseña' : 'Contraseña'} placeholder={mode === 'forgot' ? 'Nueva contraseña' : 'Contraseña'}
-              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-              value={f.password}
-              onChange={set('password')}
-              required
-            />
+            {mode !== 'forgot' && (
+              <PasswordInput
+                id="password" name="password"
+                aria-label="Contraseña" placeholder="Contraseña"
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                value={f.password}
+                onChange={set('password')}
+                required
+              />
+            )}
           </>
         )}
 
@@ -196,6 +211,14 @@ export default function Auth({ onAuth, notice }) {
               required
               autoFocus
             />
+            {/* Recuperar: la contraseña nueva se elige después de recibir el código */}
+            {mode === 'forgot' && (
+              <>
+                <PasswordInput id="password" name="password" aria-label="Nueva contraseña" placeholder="Nueva contraseña" autoComplete="new-password" value={f.password} onChange={set('password')} required />
+                <PasswordInput aria-label="Repite la contraseña nueva" placeholder="Repite la contraseña nueva" autoComplete="new-password" value={f.again} onChange={set('again')} required />
+                <p className="muted small">Mínimo 8 caracteres, no solo números ni algo muy común, y sin tu teléfono.</p>
+              </>
+            )}
             <div className="row between">
               <button type="button" className="link" onClick={() => { setStep(1); setInfo(''); setDevCode(''); }}>← Cambiar datos</button>
               <button type="button" className="link" disabled={wait > 0 || busy} onClick={resend}>
@@ -235,6 +258,9 @@ export default function Auth({ onAuth, notice }) {
             <button type="button" className="link" onClick={() => go('forgot')}>¿Olvidaste tu contraseña?</button>
             <button type="button" className="link" onClick={() => go('register')}>¿No tienes cuenta? Regístrate</button>
           </>
+        )}
+        {mode === 'forgot' && supportLink && (
+          <p className="muted small center">¿Ya no tienes acceso a tu correo? <a href={supportLink} target="_blank" rel="noreferrer">Escríbenos</a></p>
         )}
         {mode !== 'login' && !challenge && <button type="button" className="link" onClick={() => go('login')}>← Volver a entrar</button>}
         {mode === 'login' && install.canInstall && <button type="button" className="link" onClick={install.prompt}>📲 Instalar la app</button>}

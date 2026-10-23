@@ -131,16 +131,30 @@ app.post('/api/otp/send', otpLimiter, async (req, res) => {
 });
 
 // Recuperar contraseña: siempre responde igual, exista o no la cuenta (no revela qué teléfonos están registrados)
+// Recuperar la contraseña: la persona escribe su teléfono o su correo (`login`; `phone` es lo de antes).
+// Solo pasajeros y conductores: el personal pide ayuda al superadmin. Nunca se dice si la cuenta existe.
+async function accountFor(body) {
+  const raw = String(body?.login ?? body?.phone ?? '').trim();
+  if (raw.includes('@')) {
+    const email = normalizeEmail(raw);
+    if (!email) return { error: 'Escribe un correo válido o tu teléfono de 8 dígitos' };
+    const [rows] = await pool.query("SELECT * FROM users WHERE email = ? AND role IN ('passenger','driver') AND status <> 'blocked' AND deleted_at IS NULL", [email]);
+    return { user: rows[0] || null };
+  }
+  const phone = normalizePhone(raw);
+  if (!phone) return { error: 'Escribe tu teléfono de 8 dígitos o tu correo' };
+  const [rows] = await pool.query("SELECT * FROM users WHERE phone = ? AND role IN ('passenger','driver') AND status <> 'blocked' AND deleted_at IS NULL", [phone]);
+  return { user: rows[0] || null };
+}
+
 app.post('/api/password/forgot', otpLimiter, async (req, res) => {
-  const phone = normalizePhone(req.body?.phone);
-  if (!phone) return res.status(400).json({ error: 'Teléfono inválido (8 dígitos de Honduras)' });
-  // Las cuentas de administrador no se recuperan por SMS
-  const [rows] = await pool.query("SELECT id, email FROM users WHERE phone = ? AND role IN ('passenger','driver') AND status <> 'blocked' AND deleted_at IS NULL", [phone]);
+  const { user, error } = await accountFor(req.body);
+  if (error) return res.status(400).json({ error });
   let code = null;
   // El código va al correo registrado en la cuenta (o al SMS si ese canal está activo); una cuenta sin correo y sin SMS no puede recuperarse sola
-  if (rows[0] && (rows[0].email || OTP_CHANNELS.includes('sms'))) {
+  if (user && (user.email || OTP_CHANNELS.includes('sms'))) {
     try {
-      code = await sendCode(phone, 'reset', rows[0].email);
+      code = await sendCode(user.phone, 'reset', user.email);
     } catch (e) {
       return sendError(res, e);
     }
@@ -149,15 +163,16 @@ app.post('/api/password/forgot', otpLimiter, async (req, res) => {
 });
 
 app.post('/api/password/reset', otpLimiter, async (req, res) => {
-  const phone = normalizePhone(req.body?.phone);
+  const { user, error } = await accountFor(req.body);
+  if (error) return res.status(400).json({ error });
   const { code, password } = req.body || {};
-  const weak = phone ? checkPassword(password, { phone }) : 'Teléfono inválido (8 dígitos de Honduras)';
+  const weak = checkPassword(password, { phone: user?.phone });
   if (weak) return res.status(400).json({ error: weak });
-  const [rows] = await pool.query("SELECT id FROM users WHERE phone = ? AND role IN ('passenger','driver') AND status <> 'blocked' AND deleted_at IS NULL", [phone]);
-  if (!rows[0] || !(await consumeOtp(phone, 'reset', code))) return res.status(400).json({ error: 'Código incorrecto o vencido' });
-  // token_version + 1 cierra todas las sesiones abiertas con la contraseña anterior
-  await pool.query('UPDATE users SET password_hash = ?, token_version = token_version + 1 WHERE id = ?', [await bcrypt.hash(password, 10), rows[0].id]);
-  res.json({ ok: true });
+  if (!user || !(await consumeOtp(user.phone, 'reset', code))) return res.status(400).json({ error: 'Código incorrecto o vencido' });
+  // token_version + 1 cierra todas las sesiones abiertas con la contraseña anterior; esta queda abierta (entra directo)
+  await pool.query('UPDATE users SET password_hash = ?, must_change_password = 0, token_version = token_version + 1 WHERE id = ?', [await bcrypt.hash(password, 10), user.id]);
+  const [[u]] = await pool.query('SELECT * FROM users WHERE id = ?', [user.id]);
+  res.json({ ok: true, ...startSession(req, res, u), user: publicUser(u, false, await permsFor(u)) });
 });
 
 // Cambiar la contraseña conociendo la actual. Cierra las demás sesiones y devuelve un token nuevo para esta.
