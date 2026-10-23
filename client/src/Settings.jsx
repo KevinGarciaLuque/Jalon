@@ -97,6 +97,11 @@ export default function Settings({ call, onError }) {
         <span><b>PIN para iniciar el viaje</b>: el pasajero ve un PIN de 4 dígitos y se lo dice al conductor al subir; sin él no se puede iniciar el viaje. Así se confirma que se sube al carro correcto.</span>
       </label>
 
+      <label className="check">
+        <input type="checkbox" checked={s.ride_safety_checks !== '0'} onChange={set('ride_safety_checks')} />
+        <span><b>Preguntar «¿Todo bien?» durante el viaje</b> si el carro se desvía de la ruta o se queda detenido mucho tiempo. Si el pasajero pide ayuda o no responde en 2 minutos, se crea una alerta como la de emergencia.</span>
+      </label>
+
       <b>Mapa</b>
       <label className="check">
         <input type="checkbox" checked={s.map_rotation !== '0'} onChange={set('map_rotation')} />

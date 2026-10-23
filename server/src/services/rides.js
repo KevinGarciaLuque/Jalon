@@ -6,6 +6,7 @@ import { NEARBY_KM, ETA_EVERY_MS, SHOW_PARTNER_PHONES, REQUEST_TTL_MIN } from '.
 import { io } from '../app.js';
 import { drivers, passengers, openRides, declined, room } from '../live.js';
 import { push } from '../notify.js';
+import { openSafetyCheck } from './safety.js';
 
 export async function getRide(id) {
   const [rows] = await pool.query('SELECT * FROM rides WHERE id = ?', [id]);
@@ -43,6 +44,7 @@ export async function rideView(ride) {
     ...rest,
     pinRequired: !!start_pin, // el PIN lo ve solo el pasajero (GET /api/rides/:id/pin)
     pinLocked: Number(pin_attempts) >= PIN_TRIES,
+    safetyCheck: ride.status === 'started' ? await openSafetyCheck(ride.id) : null, // «¿Todo bien?» pendiente
     route: route_json ? JSON.parse(route_json) : null,
     passenger: byId[ride.passenger_id] || null,
     driver: ride.driver_id ? byId[ride.driver_id] : null,

@@ -10,6 +10,7 @@ import { remindOpenAlerts } from './services/sos.js';
 import { expireRentals } from './services/rentals.js';
 import { reconcileSessions, purgeTracks } from './services/activity.js';
 import { expireRequests } from './routes/recharges.js';
+import { escalateSafety } from './services/safety.js';
 
 // Las ofertas vencidas se revisan cada OFFER_SWEEP_MS (5 s por defecto)
 setInterval(() => expireOffers().catch(reportError), Number(process.env.OFFER_SWEEP_MS || 5000)).unref();
@@ -67,3 +68,6 @@ setInterval(expireRentalsNow, 10 * 60 * 1000).unref();
 
 // Recargas: la cuenta asignada a un conductor se oculta a las 24 horas si no subió el comprobante
 setInterval(() => expireRequests().catch(reportError), 10 * 60 * 1000).unref();
+
+// Viajes: si el pasajero no responde «¿Todo bien?» a tiempo, se avisa al personal como una emergencia
+setInterval(() => escalateSafety().catch(reportError), Number(process.env.SAFETY_SWEEP_MS || 15000)).unref();

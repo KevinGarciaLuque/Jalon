@@ -303,11 +303,12 @@ export default function Admin({ token, onGate, onSections }) {
       {alerts.map((a) => (
         <div className="sos-alert" key={a.id}>
           <div className="row between">
-            <b>🆘 EMERGENCIA · viaje #{a.ride_id}</b>
+            <b>🆘 {a.reason ? 'ALERTA' : 'EMERGENCIA'} · viaje #{a.ride_id}</b>
             <span>{new Date(a.created_at).toLocaleTimeString('es-HN')}</span>
           </div>
+          {a.reason && <div><b>{a.reason}</b></div>}
           <div>
-            Pidió ayuda: <b>{a.user_name}</b> ({a.user_role === 'driver' ? 'conductor' : 'pasajero'}) ·{' '}
+            {a.reason ? 'Pasajero' : 'Pidió ayuda'}: <b>{a.user_name}</b> ({a.user_role === 'driver' ? 'conductor' : 'pasajero'}) ·{' '}
             <a href={`tel:${a.user_phone}`}>{a.user_phone}</a>
           </div>
           <div>

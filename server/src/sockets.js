@@ -17,6 +17,7 @@ import { shareWithContacts } from './services/accounts.js';
 import { notifySos } from './services/sos.js';
 import { rentingNow } from './services/rentals.js';
 import { openSession, closeSession, recordPoint, forgetTrack } from './services/activity.js';
+import { checkSafety, answerSafety, forgetSafety } from './services/safety.js';
 import { readCookie, userFromToken } from './access.js';
 
 // «Mi ubicación» es como lo ve el pasajero; al conductor le sirve la dirección aproximada del punto.
@@ -130,7 +131,10 @@ io.on('connection', async (socket) => {
       io.to(room(ride.passenger_id)).emit('ride:driver_location', { lat, lng });
       sendEta(ride, { lat, lng }).catch(reportError); // sin esperar: el aviso de ubicación no depende de la ruta
       // Con el viaje en curso se guarda el camino real (para el historial, el recibo y los reclamos)
-      if (ride.status === 'started') recordPoint(ride.id, { lat, lng }).catch(reportError);
+      if (ride.status === 'started') {
+        recordPoint(ride.id, { lat, lng }).catch(reportError);
+        checkSafety(ride, { lat, lng }).catch(reportError); // ¿se desvió o lleva mucho detenido?
+      }
     });
 
     on('offer:make', async ({ rideId, price }) => {
@@ -202,7 +206,7 @@ io.on('connection', async (socket) => {
         const d = drivers.get(user.id);
         if (d?.lat != null) recordPoint(ride.id, { lat: d.lat, lng: d.lng }).catch(reportError); // primer punto del recorrido
       }
-      if (status === 'completed') forgetTrack(ride.id);
+      if (status === 'completed') { forgetTrack(ride.id); forgetSafety(ride.id); }
       ack?.({ ok: true });
       if (status === 'arrived') push(ride.passenger_id, { title: 'Tu conductor llegó', body: `${user.name} te espera · ${user.vehicle || ''} ${user.plate || ''}`.trim(), tag: `ride-${rideId}`, url: '/' });
       if (status === 'started') push(ride.passenger_id, { title: 'Tu viaje empezó', body: `Vas con ${user.name}${ride.dest_text ? ` a ${ride.dest_text}` : ''}. Puedes compartir tu viaje desde la app.`, tag: `ride-${rideId}`, url: '/' });
@@ -365,6 +369,9 @@ io.on('connection', async (socket) => {
   });
 
   // Botón de emergencia: registra la alerta para el administrador junto con la ubicación
+  // Respuesta al «¿Todo bien?» durante el viaje
+  on('safety:answer', async ({ eventId, answer } = {}, ack) => ack?.(await answerSafety(user, eventId, answer)));
+
   on('ride:sos', async (pos, ack) => {
     const ride = await activeRideFor(user);
     if (!ride || ride.status === 'requested') return ack?.({ error: 'Solo disponible durante un viaje' });

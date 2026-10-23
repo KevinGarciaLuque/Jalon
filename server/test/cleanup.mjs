@@ -29,6 +29,7 @@ if (ids.length) {
   for (const d of docs) fs.rmSync(path.join(process.cwd(), 'uploads', d.file), { force: true });
   await pool.query('DELETE FROM documents WHERE user_id IN (?)', [ids]);
   const own = 'SELECT id FROM rides WHERE passenger_id IN (?) OR driver_id IN (?)';
+  await pool.query(`DELETE FROM ride_safety_events WHERE ride_id IN (${own})`, [ids, ids]);
   await pool.query(`DELETE FROM alerts WHERE user_id IN (?) OR ride_id IN (${own})`, [ids, ids, ids]);
   await pool.query(`DELETE FROM ratings WHERE rater_id IN (?) OR ratee_id IN (?) OR ride_id IN (${own})`, [ids, ids, ids, ids]);
   await pool.query('DELETE FROM offers WHERE driver_id IN (?) OR ride_id IN (SELECT id FROM rides WHERE passenger_id IN (?) OR driver_id IN (?))', [ids, ids, ids]);

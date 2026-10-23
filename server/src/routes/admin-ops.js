@@ -239,7 +239,7 @@ app.post('/api/admin/reports/:id/resolve', staffOnly('alerts'), async (req, res)
 // Alertas de emergencia (botón SOS) con los datos de quienes viajan
 app.get('/api/admin/alerts', staffOnly('alerts'), async (_req, res) => {
   const [rows] = await pool.query(
-    `SELECT a.id, a.lat, a.lng, a.created_at, a.ride_id, r.status AS ride_status,
+    `SELECT a.id, a.lat, a.lng, a.created_at, a.ride_id, a.reason, r.status AS ride_status,
             u.name AS user_name, u.phone AS user_phone, u.role AS user_role,
             p.name AS passenger, p.phone AS passenger_phone,
             d.name AS driver, d.phone AS driver_phone, d.vehicle, d.plate

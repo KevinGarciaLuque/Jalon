@@ -595,6 +595,23 @@ await conn.query(`
 await addColumn('rides', 'start_pin', 'CHAR(4) NULL');
 await addColumn('rides', 'pin_attempts', 'TINYINT NOT NULL DEFAULT 0');
 
+// ---- Etapa 9.2: avisos automáticos durante el viaje (desvío de la ruta o mucho tiempo detenido) ----
+await conn.query(`
+  CREATE TABLE IF NOT EXISTS ride_safety_events (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    ride_id INT NOT NULL,
+    kind ENUM('deviation','stopped') NOT NULL,
+    lat DOUBLE NULL,
+    lng DOUBLE NULL,
+    answer ENUM('ok','help') NULL,
+    escalated_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    KEY by_ride (ride_id),
+    FOREIGN KEY (ride_id) REFERENCES rides(id)
+  )
+`);
+await addColumn('alerts', 'reason', 'VARCHAR(120) NULL'); // por qué se creó (vacío = botón de emergencia)
+
 // ---- Recargas por solicitud: el conductor pide, el personal le asigna una de las cuentas por 24 horas ----
 // (la cuenta ya no se muestra a todos: solo a quien la pidió, mientras le sirve)
 await conn.query(`
