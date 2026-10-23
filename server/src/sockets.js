@@ -18,6 +18,7 @@ import { notifySos } from './services/sos.js';
 import { rentingNow } from './services/rentals.js';
 import { openSession, closeSession, recordPoint, forgetTrack } from './services/activity.js';
 import { checkSafety, answerSafety, forgetSafety } from './services/safety.js';
+import { needsSelfie } from './routes/selfies.js';
 import { readCookie, userFromToken } from './access.js';
 
 // «Mi ubicación» es como lo ve el pasajero; al conductor le sirve la dirección aproximada del punto.
@@ -89,6 +90,8 @@ io.on('connection', async (socket) => {
         if (gate.blocked) return socket.emit('driver:denied', { status: 'balance', balance: gate.balance, min: gate.min });
         // Con un alquiler en curso (su carro está alquilado con él) no recibe viajes
         if (await rentingNow(user.id)) return socket.emit('driver:denied', { status: 'rental' });
+        // Cada cierto tiempo se toma una selfie para confirmar que es la persona aprobada (no alguien usando su cuenta)
+        if (await needsSelfie(user.id)) return socket.emit('driver:denied', { status: 'selfie' });
       }
       // Solo recibe solicitudes de la categoría de su vehículo (sin vehículo registrado cuenta como carro)
       const [[veh]] = await pool.query('SELECT category FROM vehicles WHERE driver_id = ?', [user.id]);

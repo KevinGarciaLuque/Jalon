@@ -102,6 +102,9 @@ export default function Settings({ call, onError }) {
         <span><b>Preguntar «¿Todo bien?» durante el viaje</b> si el carro se desvía de la ruta o se queda detenido mucho tiempo. Si el pasajero pide ayuda o no responde en 2 minutos, se crea una alerta como la de emergencia.</span>
       </label>
 
+      <label>Selfie del conductor para conectarse: cada cuántas horas (0 = no se pide)<input inputMode="numeric" value={s.driver_selfie_hours} onChange={set('driver_selfie_hours')} /></label>
+      <p className="muted small">Al ponerse disponible, el conductor se toma una selfie con la cámara frontal; la revisas en «Selfies» comparándola con su foto aprobada.</p>
+
       <b>Mapa</b>
       <label className="check">
         <input type="checkbox" checked={s.map_rotation !== '0'} onChange={set('map_rotation')} />

@@ -11,6 +11,7 @@ const Share = lazyPage(() => import('./Share.jsx'));
 import AdminRentals from './AdminRentals.jsx';
 import Permissions from './Permissions.jsx';
 import Metrics from './Metrics.jsx';
+import Selfies from './Selfies.jsx';
 import UserDetail, { TempPassword, ROLE_LABEL, STATUS_LABEL, ACTION_LABEL, detailText } from './UserDetail.jsx';
 
 const RIDE_STATUS = {
@@ -24,6 +25,7 @@ export const SECTIONS = {
   rides: { label: 'Viajes', icon: 'car', group: 'Operación', hint: 'Todos los viajes: en curso, terminados y cancelados.' },
   monitor: { label: 'Mapa en vivo', icon: 'map', group: 'Operación', hint: 'Dónde están ahora los conductores y los viajes.' },
   users: { label: 'Usuarios', icon: 'users', group: 'Operación', hint: 'Pasajeros y conductores: busca, revisa y aprueba.' },
+  selfies: { label: 'Selfies', icon: 'user', group: 'Operación', hint: 'Compara la selfie de cada conductor con su foto aprobada. Si no es la misma persona, se bloquea su cuenta.' },
   reports: { label: 'Reportes', icon: 'flag', group: 'Operación', hint: 'Problemas que reportaron pasajeros y conductores.' },
   topups: { label: 'Recargas', icon: 'wallet', group: 'Operación', hint: 'Solicitudes de recarga (asigna una cuenta) y comprobantes por aprobar.' },
   rentals: { label: 'Alquileres', icon: 'key', group: 'Operación', hint: 'Alquiler de carros por días.' },
@@ -121,10 +123,10 @@ export default function Admin({ token, onGate, onSections }) {
   const can = (p) => perms.includes(p);
 
   // Las secciones que esta persona puede ver, en el orden del menú, con lo que tienen pendiente
-  const badge = { users: can('users.manage') ? stats?.pendingDrivers : 0, reports: stats?.openReports, topups: (stats?.pendingTopups || 0) + (stats?.waitingRequests || 0) };
+  const badge = { users: can('users.manage') ? stats?.pendingDrivers : 0, selfies: stats?.waitingSelfies, reports: stats?.openReports, topups: (stats?.pendingTopups || 0) + (stats?.waitingRequests || 0) };
   const tabs = [
     can('metrics') && 'metrics',
-    'users', can('wallet') && 'topups', 'reports', 'rides', can('monitor') && 'monitor', can('rentals') && 'rentals',
+    'users', can('users.manage') && 'selfies', can('wallet') && 'topups', 'reports', 'rides', can('monitor') && 'monitor', can('rentals') && 'rentals',
     can('share') && 'share',
     can('settings') && 'settings', can('staff.manage') && 'staff', can('staff.manage') && 'perms', can('audit') && 'audit', can('settings') && 'system',
   ].filter(Boolean);
@@ -461,6 +463,7 @@ export default function Admin({ token, onGate, onSections }) {
 
       {current === 'topups' && <Topups topups={topups} status={topStatus} setStatus={setTopStatus} call={call} token={token} reload={load} onError={setError} waiting={stats?.waitingRequests || 0} canSettings={can('settings')} />}
       {current === 'settings' && <Settings call={call} onError={setError} />}
+      {current === 'selfies' && can('users.manage') && <Selfies call={call} onError={setError} reload={load} />}
       {current === 'system' && can('settings') && <Suspense fallback={<Loading />}><System call={call} onError={setError} /></Suspense>}
       {current === 'share' && can('share') && <Suspense fallback={<Loading />}><Share call={call} onError={setError} /></Suspense>}
       {current === 'rentals' && can('rentals') && <AdminRentals call={call} token={token} can={can} onError={setError} />}

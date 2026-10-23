@@ -11,6 +11,7 @@ import { expireRentals } from './services/rentals.js';
 import { reconcileSessions, purgeTracks } from './services/activity.js';
 import { expireRequests } from './routes/recharges.js';
 import { escalateSafety } from './services/safety.js';
+import { purgeSelfies } from './routes/selfies.js';
 
 // Las ofertas vencidas se revisan cada OFFER_SWEEP_MS (5 s por defecto)
 setInterval(() => expireOffers().catch(reportError), Number(process.env.OFFER_SWEEP_MS || 5000)).unref();
@@ -71,3 +72,6 @@ setInterval(() => expireRequests().catch(reportError), 10 * 60 * 1000).unref();
 
 // Viajes: si el pasajero no responde «¿Todo bien?» a tiempo, se avisa al personal como una emergencia
 setInterval(() => escalateSafety().catch(reportError), Number(process.env.SAFETY_SWEEP_MS || 15000)).unref();
+
+// Selfies de los conductores: se borran a los 30 días
+setInterval(() => purgeSelfies().catch(reportError), 6 * 3600 * 1000).unref();

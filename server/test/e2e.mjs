@@ -196,7 +196,20 @@ try {
 
   check('conductor ve su pantalla', await see(driver, 'Ponerme disponible'));
   await click(driver, 'Ponerme disponible');
+  // Selfie para conectarse (cámara frontal): sin ella no queda disponible
+  check('al conectarse le pide una selfie', await see(driver, 'Tómate una selfie para conectarte'));
+  await (await driver.$('.selfie-card input[type=file]')).uploadFile(FIXTURE_PATH);
+  await driver.waitForSelector('.selfie-preview', { timeout: 10000 });
+  await new Promise((r) => setTimeout(r, 400)); // que termine de aparecer
+  await shot(driver, '1b-selfie');
+  await click(driver, 'Enviar y ponerme disponible');
   check('conductor queda en línea', await see(driver, 'Solicitudes cercanas'));
+  // El personal la compara con su foto aprobada
+  await section(admin, 'Selfies');
+  check('el personal ve la selfie junto a la foto aprobada', !!(await admin.waitForSelector('.selfie-pair img', { timeout: 15000 }).catch(() => null)) && (await see(admin, 'Foto aprobada')));
+  await shot(admin, '1c-admin-selfie');
+  await click(admin, 'Es la misma persona');
+  check('la marca como «coincide»', await admin.waitForFunction(() => !document.body.innerText.includes('Es la misma persona'), { timeout: 15000 }).then(() => true, () => false));
 
   check('pasajero ve al conductor libre en el mapa', await see(pass, '1 conductor de carro cerca', 20000));
 

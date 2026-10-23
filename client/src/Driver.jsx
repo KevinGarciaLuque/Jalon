@@ -8,6 +8,7 @@ import Earnings from './Earnings.jsx';
 import { Avatar, Chat, PriceStepper, PushToggle, Rate, SafetyBar, Stars, TimeRing, Grab } from './components.jsx';
 import ReportForm from './ReportForm.jsx';
 import DriverDocs from './DriverDocs.jsx';
+import DriverSelfie from './DriverSelfie.jsx';
 
 function Recenter({ pos }) {
   const map = useMap();
@@ -51,6 +52,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
   const [showEarnings, setShowEarnings] = useState(false); // mis ganancias por día, semana o mes
   const [menuNote, setMenuNote] = useState(''); // por qué no se abrió algo del menú
   const [pin, setPin] = useState(''); // el PIN que le dice el pasajero para iniciar el viaje
+  const [selfie, setSelfie] = useState(false); // le toca tomarse una selfie para conectarse
   const [pinError, setPinError] = useState('');
   const [renting, setRenting] = useState(false); // tiene un alquiler en curso: no recibe viajes
   const posRef = useRef(pos);
@@ -88,7 +90,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
     // Sin saldo suficiente el servidor no lo deja ponerse disponible: se abre la pantalla para recargar
     socket.on('driver:denied', (d) => {
       setOnline(false);
-      if (d?.status === 'balance') { loadWallet(); setShowWallet(true); } else if (d?.status === 'rental') setRenting(true); else setNotApproved(true);
+      if (d?.status === 'balance') { loadWallet(); setShowWallet(true); } else if (d?.status === 'rental') setRenting(true); else if (d?.status === 'selfie') setSelfie(true); else setNotApproved(true);
     });
     socket.on('wallet:update', loadWallet);
     socket.on('wallet:low', () => { setOnline(false); loadWallet(); });
@@ -199,6 +201,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
             {ride?.status === 'completed' && <button onClick={() => setReporting(true)}>⚠ Reportar un problema con este viaje</button>}
             {showWallet && wallet && <DriverWallet wallet={wallet} reload={loadWallet} onClose={() => setShowWallet(false)} />}
             {showRental && <DriverRental token={token} socket={socket} onClose={() => { setShowRental(false); setRenting(false); }} />}
+            {selfie && <DriverSelfie onClose={() => setSelfie(false)} onDone={() => { setSelfie(false); if (pos) { socket.emit('driver:online', pos); setOnline(true); } }} />}
             {menuNote && <div className="hint" role="status">{menuNote} <button className="link" onClick={() => setMenuNote('')}>Entendido</button></div>}
             {renting && <div className="hint">Tienes un alquiler en curso: no recibes viajes hasta terminarlo en «Alquiler de mi carro».</div>}
             {reporting && ride && <ReportForm rideId={ride.id} token={token} onClose={() => setReporting(false)} />}

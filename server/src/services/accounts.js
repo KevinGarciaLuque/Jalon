@@ -16,6 +16,9 @@ export async function anonymizeUser(t) {
   const [docs] = await pool.query('SELECT file FROM documents WHERE user_id = ?', [t.id]);
   for (const d of docs) await fs.rm(path.join(UPLOADS, d.file), { force: true });
   await pool.query('DELETE FROM documents WHERE user_id = ?', [t.id]);
+  const [selfies] = await pool.query('SELECT file FROM driver_selfies WHERE driver_id = ?', [t.id]);
+  for (const s of selfies) await fs.rm(path.join(UPLOADS, s.file), { force: true });
+  await pool.query('DELETE FROM driver_selfies WHERE driver_id = ?', [t.id]);
   await pool.query('DELETE FROM passkeys WHERE user_id = ?', [t.id]); // sus llaves de Face ID / huella
   await pool.query('DELETE FROM otp_codes WHERE phone = ?', [t.phone]);
   await pool.query('UPDATE ratings SET comment = NULL WHERE rater_id = ?', [t.id]);

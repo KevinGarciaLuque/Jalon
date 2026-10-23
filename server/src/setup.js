@@ -612,6 +612,22 @@ await conn.query(`
 `);
 await addColumn('alerts', 'reason', 'VARCHAR(120) NULL'); // por qué se creó (vacío = botón de emergencia)
 
+// ---- Etapa 9.3: selfie del conductor al conectarse (se borran a los 30 días) ----
+await conn.query(`
+  CREATE TABLE IF NOT EXISTS driver_selfies (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    driver_id INT NOT NULL,
+    file VARCHAR(100) NOT NULL,
+    status ENUM('pending','ok','mismatch') NOT NULL DEFAULT 'pending',
+    reviewed_by INT NULL,
+    reviewed_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    KEY by_driver (driver_id),
+    KEY by_status (status),
+    FOREIGN KEY (driver_id) REFERENCES users(id)
+  )
+`);
+
 // ---- Recargas por solicitud: el conductor pide, el personal le asigna una de las cuentas por 24 horas ----
 // (la cuenta ya no se muestra a todos: solo a quien la pidió, mientras le sirve)
 await conn.query(`

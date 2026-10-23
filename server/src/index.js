@@ -23,6 +23,7 @@ import './routes/share.js';
 import './routes/notifications.js';
 import './routes/passkeys.js';
 import './routes/recharges.js';
+import './routes/selfies.js';
 import './sockets.js';
 import './jobs.js';
 

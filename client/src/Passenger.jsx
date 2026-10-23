@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import { useGeo, apiGet, apiPost, lempiras, minutes, useChat, useNow, CATEGORIES, CATEGORY_LABEL, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
 import { CarMarker, FitTo, MapControls, RouteLine, icons, rotateOptions, showAt } from './mapParts.jsx';
@@ -40,7 +41,7 @@ function SafetyCheck({ check, socket, onDone }) {
     setBusy(true);
     socket.emit('safety:answer', { eventId: check.eventId, answer: a }, () => { setBusy(false); if (a === 'help') setSent('help'); else onDone(); });
   };
-  return (
+  return createPortal(
     <div className="offer-pop safety-pop" role="alertdialog" aria-modal="true" aria-labelledby="safety-title">
       <div className="card">
         <b id="safety-title">{sent ? 'Avisamos al equipo de Ktracho GO' : '¿Todo bien en tu viaje?'}</b>
@@ -57,7 +58,8 @@ function SafetyCheck({ check, socket, onDone }) {
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -136,7 +138,10 @@ export default function Passenger({ socket, token, userId, perms = [] }) {
     // «¿Todo bien?» durante el viaje (y se cierra si respondió desde otro aparato o ya se avisó al equipo)
     socket.on('safety:check', (c) => setSafety(c));
     socket.on('safety:closed', ({ eventId, answer }) => {
-      if (answer === 'help') return; // el aviso queda abierto mostrando «Avisamos al equipo» setSafety((cur) => (cur?.eventId === eventId ? null : cur)); setRide((r) => (r?.safetyCheck?.eventId === eventId ? { ...r, safetyCheck: null } : r)); });
+      if (answer === 'help') return; // el aviso queda abierto mostrando «Avisamos al equipo»
+      setSafety((cur) => (cur?.eventId === eventId ? null : cur));
+      setRide((r) => (r?.safetyCheck?.eventId === eventId ? { ...r, safetyCheck: null } : r));
+    });
     // El conductor ya no está disponible: se quita su oferta
     socket.on('offer:invalid', ({ offerId }) => {
       setOffers((cur) => cur.filter((x) => x.id !== offerId));
