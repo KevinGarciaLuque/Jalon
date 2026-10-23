@@ -620,3 +620,61 @@ header .bell-count { top: -3px; right: -3px; box-shadow: 0 0 0 2px var(--card); 
 .offer-pop .card { width: min(440px, 100%); display: flex; flex-direction: column; gap: 10px; animation: rate-pop var(--slow) ease-out; }
 .offer-pop .card p { margin: 0; }
 @media (min-width: 768px) { .offer-pop { place-items: center; } }
+
+/* ---- Encabezado estilo panel profesional: ☰ y marca; ✨, campanita y avatar ---- */
+header { gap: 8px; background: linear-gradient(135deg, var(--card), var(--bg)); border-bottom: none; box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--brand) 65%, transparent), 0 10px 18px -14px var(--brand); position: relative; z-index: 2; }
+.menu-btn { border-radius: 12px; }
+.news-btn { position: relative; width: 44px; height: 44px; min-height: 0; padding: 0; display: grid; place-items: center; border-radius: 50%; border: 1.5px solid color-mix(in srgb, var(--mango) 70%, transparent); background: color-mix(in srgb, var(--mango) 12%, var(--bg)); color: var(--mango); }
+.news-btn .news-dot { top: 5px; right: 5px; background: var(--mango); box-shadow: 0 0 0 2px var(--card); }
+.news-btn.fresh { animation: news-glow 2.4s ease-in-out infinite; }
+@keyframes news-glow { 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--mango) 22%, transparent); } }
+.avatar-btn { width: 44px; height: 44px; min-height: 0; padding: 0; border: none; background: none; border-radius: 50%; display: grid; place-items: center; }
+.avatar-ring { display: inline-grid; place-items: center; padding: 2px; border-radius: 50%; background: linear-gradient(135deg, var(--brand), color-mix(in srgb, var(--brand) 40%, var(--mango))); flex: none; }
+.avatar-ring .avatar { width: 38px; height: 38px; font-size: 14px; background: var(--card); box-shadow: 0 0 0 2px var(--card); }
+.avatar-ring.lg { padding: 3px; }
+.avatar-ring.lg .avatar { width: 84px; height: 84px; font-size: 28px; box-shadow: 0 0 0 3px var(--card); }
+@media (max-width: 400px) {
+  header { gap: 6px; padding-left: max(10px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right)); }
+  header .bell-btn, .menu-btn, .news-btn, .avatar-btn { width: 40px; height: 40px; }
+  .avatar-ring .avatar { width: 34px; height: 34px; font-size: 13px; }
+  header .brand img { width: 34px; height: 30px; }
+  header .brand b { font-size: 18px; }
+}
+@media (max-width: 352px) { header .brand b { display: none; } }
+@media (prefers-reduced-motion: reduce) { .news-btn.fresh { animation: none; } }
+
+/* Tarjeta del avatar: Mi perfil, Ayuda y soporte, Cerrar sesión */
+.pop-wrap { position: fixed; inset: 0; z-index: 4400; }
+.profile-pop { position: fixed; right: max(12px, env(safe-area-inset-right)); width: min(340px, calc(100% - 24px)); background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 18px 40px rgba(0, 0, 0, .35); overflow: hidden; animation: pop-in var(--fast) ease-out; transform-origin: top right; }
+@keyframes pop-in { from { opacity: 0; transform: translateY(-6px) scale(.97); } }
+.profile-card { display: flex; align-items: center; gap: 14px; padding: 18px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--brand) 6%, var(--card)); }
+.profile-card .avatar-ring .avatar { width: 52px; height: 52px; font-size: 18px; }
+.profile-who { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.profile-who b { font-family: var(--font-display); font-size: 18px; line-height: 1.2; overflow-wrap: anywhere; }
+.role-tag { align-self: flex-start; margin-top: 3px; font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--brand); background: var(--brand-soft); border-radius: 6px; padding: 3px 8px; }
+.profile-pop [role="menuitem"] { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 52px; text-align: left; border: none; border-radius: 0; background: none; padding: 0 20px; font-size: 16px; font-weight: 500; color: var(--text); }
+.profile-pop [role="menuitem"] .icon { color: var(--muted); }
+.profile-pop [role="menuitem"]:hover { background: var(--bg); }
+.profile-pop [role="menuitem"]:active { transform: none; background: var(--line); }
+.profile-pop hr { border: none; border-top: 1px solid var(--line); margin: 4px 18px; }
+.profile-pop .danger-item, .profile-pop .danger-item .icon { color: var(--danger); }
+
+/* Menú lateral: tu perfil al centro, secciones con título y la sección abierta en un recuadro */
+.drawer-profile { flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 8px 18px 18px; }
+.drawer-profile b { font-family: var(--font-display); font-size: 20px; line-height: 1.2; margin-top: 6px; overflow-wrap: anywhere; }
+.drawer-role { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.drawer-rule { width: 44px; height: 3px; border-radius: 3px; background: var(--brand); opacity: .8; margin-top: 8px; }
+.sidebar .drawer-profile { padding-top: 22px; }
+.drawer-list button, .sidebar .drawer-group .drawer-list button { margin: 1px 10px; width: calc(100% - 20px); border-radius: 12px; padding: 0 14px; }
+.drawer-list button.on { box-shadow: inset 4px 0 0 var(--brand); }
+.drawer-foot { flex-direction: row; justify-content: flex-start; gap: 8px; padding: 14px 20px 6px; color: var(--muted); font-size: 13px; }
+.drawer-foot .icon { color: var(--brand); }
+
+/* Ayuda y soporte */
+.help-link { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-1); color: var(--text); text-decoration: none; font-weight: 600; }
+.overlay a.help-link:not(.primary) { color: var(--text); }
+.help-link.primary { justify-content: center; color: var(--on-brand); }
+.req > button:has(> .icon) { display: flex; align-items: center; justify-content: center; gap: 8px; }
+/* El anillo de color del avatar se ve alrededor (el borde interior separa la foto/iniciales del anillo) */
+.avatar-ring .avatar { box-shadow: none; border: 2px solid var(--card); }
+.avatar-ring.lg .avatar { box-shadow: none; border-width: 3px; }

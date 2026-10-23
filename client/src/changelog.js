@@ -3,6 +3,18 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-22-encabezado',
+    date: '2026-10-22',
+    title: 'Encabezado nuevo',
+    for: ['all'],
+    items: [
+      'Arriba a la derecha: ✨ Novedades (brilla cuando hay algo nuevo), la campanita y tu foto de perfil.',
+      'Al tocar tu foto ves tu tarjeta con Mi perfil, Ayuda y soporte y Cerrar sesión.',
+      'Ayuda y soporte reúne cómo contactarnos, cómo reportar un problema de un viaje y los Términos y la Privacidad.',
+      'El menú ☰ muestra tu perfil al centro, tus secciones y, abajo, la versión de la app que tienes.',
+    ],
+  },
+  {
     id: '2026-10-22-face-id',
     date: '2026-10-22',
     title: 'Entra con Face ID o tu huella',

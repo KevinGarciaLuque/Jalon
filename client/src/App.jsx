@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import News, { useNews } from './News.jsx';
 import Bell from './Bell.jsx';
-import Menu from './Menu.jsx';
+import Menu, { HelpPanel, NewsButton, ProfileMenu } from './Menu.jsx';
 import { Brand, Loading } from './components.jsx';
 import { apiGet, apiPost, authFetch, API, lazyPage } from './lib.js';
 
@@ -47,6 +47,7 @@ export default function App() {
   const [showHistory, setShowHistory] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
   const [showNews, setShowNews] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [adminNav, setAdminNav] = useState({ sections: null, current: null }); // secciones del panel para el menú
   const [pkOffer, setPkOffer] = useState(false); // tras entrar con la contraseña se ofrece Face ID / huella
   const [wallet, setWallet] = useState(null); // saldo del conductor para el menú (si la comisión está activa)
@@ -141,6 +142,7 @@ export default function App() {
   // Lo que se toca en el menú: aquí se abren historial, cuenta, novedades y la campanita; lo demás lo atiende su pantalla
   function openFromMenu(target) {
     if (target === 'account') return setShowAccount(true);
+    if (target === 'help') return setShowHelp(true);
     if (target === 'news') { setShowNews(true); markSeen(); return; }
     if (target === 'bell') return window.dispatchEvent(new Event('ktracho:bell'));
     goTo(target.replace(/^section:/, '')); // una sección del panel
@@ -151,6 +153,7 @@ export default function App() {
   function goTo(target) {
     setShowNews(false);
     setShowAccount(false);
+    setShowHelp(false);
     if (target === 'history') return setShowHistory(true);
     setShowHistory(false);
     if (target) window.dispatchEvent(new CustomEvent('ktracho:go', { detail: target }));
@@ -165,19 +168,23 @@ export default function App() {
   }
 
   const menuProps = session && { user: { ...session.user, status: accountStatus }, unseen, hasBell, go: openFromMenu, onLogout: () => logout(), sections: adminNav.sections, current: adminNav.current, wallet };
+  const locked = !!session?.user.mustChangePassword; // con contraseña temporal solo se puede cambiarla o salir
 
   if (!session) return <Suspense fallback={<Loading />}><Auth onAuth={onAuth} notice={notice} /></Suspense>;
 
   return (
     <div className="app">
-      {/* Encabezado limpio: el menú ☰ y la marca a la izquierda, la campanita a la derecha (lo demás está en el menú) */}
+      {/* Encabezado: ☰ y la marca a la izquierda; ✨ Novedades, la campanita y tu avatar (Mi perfil, Ayuda, Cerrar sesión) a la derecha */}
       <header>
-        {!session.user.mustChangePassword && !pinned && <Menu {...menuProps} />}
+        {!locked && !pinned && <Menu {...menuProps} />}
         <Brand />
         <span className="hdr-space" />
         {/* La campanita espera a que la sesión esté en la cookie (las de antes de la cookie se pasan al abrir la app) */}
+        {!locked && <NewsButton unseen={unseen} onOpen={() => openFromMenu('news')} />}
         {hasBell && <Bell socket={staff ? null : socket} onGo={goTo} />}
-        {session.user.mustChangePassword && <button className="link" onClick={() => logout()}>Salir</button>}
+        {locked
+          ? <button className="link" onClick={() => logout()}>Salir</button>
+          : <ProfileMenu user={menuProps.user} go={openFromMenu} onLogout={() => logout()} />}
       </header>
       {connError && <div className="banner">{connError}</div>}
       <Suspense fallback={<Loading />}>
@@ -219,6 +226,7 @@ export default function App() {
         <PasskeyOffer userId={session.user.id} onClose={() => setPkOffer(false)} />
       )}
       {showNews && <News news={news} onClose={() => setShowNews(false)} />}
+      {showHelp && <HelpPanel user={session.user} onClose={() => setShowHelp(false)} onHistory={() => goTo('history')} />}
       {showHistory && <History token={session.token} role={session.user.role} onClose={() => setShowHistory(false)} />}
       </Suspense>
     </div>

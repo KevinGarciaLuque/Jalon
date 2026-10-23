@@ -48,31 +48,25 @@ try {
   check('la llave quedó guardada en el servidor', n.n === 1);
 
   // Mi cuenta muestra el aparato
-  await (await page.waitForSelector('button.menu-btn')).evaluate((b) => b.click());
-  await page.waitForSelector('.drawer');
-  await wait(400); // que termine de entrar el menú
-  await clickText(page, '.drawer button', 'Mi cuenta');
+  await (await page.waitForSelector('button.avatar-btn')).evaluate((b) => b.click());
+  await clickText(page, '.profile-pop [role="menuitem"]', 'Mi perfil');
   check('Mi cuenta muestra el aparato con Face ID / huella', !!(await page.waitForSelector('[aria-labelledby="pk-title"] .row', { timeout: 15000 }).catch(() => null)) && (await page.$$eval('[aria-labelledby="pk-title"] .row', (rs) => rs.length)) === 1);
   await wait(400);
   await shot(page, 'pk-2-mi-cuenta');
 
   // Salir y volver a entrar solo con Face ID
   await clickText(page, '.overlay button', 'Cerrar ✕');
-  await (await page.waitForSelector('button.menu-btn')).evaluate((b) => b.click());
-  await page.waitForSelector('.drawer');
-  await wait(400);
-  await page.click('.drawer-logout');
+  await (await page.waitForSelector('button.avatar-btn')).evaluate((b) => b.click());
+  await clickText(page, '.profile-pop [role="menuitem"]', 'Cerrar sesión');
   await page.waitForSelector('.passkey-btn', { timeout: 15000 });
   await page.click('.passkey-btn');
-  check('entra con Face ID / huella sin escribir la contraseña', !!(await page.waitForSelector('button.menu-btn', { timeout: 15000 }).catch(() => null)));
+  check('entra con Face ID / huella sin escribir la contraseña', !!(await page.waitForSelector('button.avatar-btn', { timeout: 15000 }).catch(() => null)));
   await wait(1500);
   check('al entrar con Face ID no vuelve a ofrecer activarlo', !(await page.$('.offer-pop')));
 
   // Quitar el aparato desde Mi cuenta
-  await (await page.waitForSelector('button.menu-btn')).evaluate((b) => b.click());
-  await page.waitForSelector('.drawer');
-  await wait(400); // que termine de entrar el menú
-  await clickText(page, '.drawer button', 'Mi cuenta');
+  await (await page.waitForSelector('button.avatar-btn')).evaluate((b) => b.click());
+  await clickText(page, '.profile-pop [role="menuitem"]', 'Mi perfil');
   await clickText(page, '[aria-labelledby="pk-title"] button', 'Quitar');
   check('se puede quitar desde Mi cuenta', !!(await page.waitForSelector('[aria-labelledby="pk-title"] ::-p-text(Todavía no lo tienes activado)', { timeout: 15000 }).catch(() => null)));
 } catch (e) {

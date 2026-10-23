@@ -86,6 +86,12 @@ const sectionsOf = async (page) => {
   }
   return list;
 };
+// Mi perfil, Ayuda y soporte y Cerrar sesión están en el menú del avatar (arriba a la derecha)
+const profile = async (page, item) => {
+  await settled(page);
+  await (await page.waitForSelector('button.avatar-btn', { timeout: 15000 })).evaluate((b) => b.click());
+  await (await page.waitForSelector(`.profile-pop ::-p-text(${item})`, { timeout: 5000 })).click();
+};
 const entered = (page) => page.waitForSelector('button.menu-btn', { timeout: 15000 }).then(() => true, () => false);
 const see = (page, text, timeout = 15000) =>
   page.waitForSelector(`::-p-text(${text})`, { timeout }).then(() => true, () => false);
@@ -147,7 +153,7 @@ try {
   await legal.close();
 
   // ---- Cambiar la contraseña desde Mi cuenta ----
-  await menu(pass, 'Mi cuenta');
+  await profile(pass, 'Mi perfil');
   check('se abre Mi cuenta', await see(pass, 'Mi cuenta'));
   await pass.waitForSelector('input[placeholder^="Nombre (ej."]'); // aparece cuando termina de cargar la lista de contactos
   await pass.type('input[placeholder^="Nombre (ej."]', 'Mamá');
@@ -417,7 +423,7 @@ try {
 
   // Volver a entrar: ahora pide el segundo paso (se usa un código de respaldo porque el de la app ya se usó al activarla)
   await click(staffPage, 'Cerrar ✕'); // la ficha del usuario sigue abierta y tapa el menú
-  await menu(staffPage, 'Cerrar sesión');
+  await profile(staffPage, 'Cerrar sesión');
   await staffPage.type('input[placeholder^="Teléfono"]', staffPhone);
   await staffPage.type('input[placeholder="Contraseña"]', 'soporte-clave-9');
   await click(staffPage, 'Entrar');
@@ -457,7 +463,7 @@ try {
 
   // ---- Recuperar contraseña por pantalla ----
   await click(pass, 'Cerrar ✕');
-  await menu(pass, 'Cerrar sesión');
+  await profile(pass, 'Cerrar sesión');
   await click(pass, '¿Olvidaste tu contraseña?');
   await pass.type('input[placeholder^="Teléfono"]', passPhone);
   await pass.type('input[placeholder="Nueva contraseña"]', 'clave-nueva-9');

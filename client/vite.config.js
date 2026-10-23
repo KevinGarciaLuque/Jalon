@@ -17,5 +17,5 @@ function versionFile() {
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), versionFile()],
-  define: { __BUILD_ID__: JSON.stringify(BUILD_ID) },
+  define: { __BUILD_ID__: JSON.stringify(BUILD_ID), __BUILD_DATE__: JSON.stringify(new Date().toISOString()) },
 })

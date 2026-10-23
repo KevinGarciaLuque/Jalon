@@ -28,6 +28,11 @@ const PATHS = {
   badge: 'M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3zM9 12l2 2 4-4',
   lock: 'M6 11h12v9H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3',
   list: 'M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01',
+  help: 'M4 14v-2a8 8 0 0 1 16 0v2M4 14a2 2 0 0 1 2-2h1v6H6a2 2 0 0 1-2-2v-2zM20 14a2 2 0 0 0-2-2h-1v6h1a2 2 0 0 0 2-2v-2zM17 18c0 1.7-1.8 3-5 3',
+  shield: 'M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z',
+  mail: 'M4 6h16v12H4zM4 7l8 6 8-6',
+  chat: 'M5 19l1.5-3.5A7.5 7.5 0 1 1 9 18.6L5 19z',
+  doc: 'M7 3h7l4 4v14H7zM14 3v4h4M10 12h5M10 16h5',
 };
 export function Icon({ name, size = 22 }) {
   return (
@@ -40,13 +45,14 @@ export function Icon({ name, size = 22 }) {
 const ROLE_NAME = { passenger: 'Pasajero', driver: 'Conductor', superadmin: 'Superadministrador', admin: 'Administrador', support: 'Soporte' };
 const STAFF = ['superadmin', 'admin', 'support'];
 const CLOSE_MS = 220; // lo que dura la salida (igual que en el CSS)
+const BUILD_DATE = new Date(__BUILD_DATE__).toLocaleDateString('es-HN', { day: 'numeric', month: 'short', year: 'numeric' });
 
-// El botón ☰ del encabezado y el menú que sale de la izquierda (como inDrive).
-// `go(target)`: abre lo que se tocó; `unseen`: hay novedades sin ver (punto verde).
+// El botón ☰ del encabezado y el menú que sale de la izquierda (como inDrive), con las secciones.
+// `go(target)`: abre lo que se tocó. Novedades, Mi perfil y Cerrar sesión están en el encabezado (✨ y el avatar).
 // Personal: `sections` son las secciones del panel que puede ver (con sus pendientes) y `current` la que está abierta.
 // `pinned`: en computadora el menú del personal queda fijo a la izquierda, sin botón ☰.
 // `wallet`: saldo del conductor ({ balance, low }) cuando la comisión está activa.
-export default function Menu({ user, unseen, hasBell, go, onLogout, sections, current, wallet, pinned = false }) {
+export default function Menu({ user, hasBell, go, sections, current, wallet, pinned = false }) {
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
   const [drag, setDrag] = useState(0); // cuánto se arrastró hacia la izquierda para cerrarlo (negativo)
@@ -100,8 +106,6 @@ export default function Menu({ user, unseen, hasBell, go, onLogout, sections, cu
     hasBell && { key: 'bell', icon: 'bell', label: 'Notificaciones' },
     user.role === 'driver' && user.status === 'active' && { key: 'earnings', icon: 'earnings', label: 'Mis ganancias' },
     user.role === 'driver' && user.status === 'active' && perms.includes('rent.offer') && { key: 'rental', icon: 'key', label: 'Alquiler de mi carro' },
-    { key: 'news', icon: 'news', label: 'Novedades', badge: unseen ? 'Nuevo' : '' },
-    { key: 'account', icon: 'user', label: 'Mi cuenta' },
   ].filter(Boolean);
   // Secciones del panel agrupadas (Operación, Crecimiento, Administración)
   const groups = [];
@@ -129,14 +133,13 @@ export default function Menu({ user, unseen, hasBell, go, onLogout, sections, cu
           <button className="drawer-close" aria-label="Cerrar menú" onClick={() => close()}><Icon name="close" /></button>
         </div>
       )}
-      <button className="drawer-profile" onClick={pick('account')}>
-        <Avatar name={user.name} />
-        <span className="drawer-who">
-          <b>{user.name}</b>
-          <span className="muted small">{ROLE_NAME[user.role]}</span>
-          {!staff && user.rating?.count > 0 && <span className="small"><Stars rating={user.rating} /></span>}
-        </span>
-        <Icon name="chevron" size={18} />
+      {/* Quién eres, al centro (tocarlo abre Mi perfil) */}
+      <button className="drawer-profile" onClick={pick('account')} aria-label={`Mi perfil: ${user.name}`}>
+        <span className="avatar-ring lg"><Avatar name={user.name} /></span>
+        <b>{user.name}</b>
+        <span className="drawer-role">{ROLE_NAME[user.role]}</span>
+        {!staff && user.rating?.count > 0 && <span className="small"><Stars rating={user.rating} /></span>}
+        <i className="drawer-rule" aria-hidden="true" />
       </button>
       {groups.map((g) => (
         <div key={g.name} className="drawer-group">
@@ -144,8 +147,8 @@ export default function Menu({ user, unseen, hasBell, go, onLogout, sections, cu
           <ul className="drawer-list">{g.list.map((sct) => row({ ...sct, target: `section:${sct.key}` }, sct.key === current))}</ul>
         </div>
       ))}
-      <div className={groups.length ? 'drawer-group' : 'drawer-group plain'}>
-        {groups.length > 0 && <h3>Tu cuenta</h3>}
+      <div className="drawer-group plain">
+        <h3>{staff ? 'General' : 'Mi cuenta'}</h3>
         <ul className="drawer-list">
           {items.map((it) => row(it))}
           {(install.canInstall || install.ios) && (
@@ -158,22 +161,22 @@ export default function Menu({ user, unseen, hasBell, go, onLogout, sections, cu
           )}
         </ul>
       </div>
+      {/* Qué versión tiene este aparato (la fecha en que se publicó) */}
       <div className="drawer-foot">
-        <button className="drawer-logout" onClick={() => close(onLogout)}><Icon name="logout" /><span>Cerrar sesión</span></button>
-        <span className="muted small">Ktracho GO</span>
+        <Icon name="shield" size={16} />
+        <span>Ktracho GO · versión del {BUILD_DATE}</span>
       </div>
     </>
   );
 
   if (pinned) return <nav className="sidebar" aria-label="Menú del panel">{content}</nav>;
 
-  const extras = [pendingTotal ? `${pendingTotal} pendiente(s)` : '', unseen ? 'hay novedades' : ''].filter(Boolean);
-  const label = extras.length ? `Menú (${extras.join(', ')})` : 'Menú';
+  const label = pendingTotal ? `Menú (${pendingTotal} pendiente(s))` : 'Menú';
   return (
     <>
       <button ref={btn} className="menu-btn" aria-label={label} aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen(true)}>
         <Icon name="menu" />
-        {pendingTotal > 0 ? <b className="bell-count" aria-hidden="true">{pendingTotal > 99 ? '99+' : pendingTotal}</b> : unseen && <i className="news-dot" />}
+        {pendingTotal > 0 && <b className="bell-count" aria-hidden="true">{pendingTotal > 99 ? '99+' : pendingTotal}</b>}
       </button>
       {open && createPortal(
         <div className={`drawer-wrap${closing ? ' closing' : ''}`}>
@@ -208,5 +211,99 @@ export function Panel({ onClose, children, labelledBy, className = '' }) {
         {children}
       </div>
     </>
+  );
+}
+
+// ✨ Novedades en el encabezado: brilla mientras haya algo nuevo sin ver
+export function NewsButton({ unseen, onOpen }) {
+  return (
+    <button className={`news-btn${unseen ? ' fresh' : ''}`} aria-label={unseen ? 'Novedades (hay algo nuevo)' : 'Novedades'} title="Novedades" onClick={onOpen}>
+      <Icon name="news" />
+      {unseen && <i className="news-dot" />}
+    </button>
+  );
+}
+
+// El avatar del encabezado: abre tu tarjeta con Mi perfil, Ayuda y soporte y Cerrar sesión
+export function ProfileMenu({ user, go, onLogout }) {
+  const [open, setOpen] = useState(false);
+  const btn = useRef(null);
+  const box = useRef(null);
+  const staff = STAFF.includes(user.role);
+
+  useEffect(() => {
+    if (!open) return;
+    box.current?.querySelector('[role="menuitem"]')?.focus();
+    const onKey = (e) => { if (e.key === 'Escape') { setOpen(false); btn.current?.focus(); } };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
+
+  const pick = (fn) => () => { setOpen(false); fn(); };
+  const top = btn.current ? btn.current.getBoundingClientRect().bottom + 8 : 70;
+  return (
+    <>
+      <button ref={btn} className="avatar-btn" aria-label={`Tu cuenta: ${user.name}`} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <span className="avatar-ring"><Avatar name={user.name} /></span>
+      </button>
+      {open && createPortal(
+        <div className="pop-wrap" onClick={() => setOpen(false)}>
+          <div ref={box} className="profile-pop" role="menu" aria-label="Tu cuenta" style={{ top }} onClick={(e) => e.stopPropagation()}>
+            <div className="profile-card">
+              <span className="avatar-ring"><Avatar name={user.name} /></span>
+              <span className="profile-who">
+                <b>{user.name}</b>
+                <span className="muted small">{user.email || user.phone}</span>
+                <span className="role-tag">{ROLE_NAME[user.role]}</span>
+                {!staff && user.rating?.count > 0 && <span className="small"><Stars rating={user.rating} /></span>}
+              </span>
+            </div>
+            <button role="menuitem" onClick={pick(() => go('account'))}><Icon name="user" /><span>Mi perfil</span></button>
+            <button role="menuitem" onClick={pick(() => go('help'))}><Icon name="help" /><span>Ayuda y soporte</span></button>
+            <hr />
+            <button role="menuitem" className="danger-item" onClick={pick(onLogout)}><Icon name="logout" /><span>Cerrar sesión</span></button>
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
+  );
+}
+
+// Ayuda y soporte: cómo contactarnos, los documentos legales y cómo reportar un problema de un viaje
+const SUPPORT_EMAIL = import.meta.env.VITE_CONTACT_EMAIL; // variables de Railway (se ponen al compilar)
+const SUPPORT_WHATSAPP = (import.meta.env.VITE_SUPPORT_WHATSAPP || '').replace(/\D/g, '');
+export function HelpPanel({ user, onClose, onHistory }) {
+  const staff = STAFF.includes(user.role);
+  const wa = SUPPORT_WHATSAPP && `https://wa.me/${SUPPORT_WHATSAPP.length === 8 ? `504${SUPPORT_WHATSAPP}` : SUPPORT_WHATSAPP}?text=${encodeURIComponent(`Hola, soy ${user.name} (${user.phone}) y necesito ayuda con Ktracho GO.`)}`;
+  return (
+    <Panel onClose={onClose} labelledBy="help-title">
+      <div className="overlay-head">
+        <b id="help-title">Ayuda y soporte</b>
+        <button className="link" onClick={onClose}>Cerrar ✕</button>
+      </div>
+      <div className="overlay-body">
+        <div className="req">
+          <b>Escríbenos</b>
+          <p className="muted small">Te respondemos lo antes posible. Cuéntanos qué pasó y, si es de un viaje, qué día fue.</p>
+          {wa && <a className="primary help-link" href={wa} target="_blank" rel="noreferrer"><Icon name="chat" /> WhatsApp de soporte</a>}
+          {SUPPORT_EMAIL && <a className="help-link" href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('Ayuda con Ktracho GO')}`}><Icon name="mail" /> {SUPPORT_EMAIL}</a>}
+          {!wa && !SUPPORT_EMAIL && <p className="muted small">Pronto publicaremos aquí el correo y el WhatsApp de soporte.</p>}
+        </div>
+        {!staff && (
+          <div className="req">
+            <b>¿Problema con un viaje?</b>
+            <p className="muted small">Abre <b>Historial de viajes</b>, toca el viaje y elige <b>«Reportar un problema»</b> (por ejemplo, si olvidaste algo en el carro). El equipo te responde ahí mismo.</p>
+            <button onClick={onHistory}><Icon name="history" /> Ir a Historial de viajes</button>
+          </div>
+        )}
+        <div className="req">
+          <b>Documentos</b>
+          <a className="help-link" href="/terminos" target="_blank" rel="noreferrer"><Icon name="doc" /> Términos de uso</a>
+          <a className="help-link" href="/privacidad" target="_blank" rel="noreferrer"><Icon name="shield" /> Política de privacidad</a>
+        </div>
+        <p className="muted small">Ktracho GO · versión del {BUILD_DATE}</p>
+      </div>
+    </Panel>
   );
 }

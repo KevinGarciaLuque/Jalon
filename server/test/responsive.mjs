@@ -75,6 +75,17 @@ try {
         await page.keyboard.press('Escape');
         await page.waitForFunction(() => !document.querySelector('.drawer-wrap'), { timeout: 3000 }).catch(() => {});
       }
+      // La tarjeta del avatar (Mi perfil, Ayuda, Cerrar sesión) cabe en la pantalla
+      const avatar = session && (await page.$('button.avatar-btn'));
+      if (avatar) {
+        await avatar.click();
+        await page.waitForSelector('.profile-pop');
+        const fitsPop = await page.$eval('.profile-pop', (d) => { const r = d.getBoundingClientRect(); return r.left >= 0 && r.right <= document.documentElement.clientWidth + 1 && r.bottom <= window.innerHeight + 1; });
+        const head = await page.$eval('header', (h) => h.scrollWidth <= h.clientWidth + 1);
+        check(`encabezado y tarjeta del avatar de ${sname} @ ${vname} caben`, fitsPop && head);
+        if (w === 390) await page.screenshot({ path: path.join(SHOTS, `r-avatar-${sname}-${vname}.png`) });
+        await page.keyboard.press('Escape');
+      }
       if (sname === 'panel') {
         for (const tab of ['Reportes', 'Recargas', 'Mapa en vivo', 'Ajustes', 'Personal', 'Registro', 'Usuarios']) {
           // Las secciones están en la barra fija (computadora) o en el menú ☰
