@@ -569,3 +569,36 @@ header .bell-count { top: -3px; right: -3px; box-shadow: 0 0 0 2px var(--card); 
 
 /* Texto solo para lectores de pantalla (p. ej. «Recoger en» junto al punto verde) */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* ---- Panel del personal: secciones en el menú ---- */
+.staff-layout { flex: 1; min-height: 0; display: flex; }
+.staff-layout .admin { max-width: none; margin: 0; padding-left: max(16px, calc((100% - 1100px) / 2)); padding-right: max(16px, calc((100% - 1100px) / 2)); }
+.drawer-group { padding: 6px 0 2px; border-bottom: 1px solid var(--line); }
+.drawer-group.plain { border-bottom: none; padding: 0; flex: 1; }
+.drawer-group:last-of-type { border-bottom: none; }
+.drawer-group h3 { margin: 10px 20px 2px; font: 700 12px/1.4 var(--font-text); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.drawer-group .drawer-list { padding: 2px 0 6px; }
+.drawer-list button.on { background: var(--brand-soft); color: var(--brand); box-shadow: inset 4px 0 0 var(--brand); }
+.drawer-list button.on .icon { color: var(--brand); }
+.drawer-badge.count { min-width: 22px; text-align: center; background: var(--danger); color: #fff; }
+.menu-btn .bell-count { top: -3px; right: -3px; box-shadow: 0 0 0 2px var(--card); }
+/* Con muchas secciones el menú se hace más compacto */
+.drawer-group .drawer-list button { min-height: 46px; font-size: 16px; }
+/* Computadora: el menú queda fijo a la izquierda */
+.sidebar { width: 272px; flex: none; display: flex; flex-direction: column; overflow-y: auto; background: var(--card); border-right: 1px solid var(--line); padding-bottom: 12px; }
+.sidebar .drawer-profile { padding-top: 18px; }
+.sidebar .drawer-group .drawer-list button { min-height: 42px; font-size: 15px; padding: 0 18px; }
+/* Título de la sección elegida */
+.section-head h2 { margin: 0; font-size: 26px; font-weight: 800; }
+.section-head p { margin: 2px 0 0; }
+/* Avisos de configuración y botones de avisos: delgados, para no tapar el contenido */
+.notice-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 14px; }
+.notice-bar.warn { border: 1px solid var(--mango); background: var(--mango-soft); color: var(--mango-ink); border-radius: var(--r-1); padding: 8px 12px; }
+.notice-bar.warn .link { padding: 0; font-weight: 700; color: inherit; text-decoration: underline; }
+.notice-bar.tools:empty { display: none; }
+.notice-bar.tools .push { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.notice-bar.tools .push p { margin: 0; }
+/* En el menú nada se encoge: si no cabe, se desplaza (si no, el perfil de arriba se recorta) */
+.sidebar > *, .drawer > * { flex-shrink: 0; }
+.notice-bar.tools button { min-height: 36px; padding: 7px 12px; font-size: 14px; }
+.notice-bar.tools .push p { order: 2; flex-basis: 100%; }

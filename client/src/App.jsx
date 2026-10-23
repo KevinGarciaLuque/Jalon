@@ -24,6 +24,20 @@ function loadSession() {
   try { const s = JSON.parse(localStorage.getItem('jalon')); return s?.user?.id && s.user.role ? s : null; } catch { return null; }
 }
 
+// Pantalla ancha (computadora): el menú del panel se queda fijo
+function useWide() {
+  const query = '(min-width: 1024px)';
+  const [wide, setWide] = useState(() => window.matchMedia?.(query).matches ?? false);
+  useEffect(() => {
+    const m = window.matchMedia?.(query);
+    if (!m) return;
+    const on = () => setWide(m.matches);
+    m.addEventListener('change', on);
+    return () => m.removeEventListener('change', on);
+  }, []);
+  return wide;
+}
+
 export default function App() {
   const [session, setSession] = useState(loadSession);
   const [socket, setSocket] = useState(null);
@@ -32,6 +46,8 @@ export default function App() {
   const [showHistory, setShowHistory] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
   const [showNews, setShowNews] = useState(false);
+  const [adminNav, setAdminNav] = useState({ sections: null, current: null }); // secciones del panel para el menú
+  const wide = useWide();
   const { news, unseen, markSeen } = useNews(session?.user.role);
   const [accountStatus, setAccountStatus] = useState(() => loadSession()?.user.status);
 
@@ -115,13 +131,16 @@ export default function App() {
 
   const staff = STAFF.includes(session?.user.role);
   const hasBell = !!session && !session.user.mustChangePassword && !session.token;
+  const panelOpen = staff && !!session && !session.user.mustChangePassword && !session.user.mustEnrollTwoFactor;
+  const pinned = panelOpen && wide; // en computadora, el menú del panel queda fijo a la izquierda
 
   // Lo que se toca en el menú: aquí se abren historial, cuenta, novedades y la campanita; lo demás lo atiende su pantalla
   function openFromMenu(target) {
     if (target === 'account') return setShowAccount(true);
     if (target === 'news') { setShowNews(true); markSeen(); return; }
     if (target === 'bell') return window.dispatchEvent(new Event('ktracho:bell'));
-    goTo(target);
+    goTo(target.replace(/^section:/, '')); // una sección del panel
+
   }
 
   // Al tocar un aviso de la campanita: el historial se abre aquí; lo demás lo atiende su pantalla (pestaña del panel, saldo del conductor)
@@ -141,15 +160,15 @@ export default function App() {
     setSocket(null);
   }
 
+  const menuProps = session && { user: { ...session.user, status: accountStatus }, unseen, hasBell, go: openFromMenu, onLogout: () => logout(), sections: adminNav.sections, current: adminNav.current };
+
   if (!session) return <Suspense fallback={<Loading />}><Auth onAuth={onAuth} notice={notice} /></Suspense>;
 
   return (
     <div className="app">
       {/* Encabezado limpio: el menú ☰ y la marca a la izquierda, la campanita a la derecha (lo demás está en el menú) */}
       <header>
-        {session.user.mustChangePassword
-          ? null
-          : <Menu user={{ ...session.user, status: accountStatus }} unseen={unseen} hasBell={hasBell} go={openFromMenu} onLogout={() => logout()} />}
+        {!session.user.mustChangePassword && !pinned && <Menu {...menuProps} />}
         <Brand />
         <span className="hdr-space" />
         {/* La campanita espera a que la sesión esté en la cookie (las de antes de la cookie se pasan al abrir la app) */}
@@ -158,7 +177,12 @@ export default function App() {
       </header>
       {connError && <div className="banner">{connError}</div>}
       <Suspense fallback={<Loading />}>
-      {staff && !session.user.mustChangePassword && !session.user.mustEnrollTwoFactor && <Admin token={session.token} onGate={onGate} />}
+      {panelOpen && (
+        <div className="staff-layout">
+          {pinned && <Menu {...menuProps} pinned />}
+          <Admin token={session.token} onGate={onGate} onSections={(sections, current) => setAdminNav({ sections, current })} />
+        </div>
+      )}
       {socket && !session.user.mustChangePassword && (session.user.role === 'driver'
         ? <Driver socket={socket} token={session.token} userId={session.user.id} status={accountStatus} perms={session.user.perms || []} />
         : <Passenger socket={socket} token={session.token} userId={session.user.id} perms={session.user.perms || []} />)}

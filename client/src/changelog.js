@@ -3,6 +3,19 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-22-panel-menu',
+    date: '2026-10-22',
+    title: 'Panel más ordenado',
+    for: ['staff'],
+    items: [
+      'Las secciones del panel ahora están en el menú ☰, agrupadas en Operación, Crecimiento y Administración, cada una con su ícono.',
+      'Los pendientes se ven en el menú: conductores por aprobar, reportes abiertos y recargas por revisar.',
+      'La pantalla muestra solo la sección elegida, con su título; los cuadros de resumen quedan en Indicadores.',
+      'En computadora, el menú queda fijo a la izquierda.',
+      'Al volver a abrir la app, te deja en la última sección que usaste.',
+    ],
+  },
+  {
     id: '2026-10-22-menu',
     date: '2026-10-22',
     title: 'Nuevo menú',

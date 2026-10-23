@@ -68,6 +68,24 @@ const menu = async (page, item) => {
   await el.click();
   await page.waitForFunction(() => !document.querySelector('.drawer-wrap'), { timeout: 5000 });
 };
+// Secciones del panel: en computadora están en la barra fija de la izquierda; en pantallas chicas, en el menú ☰
+const section = async (page, name) => {
+  if (await page.$('nav.sidebar')) return (await page.waitForSelector(`nav.sidebar button::-p-text(${name})`, { timeout: 15000 })).click();
+  await menu(page, name);
+};
+const sectionsOf = async (page) => {
+  const pinned = await page.$('nav.sidebar');
+  if (!pinned) {
+    await (await page.waitForSelector('button.menu-btn', { timeout: 15000 })).evaluate((b) => b.click());
+    await page.waitForSelector('.drawer');
+  }
+  const list = await page.$$eval('.drawer-group', (gs) => gs.filter((g) => g.querySelector('h3') && g.querySelector('h3').textContent !== 'Tu cuenta').flatMap((g) => [...g.querySelectorAll('button > span')].map((s) => s.textContent)));
+  if (!pinned) {
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('.drawer-wrap'), { timeout: 5000 });
+  }
+  return list;
+};
 const entered = (page) => page.waitForSelector('button.menu-btn', { timeout: 15000 }).then(() => true, () => false);
 const see = (page, text, timeout = 15000) =>
   page.waitForSelector(`::-p-text(${text})`, { timeout }).then(() => true, () => false);
@@ -252,7 +270,7 @@ try {
   await click(driver, 'Iniciar viaje');
 
   // ---- Mapa en vivo: el superadmin ve al conductor conectado y su ficha de rendimiento ----
-  await click(admin, 'Mapa en vivo');
+  await section(admin, 'Mapa en vivo');
   check('el mapa en vivo muestra al conductor conectado con su placa y en viaje', await admin.waitForSelector('.monmap .mk .plate', { timeout: 15000 }).then(() => true, () => false) && (await see(admin, D.user.plate) && await see(admin, 'En viaje')));
   await shot(admin, '0q-mapa-en-vivo');
   await click(admin, 'E2E Driver');
@@ -293,7 +311,7 @@ try {
   check('la recarga sale de la lista de pendientes al aprobarla', await admin.waitForFunction(() => !document.body.innerText.includes('Aprobar y acreditar'), { timeout: 15000 }).then(() => true, () => false));
   admin.promptText = '';
   check('el conductor ve su saldo nuevo al instante (sin recargar la pantalla)', await see(driver, `Saldo: L ${(200 - Number(commission)).toFixed(2)}`, 15000));
-  await click(admin, 'Viajes');
+  await section(admin, 'Viajes');
 
   // El pasajero reporta un objeto olvidado
   await click(pass, 'Reportar un problema con este viaje');
@@ -326,7 +344,7 @@ try {
   await shot(admin, '8-admin');
 
   // ---- El superadmin agrega a un pasajero desde Usuarios ----
-  await click(admin, 'Usuarios');
+  await section(admin, 'Usuarios');
   await click(admin, 'Agregar pasajero');
   await admin.type('input[placeholder="Nombre"]', 'P10 Creado');
   await admin.type('input[placeholder^="Teléfono"]', `6${rnd}`);
@@ -338,7 +356,7 @@ try {
 
   // ---- Personal: el superadmin crea a alguien de soporte y esa persona debe cambiar la contraseña temporal ----
   const staffPhone = `7${rnd}`;
-  await click(admin, 'Personal');
+  await section(admin, 'Personal');
   await admin.type('input[placeholder="Nombre"]', 'P5B Soporte UI');
   await admin.type('input[placeholder^="Teléfono"]', staffPhone);
   await click(admin, 'Crear cuenta');
@@ -375,9 +393,9 @@ try {
   await click(staffPage, 'Continuar al panel');
   await staffPage.waitForSelector('.admin', { timeout: 15000 });
   check('después de activarla entra al panel', true);
-  const tabs = await staffPage.$$eval('.seg button', (bs) => bs.map((b) => b.textContent));
+  const tabs = await sectionsOf(staffPage);
   check('soporte ve Viajes, Usuarios y Reportes, pero no Personal, Registro, Recargas ni Ajustes', tabs[0] === 'Viajes' && tabs[1] === 'Usuarios' && tabs.some((t) => t.startsWith('Reportes')) && !tabs.some((t) => /Personal|Registro|Recargas|Ajustes/.test(t)), `(${tabs})`);
-  await click(staffPage, 'Usuarios');
+  await section(staffPage, 'Usuarios');
   await staffPage.waitForSelector('.ucard.click', { timeout: 15000 });
   await staffPage.click('.ucard.click');
   check('soporte abre la ficha de un usuario', await see(staffPage, 'Últimos viajes'));
@@ -403,18 +421,18 @@ try {
   check('con un código de respaldo entra al panel', true);
 
   // El superadmin puede restablecer la verificación de esa persona si pierde el teléfono
-  await click(admin, 'Personal');
+  await section(admin, 'Personal');
   await click(admin, 'P5B Soporte UI');
   check('el superadmin ve el botón para restablecer la verificación en dos pasos', await see(admin, 'Restablecer verificación en dos pasos'));
   await click(admin, 'Cerrar ✕');
 
   // El superadmin ve el movimiento en el registro
-  await click(admin, 'Registro');
+  await section(admin, 'Registro');
   check('el registro muestra que el superadmin creó la cuenta', await see(admin, 'Creó una cuenta del personal'));
   await shot(admin, '0g-registro');
 
   // ---- Reportes: el personal responde y la persona lo ve en su historial ----
-  await click(admin, 'Reportes');
+  await section(admin, 'Reportes');
   check('el personal ve el reporte con el tipo y el texto', (await see(admin, 'Objeto olvidado')) && (await see(admin, 'Dejé mi celular negro')));
   await shot(admin, '0n-admin-reportes');
   admin.promptText = 'Ya hablamos con el conductor, te devolverá el celular hoy';

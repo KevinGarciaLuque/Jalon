@@ -77,9 +77,18 @@ try {
       }
       if (sname === 'panel') {
         for (const tab of ['Reportes', 'Recargas', 'Mapa en vivo', 'Ajustes', 'Personal', 'Registro', 'Usuarios']) {
-          const b = await page.$(`button::-p-text(${tab})`);
-          if (!b) continue;
+          // Las secciones están en la barra fija (computadora) o en el menú ☰
+          const pinned = await page.$('nav.sidebar');
+          if (!pinned) {
+            await page.click('button.menu-btn');
+            await page.waitForSelector('.drawer');
+            await new Promise((r) => setTimeout(r, 400));
+          }
+          const b = await page.$(`${pinned ? 'nav.sidebar' : '.drawer'} button::-p-text(${tab})`);
+          check(`panel/${tab} @ ${vname} está en el menú`, !!b);
+          if (!b) { await page.keyboard.press('Escape'); continue; }
           await b.click();
+          await page.waitForFunction(() => !document.querySelector('.drawer-wrap'), { timeout: 3000 }).catch(() => {});
           await new Promise((r) => setTimeout(r, 500));
           const t = await overflow(page);
           check(`panel/${tab} @ ${vname} sin desborde`, !t.wide && t.bad.length === 0, t.bad.join(', '));

@@ -18,6 +18,25 @@ const RIDE_STATUS = {
   completed: 'Completado', cancelled: 'Cancelado',
 };
 const CANCELLED_BY = { passenger: 'pasajero', driver: 'conductor', admin: 'personal', system: 'sistema' };
+// Secciones del panel: se eligen en el menú ☰ (o en la barra fija de la izquierda en computadora)
+export const SECTIONS = {
+  metrics: { label: 'Indicadores', icon: 'earnings', group: 'Operación', hint: 'Cómo va Ktracho GO: viajes, dinero y conductores en el período que elijas.' },
+  rides: { label: 'Viajes', icon: 'car', group: 'Operación', hint: 'Todos los viajes: en curso, terminados y cancelados.' },
+  monitor: { label: 'Mapa en vivo', icon: 'map', group: 'Operación', hint: 'Dónde están ahora los conductores y los viajes.' },
+  users: { label: 'Usuarios', icon: 'users', group: 'Operación', hint: 'Pasajeros y conductores: busca, revisa y aprueba.' },
+  reports: { label: 'Reportes', icon: 'flag', group: 'Operación', hint: 'Problemas que reportaron pasajeros y conductores.' },
+  topups: { label: 'Recargas', icon: 'wallet', group: 'Operación', hint: 'Recargas de saldo de los conductores por aprobar.' },
+  rentals: { label: 'Alquileres', icon: 'key', group: 'Operación', hint: 'Alquiler de carros por días.' },
+  share: { label: 'Compartir la app', icon: 'share', group: 'Crecimiento', hint: 'Códigos QR y enlace para invitar pasajeros y conductores.' },
+  settings: { label: 'Ajustes', icon: 'sliders', group: 'Administración', hint: 'Tarifas, comisión, recargas y otras reglas de la app.' },
+  system: { label: 'Sistema', icon: 'server', group: 'Administración', hint: 'Lo que falta configurar y qué versión está publicada.' },
+  staff: { label: 'Personal', icon: 'badge', group: 'Administración', hint: 'Administradores y soporte que usan este panel.' },
+  perms: { label: 'Permisos', icon: 'lock', group: 'Administración', hint: 'Qué puede hacer cada rol del personal.' },
+  audit: { label: 'Registro', icon: 'list', group: 'Administración', hint: 'Quién hizo qué en el panel, y cuándo.' },
+};
+const TAB_KEY = 'ktracho:admin-tab'; // al volver a abrir la app, la última sección usada
+const savedTab = () => { try { return localStorage.getItem(TAB_KEY) || ''; } catch { return ''; } };
+
 const isActive = (s) => ['requested', 'accepted', 'arrived', 'started'].includes(s);
 // Tres pitidos para llamar la atención (el navegador solo deja sonar tras un clic, por eso el botón "Activar avisos")
 function beep(ctx) {
@@ -72,8 +91,10 @@ function MoreButton({ list }) {
   return list.hasMore ? <button disabled={list.busy} onClick={list.loadMore}>{list.busy ? 'Cargando…' : 'Ver más'}</button> : null;
 }
 
-export default function Admin({ token, onGate }) {
-  const [tab, setTab] = useState('rides');
+// `onSections(list, current)`: le pasa al menú las secciones que esta persona puede ver, con sus pendientes
+export default function Admin({ token, onGate, onSections }) {
+  const [tab, setTab] = useState(() => savedTab() || 'metrics');
+  const box = useRef(null);
   const [stats, setStats] = useState(null);
   const [directory, setDirectory] = useState({ users: [], perms: [], me: { id: 0, role: '' } });
   const [rideFilter, setRideFilter] = useState('all');
@@ -98,6 +119,17 @@ export default function Admin({ token, onGate }) {
 
   const { users, perms, me } = directory;
   const can = (p) => perms.includes(p);
+
+  // Las secciones que esta persona puede ver, en el orden del menú, con lo que tienen pendiente
+  const badge = { users: can('users.manage') ? stats?.pendingDrivers : 0, reports: stats?.openReports, topups: stats?.pendingTopups };
+  const tabs = [
+    can('metrics') && 'metrics', 'rides', can('monitor') && 'monitor', 'users', 'reports', can('wallet') && 'topups', can('rentals') && 'rentals',
+    can('share') && 'share', can('settings') && 'settings', can('settings') && 'system', can('staff.manage') && 'staff', can('staff.manage') && 'perms', can('audit') && 'audit',
+  ].filter(Boolean);
+  const loaded = me.id !== 0; // los permisos ya llegaron
+  const current = tabs.includes(tab) ? tab : tabs[0];
+  const section = SECTIONS[current];
+
 
   const call = useCallback(async (path, body, method) => {
     const verb = method || (body ? 'POST' : 'GET');
@@ -158,11 +190,11 @@ export default function Admin({ token, onGate }) {
   // Listas largas (por páginas, solo la de la pestaña abierta)
   const USER_FILTER = { all: 'people', passenger: 'passenger', driver: 'driver', blocked: 'blocked' };
   useEffect(() => { const t = setTimeout(() => setQuery(q.trim()), 350); return () => clearTimeout(t); }, [q]);
-  const ridesList = usePaged(call, `rides?status=${rideFilter}`, tab === 'rides', setError);
-  const usersList = usePaged(call, `users?filter=${USER_FILTER[filter]}&q=${encodeURIComponent(query)}`, tab === 'users', setError);
-  const staffList = usePaged(call, 'users?filter=staff', tab === 'staff', setError);
-  const auditList = usePaged(call, 'audit', tab === 'audit' && perms.includes('audit'), setError);
-  const reloadTab = () => ({ rides: ridesList, users: usersList, staff: staffList, audit: auditList })[tab]?.reload();
+  const ridesList = usePaged(call, `rides?status=${rideFilter}`, current === 'rides', setError);
+  const usersList = usePaged(call, `users?filter=${USER_FILTER[filter]}&q=${encodeURIComponent(query)}`, current === 'users', setError);
+  const staffList = usePaged(call, 'users?filter=staff', current === 'staff', setError);
+  const auditList = usePaged(call, 'audit', current === 'audit' && perms.includes('audit'), setError);
+  const reloadTab = () => ({ rides: ridesList, users: usersList, staff: staffList, audit: auditList })[current]?.reload();
 
   async function act(path, body, confirmMsg) {
     if (confirmMsg && !window.confirm(confirmMsg)) return;
@@ -225,45 +257,46 @@ export default function Admin({ token, onGate }) {
   const staff = staffList.items;
   const shown = usersList.items;
 
-  // La campanita lleva a la pestaña del aviso (si esta persona la puede ver)
+  function openTab(key) {
+    setTab(key);
+    try { localStorage.setItem(TAB_KEY, key); } catch { /* sin almacenamiento: no se recuerda */ }
+    box.current?.scrollTo({ top: 0 });
+  }
+
+  // Lo que ve el menú; se avisa solo cuando cambia algo
+  const navKey = loaded ? JSON.stringify([current, tabs.map((k) => [k, badge[k] || 0])]) : '';
+  useEffect(() => {
+    if (!navKey) return;
+    onSections?.(tabs.map((k) => ({ key: k, ...SECTIONS[k], badge: badge[k] || 0 })), current);
+  }, [navKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => onSections?.(null, null), []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // El menú y la campanita llevan a una sección (si esta persona la puede ver)
   useEffect(() => {
     const go = (e) => {
-      if (e.detail === 'alerts') return window.scrollTo({ top: 0, behavior: 'smooth' });
-      if (!tabs.some(([key]) => key === e.detail)) return;
-      setTab(e.detail);
-      // Las pestañas quedan debajo de los indicadores: se baja hasta ellas para que se vea lo que se abrió
-      requestAnimationFrame(() => document.querySelector('.seg.tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+      if (e.detail === 'alerts') return box.current?.scrollTo({ top: 0, behavior: 'smooth' });
+      if (tabs.includes(e.detail)) openTab(e.detail);
     };
     window.addEventListener('ktracho:go', go);
     return () => window.removeEventListener('ktracho:go', go);
   });
-
-  const tabs = [
-    ...(can('metrics') ? [['metrics', 'Indicadores']] : []),
-    ['rides', 'Viajes'],
-    ['users', 'Usuarios'],
-    ['reports', `Reportes${stats?.openReports ? ` (${stats.openReports})` : ''}`],
-    ...(can('wallet') ? [['topups', `Recargas${stats?.pendingTopups ? ` (${stats.pendingTopups})` : ''}`]] : []),
-    ...(can('rentals') ? [['rentals', 'Alquileres']] : []),
-    ...(can('monitor') ? [['monitor', 'Mapa en vivo']] : []),
-    ...(can('share') ? [['share', 'Compartir']] : []),
-    ...(can('settings') ? [['settings', 'Ajustes'], ['system', 'Sistema']] : []),
-    ...(can('staff.manage') ? [['staff', 'Personal']] : []),
-    ...(can('staff.manage') ? [['perms', 'Permisos']] : []),
-    ...(can('audit') ? [['audit', 'Registro']] : []),
-  ];
+  const home = current === tabs[0]; // los indicadores generales van en la primera sección
 
   return (
-    <div className="admin">
+    <div className="admin" ref={box}>
       {error && <div className="error">{error}</div>}
 
+      {/* Avisos de configuración: una barra delgada; el detalle está en Sistema */}
       {stats && stats.sosPhones === 0 && can('staff.manage') && (
-        <div className="hint">⚠ Ningún teléfono recibe las emergencias por SMS: si alguien pulsa el botón y nadie está mirando este panel, nadie se entera. Configura <b>SOS_ALERT_PHONES</b> en Railway.</div>
+        <div className="notice-bar warn" role="status">
+          <span>⚠ Las emergencias no le llegan por SMS a nadie: configura <b>SOS_ALERT_PHONES</b> en Railway.</span>
+          {can('settings') && current !== 'system' && <button className="link" onClick={() => openTab('system')}>Ver en Sistema</button>}
+        </div>
       )}
-      {!alertsOn && (
-        <button className="sm left" onClick={enableAlerts}>🔔 Activar avisos sonoros de emergencia</button>
-      )}
-      <PushToggle token={token} why="Recibe las emergencias y las solicitudes de conductores en este dispositivo, aunque no tengas el panel abierto." />
+      <div className="notice-bar tools">
+        {!alertsOn && <button className="sm" onClick={enableAlerts}>🔔 Activar avisos sonoros de emergencia</button>}
+        <PushToggle token={token} why="Recibe las emergencias y las solicitudes de conductores en este dispositivo, aunque no tengas el panel abierto." />
+      </div>
 
       {alerts.map((a) => (
         <div className="sos-alert" key={a.id}>
@@ -311,16 +344,24 @@ export default function Admin({ token, onGate }) {
         </section>
       )}
 
-      {can('wallet') && stats?.pendingTopups > 0 && tab !== 'topups' && (
+      {can('wallet') && stats?.pendingTopups > 0 && current !== 'topups' && (
         <section className="pending">
           <div className="row between wrap">
             <b>💰 {stats.pendingTopups} recarga{stats.pendingTopups === 1 ? '' : 's'} esperando tu aprobación</b>
-            <button className="primary sm" onClick={() => { setTopStatus('pending'); setTab('topups'); }}>Revisar</button>
+            <button className="primary sm" onClick={() => { setTopStatus('pending'); openTab('topups'); }}>Revisar</button>
           </div>
         </section>
       )}
 
-      {stats && (
+      {/* Título de la sección elegida en el menú */}
+      {loaded && section && (
+        <div className="section-head">
+          <h2>{section.label}</h2>
+          <p className="muted">{section.hint}</p>
+        </div>
+      )}
+
+      {home && stats && (
         <div className="stats">
           <div><b>{stats.driversFree}</b><span>Conductores libres</span></div>
           <div><b>{stats.driversOnline}</b><span>Conductores en línea</span></div>
@@ -333,24 +374,18 @@ export default function Admin({ token, onGate }) {
         </div>
       )}
 
-      <div className="seg tabs" role="tablist" aria-label="Secciones del panel">
-        {tabs.map(([key, label]) => (
-          <button key={key} role="tab" aria-selected={tab === key} className={tab === key ? 'on' : ''} onClick={() => setTab(key)}>{label}</button>
-        ))}
-      </div>
+      {current === 'metrics' && can('metrics') && <Metrics call={call} can={can} onError={setError} />}
 
-      {tab === 'metrics' && can('metrics') && <Metrics call={call} can={can} onError={setError} />}
-
-      {tab === 'rides' && (
+      {current === 'rides' && (
         <div className="chips">
           {[['all', 'Todos'], ['active', 'Activos'], ['completed', 'Completados'], ['cancelled', 'Cancelados']].map(([k, l]) => (
             <button key={k} className={rideFilter === k ? 'on' : ''} onClick={() => setRideFilter(k)}>{l}</button>
           ))}
         </div>
       )}
-      {tab === 'rides' && !ridesList.loaded && <Loading />}
-      {tab === 'rides' && ridesList.loaded && ridesList.items.length === 0 && <Empty title="No hay viajes con ese filtro" />}
-      {tab === 'rides' && ridesList.items.length > 0 && (
+      {current === 'rides' && !ridesList.loaded && <Loading />}
+      {current === 'rides' && ridesList.loaded && ridesList.items.length === 0 && <Empty title="No hay viajes con ese filtro" />}
+      {current === 'rides' && ridesList.items.length > 0 && (
         <div className="tablewrap">
           <table>
             <thead><tr><th>#</th><th>Estado</th><th>Pasajero</th><th>Conductor</th><th>Km</th><th>Ofrecido</th><th>Final</th><th>Fecha</th><th></th></tr></thead>
@@ -372,9 +407,9 @@ export default function Admin({ token, onGate }) {
           </table>
         </div>
       )}
-      {tab === 'rides' && <MoreButton list={ridesList} />}
+      {current === 'rides' && <MoreButton list={ridesList} />}
 
-      {tab === 'users' && (
+      {current === 'users' && (
         <>
           {can('users.create') && !newPass && <button className="sm left" onClick={() => setNewPass({ name: '', phone: '', email: '' })}>➕ Agregar pasajero</button>}
           {newPass && (
@@ -413,14 +448,14 @@ export default function Admin({ token, onGate }) {
         </>
       )}
 
-      {tab === 'topups' && <Topups topups={topups} status={topStatus} setStatus={setTopStatus} call={call} token={token} reload={load} onError={setError} />}
-      {tab === 'settings' && <Settings call={call} onError={setError} />}
-      {tab === 'system' && can('settings') && <Suspense fallback={<Loading />}><System call={call} onError={setError} /></Suspense>}
-      {tab === 'share' && can('share') && <Suspense fallback={<Loading />}><Share call={call} onError={setError} /></Suspense>}
-      {tab === 'rentals' && can('rentals') && <AdminRentals call={call} token={token} can={can} onError={setError} />}
-      {tab === 'monitor' && can('monitor') && <Suspense fallback={<Loading />}><Monitor call={call} onError={setError} /></Suspense>}
+      {current === 'topups' && <Topups topups={topups} status={topStatus} setStatus={setTopStatus} call={call} token={token} reload={load} onError={setError} />}
+      {current === 'settings' && <Settings call={call} onError={setError} />}
+      {current === 'system' && can('settings') && <Suspense fallback={<Loading />}><System call={call} onError={setError} /></Suspense>}
+      {current === 'share' && can('share') && <Suspense fallback={<Loading />}><Share call={call} onError={setError} /></Suspense>}
+      {current === 'rentals' && can('rentals') && <AdminRentals call={call} token={token} can={can} onError={setError} />}
+      {current === 'monitor' && can('monitor') && <Suspense fallback={<Loading />}><Monitor call={call} onError={setError} /></Suspense>}
 
-      {tab === 'reports' && (
+      {current === 'reports' && (
         <>
           <div className="chips">
             <button className={repStatus === 'open' ? 'on' : ''} onClick={() => setRepStatus('open')}>Abiertos</button>
@@ -448,7 +483,7 @@ export default function Admin({ token, onGate }) {
         </>
       )}
 
-      {tab === 'staff' && (
+      {current === 'staff' && (
         <>
           <form className="req" onSubmit={createStaff}>
             <b>Agregar a una persona del personal</b>
@@ -475,9 +510,9 @@ export default function Admin({ token, onGate }) {
         </>
       )}
 
-      {tab === 'perms' && can('staff.manage') && <Permissions call={call} onError={setError} />}
-      {tab === 'audit' && !auditList.loaded && <Loading />}
-      {tab === 'audit' && (
+      {current === 'perms' && can('staff.manage') && <Permissions call={call} onError={setError} />}
+      {current === 'audit' && !auditList.loaded && <Loading />}
+      {current === 'audit' && (
         <div className="tablewrap">
           <table>
             <thead><tr><th>Cuándo</th><th>Quién</th><th>Qué hizo</th><th>Sobre</th><th>Detalle</th></tr></thead>
@@ -496,7 +531,7 @@ export default function Admin({ token, onGate }) {
           {auditList.loaded && auditList.items.length === 0 && <Empty title="Todavía no hay movimientos" />}
         </div>
       )}
-      {tab === 'audit' && <MoreButton list={auditList} />}
+      {current === 'audit' && <MoreButton list={auditList} />}
 
       {detailId && (
         <UserDetail
