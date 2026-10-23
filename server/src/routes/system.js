@@ -6,6 +6,7 @@ import { pool } from '../db.js';
 import { app } from '../app.js';
 import { staffOnly } from '../access.js';
 import { getSettings } from '../wallet.js';
+import { activeAccounts } from '../services/bankAccounts.js';
 import { keyIsDerived } from '../secure.js';
 import { lastRekey } from '../rekey.js';
 import { mapsProvider } from '../maps.js';
@@ -68,13 +69,13 @@ export async function systemStatus() {
     item('datos', 'Correo de soporte en los términos', process.env.VITE_CONTACT_EMAIL ? 'ok' : isProd ? 'bad' : 'info',
       process.env.VITE_CONTACT_EMAIL ? `Los términos y la privacidad muestran ${process.env.VITE_CONTACT_EMAIL}.` : 'Sin VITE_CONTACT_EMAIL: los términos dicen «falta definir» donde va el correo de contacto. Agrégala y vuelve a desplegar.'),
     // Recargas: con la comisión activa (o alquileres pagados por transferencia) hace falta la cuenta para transferir
-    (() => {
-      const missing = [['bank_name', 'banco'], ['bank_account', 'número de cuenta'], ['bank_holder', 'a nombre de quién']].filter(([k]) => !String(s[k] || '').trim()).map(([, l]) => l);
+    await (async () => {
+      const accounts = await activeAccounts();
       const needed = s.commission_enabled === '1' || s.rental_enabled === '1';
-      return item('datos', 'Cuenta para las recargas', !needed ? 'info' : missing.length ? 'bad' : 'ok',
+      return item('datos', 'Cuenta para las recargas', !needed ? 'info' : accounts.length ? 'ok' : 'bad',
         !needed ? 'La comisión está apagada: los conductores no recargan saldo.'
-          : missing.length ? `Falta ${missing.join(', ')} en Ajustes: los conductores no sabrán a dónde transferir.`
-            : `${s.bank_name} · ${s.bank_account} a nombre de ${s.bank_holder}.`);
+          : accounts.length ? `${accounts.length} cuenta(s) activa(s) para asignar: ${accounts.map((a) => a.bank).join(', ')}.`
+            : 'No hay ninguna cuenta bancaria activa: agrégala en Ajustes → Cuentas bancarias.');
     })(),
     item('datos', 'Términos y privacidad', terms.n ? 'info' : 'ok', terms.n ? `Versión ${TERMS_VERSION}. ${terms.n} persona(s) aceptaron una versión anterior.` : `Versión ${TERMS_VERSION}; todos la aceptaron.`),
     // Mapas

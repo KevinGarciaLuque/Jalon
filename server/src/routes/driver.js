@@ -11,6 +11,7 @@ import { app, photoJson } from '../app.js';
 import { clean } from '../util.js';
 import { authUser, driverOnly } from '../access.js';
 import { pushStaff } from '../notify.js';
+import { currentRequest, assignedRequest } from './recharges.js';
 
 // Lo que ve el conductor: su saldo, cómo transferir, sus movimientos y sus recargas
 app.get('/api/driver/wallet', authUser, driverOnly, async (req, res) => {
@@ -22,7 +23,7 @@ app.get('/api/driver/wallet', authUser, driverOnly, async (req, res) => {
     enabled: s.commission_enabled === '1',
     balance: Number(u.balance), minBalance: Number(s.min_balance), percent: Number(s.commission_percent),
     topupMin: Number(s.topup_min), topupMax: Number(s.topup_max),
-    bank: { name: s.bank_name, type: s.bank_account_type, account: s.bank_account, holder: s.bank_holder, note: s.bank_note },
+    request: await currentRequest(req.user.id), // la cuenta para transferir solo viene aquí, mientras está asignada
     entries, topups,
   });
 });
@@ -32,6 +33,8 @@ app.post('/api/driver/topups', authUser, driverOnly, photoJson, async (req, res)
   if (req.user.status !== 'active') return res.status(403).json({ error: 'Tu cuenta debe estar aprobada para recargar' });
   const s = await getSettings(pool);
   if (s.commission_enabled !== '1') return res.status(409).json({ error: 'Las recargas no están activas' });
+  const request = await assignedRequest(req.user.id);
+  if (!request) return res.status(409).json({ error: 'Primero solicita la recarga y espera a que te asignen una cuenta' });
   const amount = money(req.body?.amount);
   if (!(amount >= Number(s.topup_min) && amount <= Number(s.topup_max)))
     return res.status(400).json({ error: `La recarga debe ser de L ${Number(s.topup_min)} a L ${Number(s.topup_max)}` });
@@ -59,7 +62,8 @@ app.post('/api/driver/topups', authUser, driverOnly, photoJson, async (req, res)
   await fs.mkdir(UPLOADS, { recursive: true });
   const file = `topup-${req.user.id}-${crypto.randomBytes(8).toString('hex')}.enc`;
   await fs.writeFile(path.join(UPLOADS, file), encryptBuffer(cleaned));
-  const [r] = await pool.query('INSERT INTO topups (driver_id, amount, bank, reference, reference_key, receipt_file, receipt_hash) VALUES (?,?,?,?,?,?,?)', [req.user.id, amount, bank, reference, referenceKey, file, hash]);
+  const [r] = await pool.query('INSERT INTO topups (driver_id, amount, bank, reference, reference_key, receipt_file, receipt_hash, request_id) VALUES (?,?,?,?,?,?,?,?)', [req.user.id, amount, bank, reference, referenceKey, file, hash, request.id]);
+  await pool.query("UPDATE topup_requests SET status = 'used' WHERE id = ?", [request.id]); // la cuenta deja de mostrarse
   pushStaff({ title: 'Nueva recarga por aprobar', body: `${req.user.name} · L ${amount}`, tag: `topup-${r.insertId}`, url: '/' }, 'wallet');
   res.json({ ok: true, id: r.insertId });
 });

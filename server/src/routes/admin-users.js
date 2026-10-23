@@ -36,6 +36,7 @@ app.get('/api/admin/stats', staffOnly('view'), async (_req, res) => {
     openAlerts: (await pool.query("SELECT COUNT(*) AS n FROM alerts WHERE status = 'open'"))[0][0].n,
     openReports: (await pool.query("SELECT COUNT(*) AS n FROM reports WHERE status = 'open'"))[0][0].n,
     pendingTopups: (await pool.query("SELECT COUNT(*) AS n FROM topups WHERE status = 'pending'"))[0][0].n,
+    waitingRequests: (await pool.query("SELECT COUNT(*) AS n FROM topup_requests WHERE status = 'waiting'"))[0][0].n, // conductores esperando una cuenta
     sosPhones: SOS_PHONES.length, // cuántos teléfonos reciben las emergencias por SMS (0 = nadie)
     driversOnline: [...drivers.values()].length,
     driversFree: [...drivers.values()].filter((d) => d.available && !d.disconnected).length,

@@ -108,8 +108,9 @@ try {
 
   // La comisión se activa con la cuenta de Ktracho GO para transferencias (como lo haría el superadmin desde Ajustes)
   const putSettings = (body) => fetch(`${API}/api/admin/settings`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminLogin.token}` }, body: JSON.stringify(body) }).then((r) => r.json());
-  const cfg = await putSettings({ commission_enabled: true, commission_percent: 10, welcome_credit: 0, min_balance: 0, topup_min: 100, topup_max: 1000, bank_name: 'Banco de prueba', bank_account_type: 'Ahorros', bank_account: '12-345-678', bank_holder: 'Ktracho GO S. de R.L.' });
-  check('la comisión queda activa con los datos bancarios', cfg.commission_enabled === '1' && cfg.bank_account === '12-345-678');
+  await fetch(`${API}/api/admin/bank-accounts`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminLogin.token}` }, body: JSON.stringify({ bank: 'Banco de prueba', type: 'Ahorros', number: '12-345-678', holder: 'Ktracho GO S. de R.L.' }) });
+  const cfg = await putSettings({ commission_enabled: true, commission_percent: 10, welcome_credit: 0, min_balance: 0, topup_min: 100, topup_max: 1000 });
+  check('la comisión queda activa (con una cuenta bancaria activa)', cfg.commission_enabled === '1');
 
   // ---- Registro del pasajero por pantalla, con código por SMS ----
   await click(pass, '¿No tienes cuenta? Regístrate');
@@ -307,8 +308,17 @@ try {
   await driver.keyboard.press('Escape');
   await driver.waitForFunction(() => !document.querySelector('.drawer-wrap'), { timeout: 5000 });
   await menu(driver, 'Mi saldo y recargas');
-  check('el conductor ve a qué cuenta transferir', (await see(driver, 'Banco de prueba')) && (await see(driver, '12-345-678')) && (await see(driver, 'Ktracho GO S. de R.L.')));
-  await driver.type('input[placeholder^="Monto transferido"]', '200');
+  check('antes de pedir, el conductor no ve ninguna cuenta', (await see(driver, 'Recargar saldo')) && !(await driver.$('[data-testid="bank-account"]')));
+  await driver.type('input[placeholder^="Monto a recargar"]', '200');
+  await click(driver, 'Solicitar recarga');
+  check('el conductor queda esperando su cuenta', await see(driver, 'Esperando tu cuenta para transferir'));
+  check('el personal ve que un conductor espera una cuenta', await see(admin, 'esperando una cuenta para recargar', 20000));
+  await click(admin, 'Atender');
+  await click(admin, 'Enviar cuenta');
+  check('la solicitud sale de la lista al enviar la cuenta', await admin.waitForFunction(() => !document.body.innerText.includes('Enviar cuenta'), { timeout: 15000 }).then(() => true, () => false));
+  await section(admin, 'Viajes');
+  check('al conductor le aparece la cuenta asignada, solo para él y por 24 horas', (await see(driver, 'Banco de prueba', 20000)) && (await see(driver, '12-345-678')) && (await see(driver, 'Ktracho GO S. de R.L.')) && (await see(driver, 'Esta cuenta es solo para ti')));
+  check('el monto del comprobante empieza con lo que pidió', (await driver.$eval('input[placeholder^="Monto transferido"]', (i) => i.value)) === '200');
   await driver.type('input[placeholder^="Banco desde"]', 'BAC Credomatic');
   await driver.type('input[placeholder^="Número de referencia"]', `E2E-${rnd}`);
   await (await driver.$('.overlay input[type=file]')).uploadFile(FIXTURE_PATH);

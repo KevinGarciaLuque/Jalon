@@ -9,6 +9,7 @@ import { drivers, room } from '../live.js';
 import { push, pushStaff } from '../notify.js';
 import { tellWallet } from './balance.js';
 import { can } from '../perms.js';
+import { activeAccounts } from './bankAccounts.js';
 
 // El carro de un conductor solo se alquila si él tiene el módulo «Ofrecer su carro en alquiler»
 const ownerMayRent = (driverId) => !driverId || can({ id: driverId, role: 'driver' }, 'rent.offer');
@@ -71,7 +72,7 @@ export async function createBooking(renter, { listingId, start, days, payment, p
   if (s.rental_enabled !== '1') throw new RentalError('El alquiler de carros no está disponible por ahora', 409);
   const dates = checkDates(s, start, days);
   if (!['cash', 'transfer'].includes(payment)) throw new RentalError('Elige si pagas en efectivo o por transferencia');
-  if (payment === 'transfer' && !(s.bank_name && s.bank_account && s.bank_holder)) throw new RentalError('El pago por transferencia no está disponible por ahora: elige efectivo', 409);
+  if (payment === 'transfer' && !(await activeAccounts()).length) throw new RentalError('El pago por transferencia no está disponible por ahora: elige efectivo', 409);
   const clip = (t, n) => (typeof t === 'string' && t.trim() ? t.trim().slice(0, n) : null);
   const conn = await pool.getConnection();
   try {

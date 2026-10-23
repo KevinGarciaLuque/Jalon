@@ -1,24 +1,47 @@
-import { useState } from 'react';
-import { API, authFetch, toJpeg, money2 } from './lib.js';
+import { useEffect, useState } from 'react';
+import { API, api, authFetch, toJpeg, money2 } from './lib.js';
 import { Panel } from './Menu.jsx';
 
 const BANKS = ['BAC Credomatic', 'Ficohsa', 'Banco Atlántida', 'Banpaís', 'Davivienda', 'Banco de Occidente', 'Promerica', 'Lafise', 'Tigo Money', 'Otro'];
 const KIND = { topup: 'Recarga', commission: 'Comisión de viaje', bonus: 'Crédito', adjustment: 'Ajuste' };
 const when = (d) => new Date(d).toLocaleString('es-HN', { dateStyle: 'medium', timeStyle: 'short' });
 
-// Saldo del conductor: cómo recargar (transferencia + comprobante), sus recargas y sus movimientos
+// Saldo del conductor: pedir una recarga, transferir a la cuenta que le asignen (24 h), subir el comprobante, y sus movimientos
 export default function DriverWallet({ wallet, reload, onClose }) {
-  const [f, setF] = useState({ amount: '', bank: '', reference: '' });
+  const { request } = wallet; // su solicitud más reciente: waiting | assigned (con la cuenta) | used | rejected | expired | cancelled
+  const [f, setF] = useState({ amount: request?.status === 'assigned' ? String(request.amount) : '', bank: '', reference: '' });
+  const [want, setWant] = useState(''); // monto a solicitar
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState({ ok: false, text: '' });
   const [copied, setCopied] = useState(false);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
-  const { bank } = wallet;
+  const account = request?.status === 'assigned' ? request.account : null;
+  // Cuando le asignan la cuenta, el monto del comprobante empieza con lo que pidió
+  useEffect(() => { if (account) setF((cur) => (cur.amount ? cur : { ...cur, amount: String(request.amount) })); }, [request?.id, !!account]); // eslint-disable-line react-hooks/exhaustive-deps
   const low = wallet.balance < wallet.minBalance;
 
   async function copy() {
-    try { await navigator.clipboard.writeText(bank.account); setCopied(true); } catch { window.prompt('Copia el número de cuenta:', bank.account); }
+    try { await navigator.clipboard.writeText(account.number); setCopied(true); } catch { window.prompt('Copia el número de cuenta:', account.number); }
+  }
+
+  async function ask(e) {
+    e.preventDefault();
+    setBusy(true);
+    setMsg({ ok: false, text: '' });
+    try {
+      await api('driver/topup-requests', { amount: Number(want) });
+      setWant('');
+      reload();
+    } catch (err) {
+      setMsg({ ok: false, text: err.message });
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function cancelRequest() {
+    if (!window.confirm('¿Cancelar tu solicitud de recarga?')) return;
+    try { await api(`driver/topup-requests/${request.id}/cancel`, {}); reload(); } catch (err) { setMsg({ ok: false, text: err.message }); }
   }
 
   async function submit(e) {
@@ -60,21 +83,46 @@ export default function DriverWallet({ wallet, reload, onClose }) {
         </div>
         {low && <div className="hint danger">Tu saldo está por debajo del mínimo. Recarga para volver a recibir viajes.</div>}
 
-        <div className="req">
-          <b>1. Transfiere a la cuenta de Ktracho GO</b>
-          {bank.account ? (
-            <div className="bank">
-              <div><span className="muted">Banco</span> <b>{bank.name}</b></div>
-              {bank.type && <div><span className="muted">Tipo</span> <b>{bank.type}</b></div>}
-              <div><span className="muted">Cuenta</span> <b data-testid="bank-account">{bank.account}</b> <button type="button" className="sm" onClick={copy}>{copied ? '✓ Copiada' : 'Copiar'}</button></div>
-              <div><span className="muted">A nombre de</span> <b>{bank.holder}</b></div>
-              {bank.note && <div className="muted small">{bank.note}</div>}
-            </div>
-          ) : (
-            <p className="muted">Todavía no hay una cuenta configurada. Pregunta a soporte.</p>
-          )}
-        </div>
+        {/* 1. Pedir la recarga: la cuenta para transferir se la asigna el equipo (no se muestra a todos) */}
+        {(!request || !['waiting', 'assigned'].includes(request.status)) && (
+          <form className="req" onSubmit={ask}>
+            <b>Recargar saldo</b>
+            {request?.status === 'rejected' && <div className="hint danger">Tu última solicitud fue rechazada: {request.note}</div>}
+            {request?.status === 'expired' && <div className="hint">La cuenta que te asignamos venció sin comprobante. Si todavía quieres recargar, vuelve a solicitarla.</div>}
+            <p className="muted small">Escribe cuánto quieres recargar. El equipo te asigna una cuenta de Ktracho GO para transferir y te avisamos aquí y en tu celular.</p>
+            <input aria-label="Monto a recargar en lempiras" placeholder={`Monto a recargar (L ${wallet.topupMin} a L ${wallet.topupMax})`} inputMode="decimal" value={want} onChange={(e) => setWant(e.target.value)} required />
+            {msg.text && !msg.ok && <div className="error">{msg.text}</div>}
+            {msg.ok && <div className="hint ok">{msg.text}</div>}
+            <button className="primary" disabled={busy}>{busy ? 'Enviando…' : 'Solicitar recarga'}</button>
+          </form>
+        )}
 
+        {/* 2. Esperando la cuenta */}
+        {request?.status === 'waiting' && (
+          <div className="req" role="status">
+            <b>⏳ Esperando tu cuenta para transferir</b>
+            <p>Pediste recargar <b>{money2(request.amount)}</b>. En cuanto el equipo te asigne una cuenta te avisamos aquí y en tu celular.</p>
+            {msg.text && <div className="error">{msg.text}</div>}
+            <button type="button" className="sm" onClick={cancelRequest}>Cancelar solicitud</button>
+          </div>
+        )}
+
+        {/* 3. Con la cuenta asignada: transferir (24 horas) y subir el comprobante */}
+        {account && (
+          <div className="req">
+            <b>1. Transfiere {money2(request.amount)} a esta cuenta</b>
+            <div className="bank">
+              <div><span className="muted">Banco</span> <b>{account.bank}</b></div>
+              {account.type && <div><span className="muted">Tipo</span> <b>{account.type}</b></div>}
+              <div><span className="muted">Cuenta</span> <b data-testid="bank-account">{account.number}</b> <button type="button" className="sm" onClick={copy}>{copied ? '✓ Copiada' : 'Copiar'}</button></div>
+              <div><span className="muted">A nombre de</span> <b>{account.holder}</b></div>
+              {account.note && <div className="muted small">{account.note}</div>}
+            </div>
+            <p className="hint">Esta cuenta es solo para ti y vence el <b>{when(request.expiresAt)}</b>. Después se oculta y tendrías que pedirla de nuevo.</p>
+          </div>
+        )}
+
+        {account && (
         <form className="req" onSubmit={submit}>
           <b>2. Sube tu comprobante</b>
           <input aria-label="Monto transferido en lempiras" placeholder={`Monto transferido (L ${wallet.topupMin} a L ${wallet.topupMax})`} inputMode="decimal" value={f.amount} onChange={set('amount')} required />
@@ -89,6 +137,7 @@ export default function DriverWallet({ wallet, reload, onClose }) {
           <button className="primary" disabled={busy}>{busy ? 'Enviando…' : 'Enviar para aprobación'}</button>
           <p className="muted small">Un administrador lo revisa y acredita el monto que muestra el comprobante. Si no es legible o no coincide, te explicaremos por qué.</p>
         </form>
+        )}
 
         {wallet.topups.length > 0 && (
           <>

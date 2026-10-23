@@ -6,6 +6,7 @@ import { pool } from '../db.js';
 import { sanitizeJpeg } from '../jpeg.js';
 import { encryptBuffer, decryptBuffer } from '../secure.js';
 import { getSettings, money } from '../wallet.js';
+import { activeAccounts, rentalAccount } from '../services/bankAccounts.js';
 import { UPLOADS } from '../config.js';
 import { app, photoJson } from '../app.js';
 import { clean, pageOf } from '../util.js';
@@ -32,7 +33,7 @@ const STATUS_FILTER = ['requested', 'confirmed', 'active', 'completed', 'cancell
 // Carros libres en esas fechas, con el precio por día y el total
 app.get('/api/rentals/search', authUser, passengerOnly, needs('rent'), handle(async (req, res) => {
   const s = await getSettings(pool);
-  const info = { enabled: s.rental_enabled === '1', maxDays: Number(s.rental_max_days), advanceDays: Number(s.rental_advance_days), transfer: !!(s.bank_name && s.bank_account && s.bank_holder) };
+  const info = { enabled: s.rental_enabled === '1', maxDays: Number(s.rental_max_days), advanceDays: Number(s.rental_advance_days), transfer: (await activeAccounts()).length > 0 };
   if (!info.enabled || !req.query.start) return res.json({ ...info, results: [] });
   const { start: from, end, days } = checkDates(s, String(req.query.start), req.query.days);
   res.json({ ...info, start: from, end, days, results: await searchAvailable(from, end, days) });
@@ -44,9 +45,9 @@ app.post('/api/rentals', authUser, passengerOnly, needs('rent'), handle(async (r
 }));
 
 app.get('/api/rentals/mine', authUser, passengerOnly, needs('rent'), handle(async (req, res) => {
-  const s = await getSettings(pool);
-  const bank = { name: s.bank_name, type: s.bank_account_type, account: s.bank_account, holder: s.bank_holder, note: s.bank_note };
-  res.json({ bookings: (await listBookings('b.renter_id = ?', [req.user.id], 30)).map(forRenter), bank });
+  const bookings = (await listBookings('b.renter_id = ?', [req.user.id], 30)).map(forRenter);
+  const paysByTransfer = bookings.some((b) => b.payment === 'transfer' && ['requested', 'confirmed', 'active'].includes(b.status));
+  res.json({ bookings, bank: paysByTransfer ? await rentalAccount() : null });
 }));
 
 app.post('/api/rentals/:id/cancel', authUser, passengerOnly, needs('rent'), handle(async (req, res) => {

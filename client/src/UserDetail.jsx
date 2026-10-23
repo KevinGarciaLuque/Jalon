@@ -10,6 +10,10 @@ export const isStaffRole = (r) => ['superadmin', 'admin', 'support'].includes(r)
 export const ACTION_LABEL = {
   'staff.create': 'Creó una cuenta del personal',
   'passkey.add': 'Activó Face ID o huella en un aparato',
+  'topup.assign': 'Le asignó una cuenta para recargar',
+  'topup.request.reject': 'Rechazó una solicitud de recarga',
+  'bank.create': 'Agregó una cuenta bancaria',
+  'bank.update': 'Editó una cuenta bancaria',
   'passkey.remove': 'Quitó Face ID o huella de un aparato',
   'user.create': 'Creó la cuenta de un pasajero',
   'staff.role': 'Cambió el rol',

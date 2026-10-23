@@ -12,6 +12,7 @@ import { pageOf } from '../util.js';
 import { push } from '../notify.js';
 import { cancelRide } from '../services/rides.js';
 import { tellWallet } from '../services/balance.js';
+import { activeAccounts } from '../services/bankAccounts.js';
 import { periodRange, connectedSeconds } from '../services/earnings.js';
 
 // ---------- Monitoreo de conductores (permiso 'monitor') ----------
@@ -199,6 +200,9 @@ app.put('/api/admin/settings', staffOnly('settings'), async (req, res) => {
   const current = await getSettings(pool);
   const { values, error } = validateSettings(req.body || {}, current);
   if (error) return res.status(400).json({ error });
+  // Con la comisión activa los conductores tienen que poder recibir una cuenta para transferir
+  if (values.commission_enabled === '1' && current.commission_enabled !== '1' && !(await activeAccounts()).length)
+    return res.status(400).json({ error: 'Antes de activar la comisión agrega al menos una cuenta bancaria activa (Ajustes → Cuentas bancarias)' });
   const changed = Object.keys(values).filter((k) => values[k] !== current[k]);
   for (const k of changed) await pool.query('INSERT INTO settings (name, value, updated_by) VALUES (?,?,?) ON DUPLICATE KEY UPDATE value = VALUES(value), updated_by = VALUES(updated_by)', [k, values[k], req.staff.id]);
   clearSettingsCache();

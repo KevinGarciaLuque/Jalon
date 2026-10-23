@@ -27,13 +27,14 @@ function TransferProof({ booking, bank, token, onDone }) {
   return (
     <form className="req" onSubmit={submit}>
       <b>Transfiere {lempiras(booking.total)} a la cuenta de Ktracho GO</b>
-      <div className="bank">
+      {!bank && <p className="muted">Todavía no hay una cuenta para transferir. Escríbenos desde Ayuda y soporte.</p>}
+      {bank && <div className="bank">
         <div><span className="muted">Banco</span> <b>{bank.name}</b></div>
         {bank.type && <div><span className="muted">Tipo</span> <b>{bank.type}</b></div>}
         <div><span className="muted">Cuenta</span> <b>{bank.account}</b></div>
         <div><span className="muted">A nombre de</span> <b>{bank.holder}</b></div>
         {bank.note && <div className="muted small">{bank.note}</div>}
-      </div>
+      </div>}
       <input aria-label="Banco desde el que transferiste" placeholder="Banco desde el que transferiste" value={f.bank} onChange={(e) => setF({ ...f, bank: e.target.value })} required />
       <input aria-label="Número de referencia" placeholder="Número de referencia o de transacción" value={f.reference} onChange={(e) => setF({ ...f, reference: e.target.value })} required />
       <label className={`upload ${busy ? 'disabled' : ''}`}>

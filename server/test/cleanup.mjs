@@ -11,6 +11,7 @@ if (ids.length) {
   for (const r of rcp) fs.rmSync(path.join(process.cwd(), 'uploads', r.receipt_file), { force: true });
   await pool.query('DELETE FROM wallet_entries WHERE user_id IN (?) OR created_by IN (?)', [ids, ids]);
   await pool.query('DELETE FROM topups WHERE driver_id IN (?) OR reviewed_by IN (?)', [ids, ids]);
+  await pool.query('DELETE FROM topup_requests WHERE driver_id IN (?)', [ids]);
   // Alquileres de prueba (y sus comprobantes), y los carros de la flota que crearon las pruebas
   const [rentalFiles] = await pool.query('SELECT receipt_file FROM rental_bookings WHERE (renter_id IN (?) OR owner_driver_id IN (?)) AND receipt_file IS NOT NULL', [ids, ids]);
   for (const r of rentalFiles) fs.rmSync(path.join(process.cwd(), 'uploads', r.receipt_file), { force: true });

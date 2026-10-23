@@ -3,6 +3,28 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-23-recarga-solicitud',
+    date: '2026-10-23',
+    title: 'Recargar saldo: ahora se solicita',
+    for: ['driver'],
+    items: [
+      'En «Mi saldo» toca «Solicitar recarga» y escribe cuánto quieres recargar.',
+      'Cuando el equipo te asigne una cuenta te avisamos: la ves solo tú durante 24 horas. Transfiere y sube tu comprobante como siempre.',
+      'Si pasan las 24 horas sin comprobante, la cuenta se oculta y puedes volver a pedirla.',
+    ],
+  },
+  {
+    id: '2026-10-23-recarga-panel',
+    date: '2026-10-23',
+    title: 'Solicitudes de recarga y cuentas bancarias',
+    for: ['staff'],
+    items: [
+      'La cuenta bancaria ya no se muestra a todos los conductores: en Recargas aparecen las solicitudes y a cada una le asignas una cuenta (la ve 24 horas) o la rechazas con un motivo.',
+      'En Ajustes → «Cuentas bancarias» puedes tener varias cuentas, editarlas y activarlas o desactivarlas.',
+      'Las solicitudes cuentan en el número rojo de Recargas y te llegan a la campanita.',
+    ],
+  },
+  {
     id: '2026-10-23-cuenta-recargas',
     date: '2026-10-23',
     title: 'Aviso de la cuenta para recargas',

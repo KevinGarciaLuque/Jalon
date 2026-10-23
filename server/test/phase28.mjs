@@ -38,15 +38,19 @@ try {
   const root = await createTestSuperadmin(pool);
   const SA = jwt.sign({ id: root.id, role: 'superadmin' }, process.env.JWT_SECRET, { expiresIn: '10m' });
   const before = await http('GET', 'admin/settings', SA);
-  const keep = { commission_enabled: before.commission_enabled === '1', bank_name: before.bank_name, bank_account: before.bank_account, bank_holder: before.bank_holder };
+  const keep = { commission_enabled: before.commission_enabled === '1' };
   const bankItem = async () => (await http('GET', 'admin/system', SA)).items?.find((i) => i.label === 'Cuenta para las recargas');
   await http('PUT', 'admin/settings', SA, { commission_enabled: false });
   check('con la comisión apagada, Sistema dice que no hay recargas', (await bankItem())?.status === 'info');
-  const refused = await http('PUT', 'admin/settings', SA, { commission_enabled: true, bank_name: '', bank_account: '', bank_holder: '' });
-  check('no se puede activar la comisión sin la cuenta para transferir', refused.status === 400 && /cuenta/.test(refused.error || ''), `(${refused.status} ${refused.error || ''})`);
-  await http('PUT', 'admin/settings', SA, { commission_enabled: true, bank_name: 'Banco de prueba', bank_account: '12-345', bank_holder: 'Ktracho GO' });
+  const activeBefore = (await pool.query('SELECT id FROM bank_accounts WHERE active = 1'))[0].map((r) => r.id);
+  await pool.query('UPDATE bank_accounts SET active = 0');
+  const refused = await http('PUT', 'admin/settings', SA, { commission_enabled: true });
+  check('no se puede activar la comisión sin una cuenta bancaria activa', refused.status === 400 && /cuenta bancaria/.test(refused.error || ''), `(${refused.status} ${refused.error || ''})`);
+  await http('POST', 'admin/bank-accounts', SA, { bank: 'Banco de prueba', number: '12-345', holder: 'Ktracho GO' });
+  await http('PUT', 'admin/settings', SA, { commission_enabled: true });
   const ready = await bankItem();
-  check('con la comisión activa y la cuenta llena, Sistema la muestra lista', ready?.status === 'ok' && ready.detail.includes('12-345'), `(${ready?.status})`);
+  check('con la comisión activa y una cuenta activa, Sistema la muestra lista', ready?.status === 'ok' && ready.detail.includes('Banco de prueba'), `(${ready?.status} ${ready?.detail})`);
+  if (activeBefore.length) await pool.query('UPDATE bank_accounts SET active = 1 WHERE id IN (?)', [activeBefore]);
   await http('PUT', 'admin/settings', SA, keep);
   await pool.query('DELETE FROM users WHERE id = ?', [root.id]).catch(() => {});
 } catch (e) {

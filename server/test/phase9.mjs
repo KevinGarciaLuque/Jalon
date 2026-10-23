@@ -76,7 +76,8 @@ check('soporte no ve los ajustes de dinero', (await http('GET', 'admin/settings'
 check('solo el superadmin cambia los ajustes', (await http('PUT', 'admin/settings', ADM, { commission_percent: 12 })).status === 403);
 check('una comisión absurda se rechaza', (await http('PUT', 'admin/settings', SA, { commission_percent: 60 })).status === 400);
 check('un ajuste inventado se rechaza', (await http('PUT', 'admin/settings', SA, { puerta_trasera: 1 })).status === 400);
-check('no se puede activar la comisión sin los datos bancarios', /cuenta de Ktracho GO/.test((await http('PUT', 'admin/settings', SA, { commission_enabled: true })).error || ''));
+await pool.query('UPDATE bank_accounts SET active = 0'); // la base de pruebas puede traer cuentas de otras pruebas
+check('no se puede activar la comisión sin una cuenta bancaria activa', /cuenta bancaria/.test((await http('PUT', 'admin/settings', SA, { commission_enabled: true })).error || ''));
 check('la recarga máxima no puede ser menor que la mínima', (await http('PUT', 'admin/settings', SA, { topup_min: 500, topup_max: 200 })).status === 400);
 
 // Con la comisión apagada, todo sigue como antes: no hay comisión ni se exige saldo
@@ -92,9 +93,10 @@ check('y no se cobra comisión', (await balanceOf(D0.user.id)) === 0 && (await l
 d0s.emit('driver:offline');
 
 // ================= Activar la comisión =================
-const bank = { bank_name: 'Banco de prueba', bank_account_type: 'Ahorros', bank_account: '12-345-678', bank_holder: 'Ktracho GO S. de R.L.', bank_note: 'Usa tu nombre como referencia' };
-const set = await http('PUT', 'admin/settings', SA, { commission_enabled: true, commission_percent: 10, welcome_credit: 50, min_balance: 30, topup_min: 100, topup_max: 1000, ...bank });
-check('el superadmin activa la comisión (10%, crédito de bienvenida L 50, saldo mínimo L 30)', set.commission_enabled === '1' && set.welcome_credit === '50' && set.bank_account === '12-345-678');
+const acc = await http('POST', 'admin/bank-accounts', SA, { bank: 'Banco de prueba', type: 'Ahorros', number: '12-345-678', holder: 'Ktracho GO S. de R.L.', note: 'Usa tu nombre como referencia' });
+check('el superadmin agrega una cuenta bancaria', acc.ok === true && acc.id > 0);
+const set = await http('PUT', 'admin/settings', SA, { commission_enabled: true, commission_percent: 10, welcome_credit: 50, min_balance: 30, topup_min: 100, topup_max: 1000 });
+check('el superadmin activa la comisión (10%, crédito de bienvenida L 50, saldo mínimo L 30)', set.commission_enabled === '1' && set.welcome_credit === '50');
 
 // ================= Aprobar al conductor nuevo: recibe su crédito de bienvenida =================
 check('se aprueba al conductor nuevo', (await approve(D)).ok === true);
@@ -105,7 +107,7 @@ await http('POST', `admin/users/${D.user.id}/status`, ADM, { status: 'active' })
 await wait(300);
 check('bloquear y desbloquear no repite el crédito', (await balanceOf(D.user.id)) === 50);
 const dw = await http('GET', 'driver/wallet', D.token);
-check('el conductor ve su saldo, la comisión, el mínimo y a dónde transferir', dw.enabled && dw.balance === 50 && dw.percent === 10 && dw.minBalance === 30 && dw.topupMin === 100 && dw.bank.account === '12-345-678' && dw.bank.holder === 'Ktracho GO S. de R.L.');
+check('el conductor ve su saldo, la comisión y el mínimo, pero no la cuenta hasta pedir una recarga', dw.enabled && dw.balance === 50 && dw.percent === 10 && dw.minBalance === 30 && dw.topupMin === 100 && !('bank' in dw) && !JSON.stringify(dw).includes('12-345-678'));
 check('el crédito de bienvenida aparece en sus movimientos', dw.entries.some((e) => e.kind === 'bonus' && Number(e.amount) === 50));
 check('la billetera exige sesión de conductor', (await http('GET', 'driver/wallet', null)).status === 401 && (await http('GET', 'driver/wallet', P.token)).status === 403);
 
@@ -143,7 +145,17 @@ check('y no puede volver a ponerse disponible', (await tryOnline(ds))?.status ==
 check('el libro de cuentas cuadra con el saldo', (await ledgerSum(D.user.id)) === (await balanceOf(D.user.id)));
 
 // ================= Recargar: validaciones =================
-const topup = (token, body) => http('POST', 'driver/topups', token, body);
+// El conductor primero pide la recarga y el personal le asigna la cuenta (si no tiene una vigente); luego sube el comprobante
+const topup = async (token, body) => {
+  if (token) {
+    const w = await http('GET', 'driver/wallet', token);
+    if (w.request?.status !== 'assigned') {
+      const rq = await http('POST', 'driver/topup-requests', token, { amount: 200 });
+      if (rq.ok) await http('POST', `admin/topup-requests/${rq.request.id}/assign`, ADM, { accountId: acc.id });
+    }
+  }
+  return http('POST', 'driver/topups', token, body);
+};
 const good = { amount: 200, bank: 'BAC', reference: 'TRF-998877', image: IMG };
 check('recargar exige sesión', (await topup(null, good)).status === 401);
 check('un pasajero no recarga', (await topup(P.token, good)).status === 403);

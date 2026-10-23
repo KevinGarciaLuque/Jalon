@@ -92,9 +92,6 @@ export function validateSettings(input, current) {
   const next = { ...current, ...values };
   if (Number(next.topup_max) < Number(next.topup_min)) return { error: 'La recarga máxima no puede ser menor que la mínima' };
   if (Number(next.rental_price_max) < Number(next.rental_price_min)) return { error: 'El precio máximo por día no puede ser menor que el mínimo' };
-  // Con la comisión activa los conductores tienen que saber a dónde transferir
-  if (next.commission_enabled === '1' && !(next.bank_name && next.bank_account && next.bank_holder))
-    return { error: 'Antes de activar la comisión completa los datos de la cuenta de Ktracho GO (banco, número y titular)' };
   return { values };
 }
 

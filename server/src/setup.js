@@ -591,5 +591,53 @@ await conn.query(`
   )
 `);
 
+// ---- Recargas por solicitud: el conductor pide, el personal le asigna una de las cuentas por 24 horas ----
+// (la cuenta ya no se muestra a todos: solo a quien la pidió, mientras le sirve)
+await conn.query(`
+  CREATE TABLE IF NOT EXISTS bank_accounts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    bank VARCHAR(60) NOT NULL,
+    account_type VARCHAR(40) NULL,
+    account_number VARCHAR(60) NOT NULL,
+    holder VARCHAR(100) NOT NULL,
+    note VARCHAR(400) NULL,
+    active TINYINT(1) NOT NULL DEFAULT 1,
+    created_by INT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  )
+`);
+await conn.query(`
+  CREATE TABLE IF NOT EXISTS topup_requests (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    driver_id INT NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    status ENUM('waiting','assigned','used','rejected','expired','cancelled') NOT NULL DEFAULT 'waiting',
+    bank_account_id INT NULL,
+    expires_at TIMESTAMP NULL,
+    review_note VARCHAR(300) NULL,
+    handled_by INT NULL,
+    handled_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    KEY by_driver (driver_id),
+    KEY by_status (status),
+    FOREIGN KEY (driver_id) REFERENCES users(id),
+    FOREIGN KEY (bank_account_id) REFERENCES bank_accounts(id)
+  )
+`);
+await addColumn('topups', 'request_id', 'INT NULL');
+// La cuenta que estaba en Ajustes pasa una sola vez a la lista (los datos viejos de Ajustes no se borran)
+{
+  const [[{ n }]] = await conn.query('SELECT COUNT(*) AS n FROM bank_accounts');
+  if (!n) {
+    const [rows] = await conn.query("SELECT name, value FROM settings WHERE name IN ('bank_name','bank_account_type','bank_account','bank_holder','bank_note')");
+    const old = Object.fromEntries(rows.map((r) => [r.name, String(r.value || '').trim()]));
+    if (old.bank_name && old.bank_account && old.bank_holder) {
+      await conn.query('INSERT INTO bank_accounts (bank, account_type, account_number, holder, note) VALUES (?,?,?,?,?)',
+        [old.bank_name, old.bank_account_type || null, old.bank_account, old.bank_holder, old.bank_note || null]);
+    }
+  }
+}
+
 console.log(`Base de datos "${DB_NAME}" lista.`);
 await conn.end();

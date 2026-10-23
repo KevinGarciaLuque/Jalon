@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Loading } from './components.jsx';
 import { CATEGORIES } from './lib.js';
+import BankAccounts from './BankAccounts.jsx';
 
 // Ajustes de la comisión y de la cuenta bancaria a la que transfieren los conductores (solo superadmin)
 export default function Settings({ call, onError }) {
+  const [activeBanks, setActiveBanks] = useState(null); // cuántas cuentas bancarias activas hay
   const [s, setS] = useState(null);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -25,14 +27,14 @@ export default function Settings({ call, onError }) {
   }
 
   // Con la comisión (o el pago de alquileres por transferencia) activa, los conductores necesitan saber a qué cuenta transferir
-  const BANK_FIELDS = [['bank_name', 'el banco'], ['bank_account', 'el número de cuenta'], ['bank_holder', 'a nombre de quién']];
-  const bankMissing = BANK_FIELDS.filter(([k]) => !String(s[k] || '').trim()).map(([, label]) => label);
+  // Con la comisión (o los alquileres por transferencia) activa hace falta al menos una cuenta activa para asignar
   const needsBank = s.commission_enabled === '1' || s.rental_enabled === '1';
-  const bankWarning = needsBank && bankMissing.length > 0 && (
-    <div className="hint danger" role="alert">⚠ Faltan los datos de la cuenta ({bankMissing.join(', ')}): sin ellos los conductores no sabrían a dónde transferir, y no se puede guardar. Llénalos en «Cuenta de Ktracho GO» más abajo.</div>
+  const bankWarning = needsBank && activeBanks === 0 && (
+    <div className="hint danger" role="alert">⚠ No hay ninguna cuenta bancaria activa: los conductores no podrían recibir una para transferir, y la comisión no se puede activar. Agrégala en «Cuentas bancarias» más abajo.</div>
   );
 
   return (
+    <>
     <form className="req settings" onSubmit={save}>
       <b>Comisión y saldo de los conductores</b>
       <label className="check">
@@ -80,15 +82,8 @@ export default function Settings({ call, onError }) {
         <label className="grow">Días máximos por alquiler<input inputMode="numeric" value={s.rental_max_days} onChange={set('rental_max_days')} /></label>
         <label className="grow">Reservar hasta con (días de anticipación)<input inputMode="numeric" value={s.rental_advance_days} onChange={set('rental_advance_days')} /></label>
       </div>
-      <p className="muted small">La comisión de los alquileres es la misma de los viajes. El pago por transferencia usa la cuenta de Ktracho GO de abajo.</p>
+      <p className="muted small">La comisión de los alquileres es la misma de los viajes. El pago por transferencia usa la primera cuenta activa de «Cuentas bancarias» (abajo).</p>
 
-      <b>Cuenta de Ktracho GO para recibir las transferencias</b>
-      {bankWarning}
-      <label>Banco<input value={s.bank_name} onChange={set('bank_name')} placeholder="Ej. BAC Credomatic" /></label>
-      <label>Tipo de cuenta<input value={s.bank_account_type} onChange={set('bank_account_type')} placeholder="Ahorros o Cheques" /></label>
-      <label>Número de cuenta<input value={s.bank_account} onChange={set('bank_account')} /></label>
-      <label>A nombre de<input value={s.bank_holder} onChange={set('bank_holder')} placeholder="Nombre de la empresa" /></label>
-      <label>Indicaciones para el conductor (opcional)<textarea rows={3} maxLength={400} value={s.bank_note} onChange={set('bank_note')} placeholder="Ej. Escribe tu nombre completo en la referencia" /></label>
 
       <b>Seguridad del personal</b>
       <label className="check">
@@ -105,5 +100,7 @@ export default function Settings({ call, onError }) {
       <button className="primary" disabled={busy}>{busy ? 'Guardando…' : 'Guardar ajustes'}</button>
       {saved && <div className="hint ok">Ajustes guardados. Los conductores ya ven los cambios.</div>}
     </form>
+    <BankAccounts call={call} onError={onError} onCount={setActiveBanks} />
+    </>
   );
 }

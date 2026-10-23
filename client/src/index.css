@@ -691,3 +691,6 @@ header { gap: 8px; background: linear-gradient(135deg, var(--card), var(--bg)); 
 @media (prefers-reduced-motion: reduce) { .map-btn.compass svg, .map-btn.compass b { transition: none; } }
 /* «Escríbenos» en Recuperar contraseña: con el color de la marca */
 .auth .card .muted a { color: var(--brand); font-weight: 700; }
+/* Cuentas bancarias en Ajustes */
+.bank-row.off { opacity: .6; }
+.bank-edit { background: var(--bg); }

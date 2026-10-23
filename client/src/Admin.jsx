@@ -25,7 +25,7 @@ export const SECTIONS = {
   monitor: { label: 'Mapa en vivo', icon: 'map', group: 'Operación', hint: 'Dónde están ahora los conductores y los viajes.' },
   users: { label: 'Usuarios', icon: 'users', group: 'Operación', hint: 'Pasajeros y conductores: busca, revisa y aprueba.' },
   reports: { label: 'Reportes', icon: 'flag', group: 'Operación', hint: 'Problemas que reportaron pasajeros y conductores.' },
-  topups: { label: 'Recargas', icon: 'wallet', group: 'Operación', hint: 'Recargas de saldo de los conductores por aprobar.' },
+  topups: { label: 'Recargas', icon: 'wallet', group: 'Operación', hint: 'Solicitudes de recarga (asigna una cuenta) y comprobantes por aprobar.' },
   rentals: { label: 'Alquileres', icon: 'key', group: 'Operación', hint: 'Alquiler de carros por días.' },
   share: { label: 'Compartir la app', icon: 'share', group: 'Crecimiento', hint: 'Códigos QR y enlace para invitar pasajeros y conductores.' },
   settings: { label: 'Ajustes', icon: 'sliders', group: 'Administración', hint: 'Tarifas, comisión, recargas y otras reglas de la app.' },
@@ -121,7 +121,7 @@ export default function Admin({ token, onGate, onSections }) {
   const can = (p) => perms.includes(p);
 
   // Las secciones que esta persona puede ver, en el orden del menú, con lo que tienen pendiente
-  const badge = { users: can('users.manage') ? stats?.pendingDrivers : 0, reports: stats?.openReports, topups: stats?.pendingTopups };
+  const badge = { users: can('users.manage') ? stats?.pendingDrivers : 0, reports: stats?.openReports, topups: (stats?.pendingTopups || 0) + (stats?.waitingRequests || 0) };
   const tabs = [
     can('metrics') && 'metrics', 'rides', can('monitor') && 'monitor', 'users', 'reports', can('wallet') && 'topups', can('rentals') && 'rentals',
     can('share') && 'share', can('settings') && 'settings', can('settings') && 'system', can('staff.manage') && 'staff', can('staff.manage') && 'perms', can('audit') && 'audit',
@@ -344,6 +344,14 @@ export default function Admin({ token, onGate, onSections }) {
         </section>
       )}
 
+      {can('wallet') && stats?.waitingRequests > 0 && current !== 'topups' && (
+        <section className="pending">
+          <div className="row between wrap">
+            <b>🙋 {stats.waitingRequests} conductor{stats.waitingRequests === 1 ? '' : 'es'} esperando una cuenta para recargar</b>
+            <button className="primary sm" onClick={() => openTab('topups')}>Atender</button>
+          </div>
+        </section>
+      )}
       {can('wallet') && stats?.pendingTopups > 0 && current !== 'topups' && (
         <section className="pending">
           <div className="row between wrap">
@@ -448,7 +456,7 @@ export default function Admin({ token, onGate, onSections }) {
         </>
       )}
 
-      {current === 'topups' && <Topups topups={topups} status={topStatus} setStatus={setTopStatus} call={call} token={token} reload={load} onError={setError} />}
+      {current === 'topups' && <Topups topups={topups} status={topStatus} setStatus={setTopStatus} call={call} token={token} reload={load} onError={setError} waiting={stats?.waitingRequests || 0} canSettings={can('settings')} />}
       {current === 'settings' && <Settings call={call} onError={setError} />}
       {current === 'system' && can('settings') && <Suspense fallback={<Loading />}><System call={call} onError={setError} /></Suspense>}
       {current === 'share' && can('share') && <Suspense fallback={<Loading />}><Share call={call} onError={setError} /></Suspense>}

@@ -46,6 +46,7 @@ try {
   check('apagado, el pasajero no ve carros', off.enabled === false && off.results.length === 0);
 
   // Encendido, con comisión del 10% y cuenta para transferencias
+  await http('POST', 'admin/bank-accounts', SA, { bank: 'BAC', number: '123456', holder: 'Ktracho GO' }); // la comisión necesita una cuenta activa
   const on = await http('PUT', 'admin/settings', SA, { rental_enabled: true, commission_enabled: true, commission_percent: 10, bank_name: 'BAC', bank_account: '123456', bank_holder: 'Ktracho GO', rental_max_days: 7 });
   check('el superadmin activa el alquiler', on.rental_enabled === '1', on.error || '');
   check('el precio por día debe estar en el rango', (await http('PUT', 'driver/rental', D.token, { price: 50 })).status === 400);

@@ -9,6 +9,7 @@ import { rideView, nearbyDrivers, expireOffers, expireStaleRides } from './servi
 import { remindOpenAlerts } from './services/sos.js';
 import { expireRentals } from './services/rentals.js';
 import { reconcileSessions, purgeTracks } from './services/activity.js';
+import { expireRequests } from './routes/recharges.js';
 
 // Las ofertas vencidas se revisan cada OFFER_SWEEP_MS (5 s por defecto)
 setInterval(() => expireOffers().catch(reportError), Number(process.env.OFFER_SWEEP_MS || 5000)).unref();
@@ -63,3 +64,6 @@ setInterval(purgeOldTracks, 6 * 3600 * 1000).unref();
 const expireRentalsNow = () => expireRentals().then((n) => n && console.log(`Se cancelaron ${n} alquiler(es) vencidos`)).catch(reportError);
 expireRentalsNow();
 setInterval(expireRentalsNow, 10 * 60 * 1000).unref();
+
+// Recargas: la cuenta asignada a un conductor se oculta a las 24 horas si no subió el comprobante
+setInterval(() => expireRequests().catch(reportError), 10 * 60 * 1000).unref();
