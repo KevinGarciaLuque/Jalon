@@ -1,5 +1,5 @@
 // Términos de uso y política de privacidad. Si cambias el contenido, sube TERMS_VERSION en server/src/legal.js (y VERSION aquí).
-const VERSION = '1.8';
+const VERSION = '1.9';
 const UPDATED = '21 de octubre de 2026';
 const CONTACT = import.meta.env.VITE_CONTACT_EMAIL; // se define al compilar (variable en Railway)
 
@@ -66,6 +66,10 @@ function Terms() {
       <ul>
         <li>Antes de subir a un vehículo, comprueba que la placa y el conductor coinciden con los que ves en la app.</li>
         <li>Puedes compartir tu viaje en vivo con una persona de confianza.</li>
+        <li>Al subir, el pasajero le dice al conductor su <b>PIN de 4 dígitos</b>: sin él el viaje no se puede iniciar.</li>
+        <li>Si durante el viaje el carro se desvía de la ruta o se queda detenido mucho tiempo, te preguntamos «¿Todo bien?». Si pides ayuda o no respondes, avisamos al equipo con la ubicación.</li>
+        <li>Los conductores se toman una <b>selfie</b> al conectarse para confirmar que son la persona aprobada.</li>
+        <li>Las pasajeras pueden pedir <b>«Solo conductoras»</b>: esos viajes solo los ven conductoras cuyo sexo confirmó el equipo con su licencia.</li>
         <li>
           El botón de emergencia avisa al equipo de Ktracho GO con tu ubicación, pero <b>no sustituye llamar al 911</b>. No garantizamos un tiempo de
           respuesta. Si estás en peligro, llama primero al 911.
@@ -107,6 +111,9 @@ function Privacy() {
       <ul>
         <li><b>Cuenta:</b> tu nombre, tu teléfono, tu correo electrónico y tu rol (pasajero o conductor). La contraseña se guarda cifrada; nadie, ni nosotros, puede verla.</li>
         <li><b>Conductores:</b> foto, licencia de conducir, matrícula, vehículo y placa.</li>
+        <li><b>Selfie al conectarse (conductores):</b> una foto de tu cara cada cierto tiempo al ponerte disponible, para confirmar que eres tú. La compara el personal con tu foto aprobada (no usamos reconocimiento facial automático). Se guarda cifrada y se borra a los 30 días.</li>
+        <li><b>Sexo (opcional):</b> si lo indicas en Mi cuenta, lo usamos solo para la opción «Solo conductoras». A las conductoras se lo confirma el personal con su licencia. No se muestra a otros usuarios, salvo que un viaje sea «Solo conductoras». Puedes quitarlo cuando quieras.</li>
+        <li><b>Avisos de seguridad del viaje:</b> si el carro se desvía o se detiene mucho, guardamos el aviso, el lugar y tu respuesta, para atender la emergencia y los reclamos.</li>
         <li>
           <b>Ubicación:</b> el GPS de tu dispositivo, solo mientras la aplicación está abierta. En el pasajero, para buscar conductores cerca y durante el
           viaje; en el conductor, mientras está disponible y durante los viajes.
@@ -160,7 +167,7 @@ function Privacy() {
       <h2>4. Cuánto tiempo los conservamos</h2>
       <p>
         Mientras tengas cuenta y el tiempo necesario para cumplir obligaciones legales, resolver reclamos y mantener la seguridad. Los documentos de los
-        conductores se conservan mientras sean necesarios para su verificación. Los mensajes del chat y el camino de cada viaje se borran a los 90 días; las notificaciones de la campanita, a los 30 días.
+        conductores se conservan mientras sean necesarios para su verificación. Los mensajes del chat y el camino de cada viaje se borran a los 90 días; las notificaciones de la campanita y las selfies de los conductores, a los 30 días.
       </p>
 
       <h2>5. Tus derechos</h2>

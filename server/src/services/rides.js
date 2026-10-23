@@ -64,11 +64,14 @@ export function nearbyDrivers(lat, lng) {
   return near
     .sort((a, b) => a.km - b.km)
     .slice(0, MAX_NEARBY)
-    .map(({ d }) => ({ id: d.id, name: d.name, vehicle: d.vehicle, category: d.category || 'car', lat: d.lat, lng: d.lng }));
+    .map(({ d }) => ({ id: d.id, name: d.name, vehicle: d.vehicle, category: d.category || 'car', lat: d.lat, lng: d.lng, woman: !!d.woman }));
 }
 
-export function openRidesNear(lat, lng, driverId, category = 'car') {
-  return [...openRides.values()].filter((r) => (r.category || 'car') === category && distanceKm(lat, lng, r.origin_lat, r.origin_lng) <= NEARBY_KM && !declined.get(r.id)?.has(driverId));
+// Un viaje «solo conductoras» solo lo ven y lo toman conductoras con el sexo confirmado por el personal
+export const canTake = (d, ride) => !Number(ride.women_only) || !!d?.woman;
+
+export function openRidesNear(lat, lng, driverId, category = 'car', woman = false) {
+  return [...openRides.values()].filter((r) => (r.category || 'car') === category && canTake({ woman }, r) && distanceKm(lat, lng, r.origin_lat, r.origin_lng) <= NEARBY_KM && !declined.get(r.id)?.has(driverId));
 }
 
 export function closeOpenRide(rideId) {

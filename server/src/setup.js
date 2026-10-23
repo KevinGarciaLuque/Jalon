@@ -628,6 +628,11 @@ await conn.query(`
   )
 `);
 
+// ---- Etapa 9.4: conductoras para mujeres (el sexo es opcional; a las conductoras lo confirma el personal con su licencia) ----
+await addColumn('users', 'gender', "ENUM('f','m','x') NULL");
+await addColumn('users', 'gender_verified', 'TINYINT(1) NOT NULL DEFAULT 0');
+await addColumn('rides', 'women_only', 'TINYINT(1) NOT NULL DEFAULT 0');
+
 // ---- Recargas por solicitud: el conductor pide, el personal le asigna una de las cuentas por 24 horas ----
 // (la cuenta ya no se muestra a todos: solo a quien la pidió, mientras le sirve)
 await conn.query(`

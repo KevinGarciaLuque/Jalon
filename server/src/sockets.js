@@ -11,7 +11,7 @@ import { io } from './app.js';
 import { drivers, passengers, openRides, declined, room } from './live.js';
 import { isPoint, isPrice, serial, clean } from './util.js';
 import { push, pushStaff, hasPushSub, unreadCount } from './notify.js';
-import { getRide, activeRideFor, ratingsOf, rideView, nearbyDrivers, openRidesNear, closeOpenRide, releaseDriver, sendEta, cancelRide, PIN_TRIES } from './services/rides.js';
+import { getRide, activeRideFor, ratingsOf, rideView, nearbyDrivers, openRidesNear, closeOpenRide, releaseDriver, sendEta, cancelRide, PIN_TRIES, canTake } from './services/rides.js';
 import { walletGate, chargeCommission } from './services/balance.js';
 import { shareWithContacts } from './services/accounts.js';
 import { notifySos } from './services/sos.js';
@@ -96,11 +96,13 @@ io.on('connection', async (socket) => {
       // Solo recibe solicitudes de la categoría de su vehículo (sin vehículo registrado cuenta como carro)
       const [[veh]] = await pool.query('SELECT category FROM vehicles WHERE driver_id = ?', [user.id]);
       const category = veh?.category || 'car';
+      const [[g]] = await pool.query('SELECT gender, gender_verified FROM users WHERE id = ?', [user.id]);
+      const woman = g?.gender === 'f' && !!g.gender_verified; // conductora confirmada: también recibe los viajes «solo conductoras»
       drivers.set(user.id, {
-        id: user.id, name: user.name, vehicle: user.vehicle, plate: user.plate, category,
+        id: user.id, name: user.name, vehicle: user.vehicle, plate: user.plate, category, woman,
         lat, lng, available: !busy, since: Date.now(), seenAt: Date.now(),
       });
-      socket.emit('rides:open', openRidesNear(lat, lng, user.id, category));
+      socket.emit('rides:open', openRidesNear(lat, lng, user.id, category, woman));
       openSession(user.id).catch(reportError); // empiezan a contar sus horas conectado
     });
 
@@ -144,7 +146,7 @@ io.on('connection', async (socket) => {
       const d = drivers.get(user.id);
       const ride = openRides.get(rideId);
       price = Number(price);
-      if (!d || !d.available || !ride || !isPrice(price)) return;
+      if (!d || !d.available || !ride || !isPrice(price) || !canTake(d, ride)) return;
       await serial(`offer:${user.id}:${rideId}`, async () => {
       // Si el conductor ya ofertó en este viaje, se actualiza su oferta en lugar de duplicarla
       const [prev] = await pool.query('SELECT id FROM offers WHERE ride_id = ? AND driver_id = ? AND status = "pending"', [rideId, user.id]);
@@ -226,7 +228,7 @@ io.on('connection', async (socket) => {
       socket.emit('drivers:nearby', nearbyDrivers(lat, lng));
     });
 
-    on('ride:request', async ({ origin, dest, price, category: cat }, ack) => {
+    on('ride:request', async ({ origin, dest, price, category: cat, womenOnly }, ack) => {
       try {
         if (!isPoint(origin) || !isPoint(dest)) return ack?.({ error: 'Ubicación inválida' });
         // Si ya hay uno (p. ej. pedido desde otro celular), se le muestra para que lo vea o lo cancele
@@ -242,18 +244,25 @@ io.on('connection', async (socket) => {
         const route = await getRoute(origin, dest);
         const km = route.distanceKm;
         const category = isCategory(cat) ? cat : 'car';
+        // «Solo conductoras»: para pasajeras (lo indican en Mi cuenta)
+        let women = 0;
+        if (womenOnly) {
+          const [[me]] = await pool.query('SELECT gender FROM users WHERE id = ?', [user.id]);
+          if (me?.gender !== 'f') return ack?.({ error: '«Solo conductoras» es para pasajeras: indícalo en Mi cuenta' });
+          women = 1;
+        }
         const offered = price == null || price === '' ? fareFor(await getSettings(pool), category, km, route.durationMin) : Number(price);
         if (!isPrice(offered)) return ack?.({ error: `El precio debe estar entre L 1 y L ${MAX_PRICE}` });
         const [r] = await pool.query(
-          `INSERT INTO rides (passenger_id, origin_lat, origin_lng, origin_text, dest_lat, dest_lng, dest_text, distance_km, duration_min, route_json, offered_price, category)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
-          [user.id, origin.lat, origin.lng, await pickupText(origin), dest.lat, dest.lng, clean(dest.text), km, route.durationMin, JSON.stringify(route.coords), offered, category]
+          `INSERT INTO rides (passenger_id, origin_lat, origin_lng, origin_text, dest_lat, dest_lng, dest_text, distance_km, duration_min, route_json, offered_price, category, women_only)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [user.id, origin.lat, origin.lng, await pickupText(origin), dest.lat, dest.lng, clean(dest.text), km, route.durationMin, JSON.stringify(route.coords), offered, category, women]
         );
         const ride = await rideView(await getRide(r.insertId));
         openRides.set(ride.id, ride);
         // Avisar a conductores libres cercanos de la misma categoría
         for (const d of drivers.values()) {
-          if (!d.available || (d.category || 'car') !== category || distanceKm(d.lat, d.lng, origin.lat, origin.lng) > NEARBY_KM) continue;
+          if (!d.available || (d.category || 'car') !== category || !canTake(d, ride) || distanceKm(d.lat, d.lng, origin.lat, origin.lng) > NEARBY_KM) continue;
           if (!d.disconnected) io.to(room(d.id)).emit('ride:new', ride);
           else push(d.id, { bell: false, title: 'Nuevo viaje cerca de ti', body: `${ride.dest_text ? `A ${ride.dest_text}` : 'Viaje disponible'} · L ${Math.round(ride.offered_price)}`, tag: `ride-${ride.id}`, url: '/' });
         }
@@ -311,7 +320,7 @@ io.on('connection', async (socket) => {
       openRides.set(ride.id, view);
       declined.delete(ride.id); // con el precio nuevo, quienes la rechazaron la vuelven a ver
       for (const d of drivers.values()) {
-        if (!d.available || (d.category || 'car') !== ride.category || distanceKm(d.lat, d.lng, ride.origin_lat, ride.origin_lng) > NEARBY_KM) continue;
+        if (!d.available || (d.category || 'car') !== ride.category || !canTake(d, ride) || distanceKm(d.lat, d.lng, ride.origin_lat, ride.origin_lng) > NEARBY_KM) continue;
         if (!d.disconnected) io.to(room(d.id)).emit('ride:new', view); // el cliente reemplaza la solicitud por la del precio nuevo
         else push(d.id, { bell: false, title: 'El pasajero subió su oferta', body: `${ride.dest_text ? `A ${ride.dest_text}` : 'Viaje cercano'} · L ${Math.round(price)}`, tag: `ride-${ride.id}`, url: '/' });
       }

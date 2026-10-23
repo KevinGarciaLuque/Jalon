@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { apiGet, apiPost, useInstall } from './lib.js';
+import { apiGet, apiPost, apiPut, useInstall } from './lib.js';
 import { PushToggle, PasswordInput } from './components.jsx';
 import { SavedPlaces, TrustedContacts } from './PersonalLists.jsx';
 import { Panel } from './Menu.jsx';
@@ -7,6 +7,40 @@ import { PasskeySection } from './PasskeyParts.jsx';
 
 const ROLE = { passenger: 'Pasajero', driver: 'Conductor', admin: 'Administrador', superadmin: 'Superadministrador', support: 'Soporte' };
 const STAFF = ['superadmin', 'admin', 'support'];
+
+// Sexo (opcional): solo sirve para «Solo conductoras». A las conductoras se lo confirma el equipo con su licencia.
+function GenderSection({ user }) {
+  const [value, setValue] = useState(user.gender || '');
+  const [msg, setMsg] = useState({ ok: true, text: '' });
+  async function save(v) {
+    setValue(v);
+    try {
+      const r = await apiPut('me/gender', null, { gender: v || null });
+      window.dispatchEvent(new CustomEvent('ktracho:profile', { detail: { gender: r.gender, genderVerified: r.genderVerified } }));
+      setMsg({ ok: true, text: 'Guardado.' });
+    } catch (e) {
+      setMsg({ ok: false, text: e.message });
+    }
+  }
+  return (
+    <section className="req" aria-labelledby="gender-title">
+      <b id="gender-title">Sexo (opcional)</b>
+      <p className="muted small">
+        {user.role === 'driver'
+          ? 'Si eres mujer, indícalo: el equipo lo confirma con tu licencia y recibirás también los viajes «Solo conductoras».'
+          : 'Si eres mujer, podrás pedir «Solo conductoras». No se lo mostramos a nadie más.'}
+      </p>
+      <select aria-label="Sexo" value={value} onChange={(e) => save(e.target.value)}>
+        <option value="">Prefiero no decirlo</option>
+        <option value="f">Mujer</option>
+        <option value="m">Hombre</option>
+        <option value="x">Otro</option>
+      </select>
+      {user.role === 'driver' && value === 'f' && <p className="small">{user.genderVerified ? '✓ Confirmado por el equipo' : '⏳ El equipo lo confirmará con tu licencia'}</p>}
+      {msg.text && <div className={msg.ok ? 'hint ok' : 'error'}>{msg.text}</div>}
+    </section>
+  );
+}
 
 export default function Account({ user, token, onToken, onClose, onLogout, forced = false }) {
   const install = useInstall();
@@ -111,6 +145,7 @@ export default function Account({ user, token, onToken, onClose, onLogout, force
           </div>
         )}
 
+        {!forced && !isStaff && <GenderSection user={user} />}
         {!forced && <PasskeySection token={token} />}
 
         <form className="req" onSubmit={changePassword}>

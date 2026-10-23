@@ -11,6 +11,8 @@ export const ACTION_LABEL = {
   'staff.create': 'Creó una cuenta del personal',
   'passkey.add': 'Activó Face ID o huella en un aparato',
   'topup.assign': 'Le asignó una cuenta para recargar',
+  'user.gender.verify': 'Confirmó el sexo de una conductora',
+  'user.gender.unverify': 'Quitó la confirmación del sexo de una conductora',
   'selfie.view': 'Vio la selfie de un conductor',
   'selfie.ok': 'Confirmó la selfie de un conductor',
   'selfie.mismatch': 'Bloqueó a un conductor porque su selfie no coincide',
@@ -239,6 +241,14 @@ export default function UserDetail({ userId, me, perms, call, token, onClose, on
           </div>
           {staffTarget && <div className={u.totp_enabled ? 'ok small' : 'muted small'}>{u.totp_enabled ? '🔐 Verificación en dos pasos activa' : 'Verificación en dos pasos: pendiente de activar'}</div>}
           {u.must_change_password ? <div className="hint">Tiene una contraseña temporal pendiente de cambiar.</div> : null}
+          {u.role === 'driver' && (
+            <div className="row wrap gender-row">
+              <span className="small">Sexo: <b>{{ f: 'Mujer', m: 'Hombre', x: 'Otro' }[u.gender] || 'No lo indicó'}</b>{u.gender && (u.gender_verified ? ' · ✓ confirmado' : ' · sin confirmar')}</span>
+              {u.gender && can('users.manage') && (
+                <button className="sm" disabled={busy} onClick={() => run(() => call(`users/${u.id}/gender`, { verified: !u.gender_verified }))}>{u.gender_verified ? 'Quitar confirmación' : 'Confirmar (visto en la licencia)'}</button>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="stats">

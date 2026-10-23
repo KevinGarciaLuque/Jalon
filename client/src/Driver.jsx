@@ -250,6 +250,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
                         <span className="row"><Avatar name={r.passenger?.name} /><span><b>{r.passenger?.name}</b> <Stars rating={r.passenger?.rating} /></span></span>
                         <span className="tag">{lempiras(r.offered_price)}</span>
                       </div>
+                      {!!r.women_only && <span className="pill women">🚺 Solo conductoras</span>}
                       <div className="route-list">
                         <div><i className="dot-o" /><span><span className="sr-only">Recoger en: </span>{r.origin_text || 'Punto marcado en el mapa'} <span className="muted small">· a {away.toFixed(1)} km</span></span></div>
                         <div><i className="dot-d" /><span><span className="sr-only">Destino: </span>{r.dest_text || 'Punto marcado en el mapa'} <span className="muted small">· {r.distance_km.toFixed(1)} km{r.duration_min ? `, ${minutes(r.duration_min)}` : ''}</span></span></div>

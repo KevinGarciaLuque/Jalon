@@ -90,10 +90,24 @@ app.get('/api/admin/rides', staffOnly('view'), async (req, res) => {
 });
 
 // Ficha completa de un usuario: datos, estadísticas, últimos viajes, documentos y movimientos del personal sobre su cuenta
+// Confirmar el sexo de una conductora (visto en su licencia): así recibe los viajes «solo conductoras»
+app.post('/api/admin/users/:id/gender', staffOnly('users.manage'), async (req, res) => {
+  const id = Number(req.params.id);
+  const [[u]] = await pool.query('SELECT id, role, gender FROM users WHERE id = ? AND deleted_at IS NULL', [id]);
+  if (!u || u.role !== 'driver') return res.status(404).json({ error: 'Conductor no encontrado' });
+  const verified = !!req.body?.verified;
+  if (verified && !u.gender) return res.status(400).json({ error: 'La conductora todavía no indicó su sexo en Mi cuenta' });
+  await pool.query('UPDATE users SET gender_verified = ? WHERE id = ?', [verified ? 1 : 0, id]);
+  const d = drivers.get(id);
+  if (d) d.woman = verified && u.gender === 'f';
+  await audit(req.staff, verified ? 'user.gender.verify' : 'user.gender.unverify', { target: id });
+  res.json({ ok: true });
+});
+
 app.get('/api/admin/users/:id', staffOnly('view'), async (req, res) => {
   const id = Number(req.params.id);
   const [[u]] = await pool.query(
-    `SELECT id, name, phone, email, role, status, vehicle, plate, created_at, terms_accepted_at, terms_version, must_change_password, deleted_at, totp_enabled, can_monitor
+    `SELECT id, name, phone, email, role, status, vehicle, plate, gender, gender_verified, created_at, terms_accepted_at, terms_version, must_change_password, deleted_at, totp_enabled, can_monitor
      FROM users WHERE id = ?`, [id]
   );
   if (!u) return res.status(404).json({ error: 'Usuario no existe' });

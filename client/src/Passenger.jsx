@@ -86,7 +86,7 @@ const CANCELLED = {
 
 const QUICK = ['Ya salgo', 'Dame 2 minutos', 'Estoy en la esquina', '¿Dónde estás?'];
 
-export default function Passenger({ socket, token, userId, perms = [] }) {
+export default function Passenger({ socket, token, userId, perms = [], gender = null }) {
   const { pos, setPos, denied, course } = useGeo();
   const [drivers, setDrivers] = useState([]);
   const [origin, setOrigin] = useState(null); // punto de recogida elegido a mano; null = mi GPS
@@ -107,6 +107,7 @@ export default function Passenger({ socket, token, userId, perms = [] }) {
   const [compact, setCompact] = useState(false); // en el celular, la hoja de abajo se puede achicar para ver más mapa
   const [renting, setRenting] = useState(false); // pantalla de alquilar un carro por días
   const [safety, setSafety] = useState(null); // «¿Todo bien?» durante el viaje
+  const [womenOnly, setWomenOnly] = useState(false); // «Solo conductoras» (para pasajeras)
   useEffect(() => {
     const go = (e) => { if (e.detail === 'rentals' && perms.includes('rent')) setRenting(true); };
     window.addEventListener('ktracho:go', go);
@@ -198,7 +199,7 @@ export default function Passenger({ socket, token, userId, perms = [] }) {
     setError('');
     socket.emit(
       'ride:request',
-      { origin: { lat: from.lat, lng: from.lng, text: from.text }, dest: { lat: dest.lat, lng: dest.lng, text: dest.text }, price: Number(price), category },
+      { origin: { lat: from.lat, lng: from.lng, text: from.text }, dest: { lat: dest.lat, lng: dest.lng, text: dest.text }, price: Number(price), category, womenOnly: gender === 'f' && womenOnly },
       (res) => res?.error && setError(res.error)
     );
   }
@@ -297,6 +298,12 @@ export default function Passenger({ socket, token, userId, perms = [] }) {
                     </button>
                   ))}
                 </div>
+                {gender === 'f' && (
+                  <label className="check women-only">
+                    <input type="checkbox" checked={womenOnly} onChange={(e) => setWomenOnly(e.target.checked)} />
+                    <span><b>🚺 Solo conductoras</b> · {near.filter((d) => d.woman).length} cerca. Solo te ofrecerán viaje conductoras confirmadas por el equipo.</span>
+                  </label>
+                )}
                 <PriceStepper value={price} label="Tu oferta en lempiras" onChange={(v) => { priceEdited.current = true; setPrice(v); }} />
                 {error && <div className="error">{error}</div>}
                 <button className="primary" disabled={!price} onClick={request}>Pedir viaje por {lempiras(price || 0)}</button>
@@ -312,7 +319,7 @@ export default function Passenger({ socket, token, userId, perms = [] }) {
               <span className="tag">{lempiras(ride.final_price ?? ride.offered_price)}</span>
             </div>
             <p className="muted">
-              {CATEGORY_LABEL[ride.category || 'car']} · {ride.dest_text || 'Destino'} · {ride.distance_km.toFixed(1)} km{ride.duration_min ? ` · ${minutes(ride.duration_min)}` : ''}
+              {CATEGORY_LABEL[ride.category || 'car']}{ride.women_only ? ' · 🚺 Solo conductoras' : ''} · {ride.dest_text || 'Destino'} · {ride.distance_km.toFixed(1)} km{ride.duration_min ? ` · ${minutes(ride.duration_min)}` : ''}
             </p>
             {eta && eta.rideId === ride.id && ['accepted', 'started'].includes(ride.status) && (
               <p className="eta">

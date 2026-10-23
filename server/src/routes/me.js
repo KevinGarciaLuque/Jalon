@@ -63,6 +63,15 @@ app.get('/api/me/export', authUser, async (req, res) => {
 });
 
 // Eliminar la propia cuenta (pide la contraseña). No se puede con un viaje en curso. El personal no se elimina solo: lo hace el superadmin.
+app.put('/api/me/gender', authUser, async (req, res) => {
+  const g = req.body?.gender;
+  if (![null, 'f', 'm', 'x'].includes(g ?? null)) return res.status(400).json({ error: 'Opción inválida' });
+  const value = g ?? null;
+  const changed = value !== (req.user.gender || null);
+  await pool.query('UPDATE users SET gender = ?, gender_verified = IF(?, 0, gender_verified) WHERE id = ?', [value, changed, req.user.id]);
+  res.json({ ok: true, gender: value, genderVerified: changed ? false : !!req.user.gender_verified });
+});
+
 app.post('/api/me/delete', authUser, loginLimiter, async (req, res) => {
   const u = req.user;
   if (isStaff(u.role)) return res.status(403).json({ error: 'Las cuentas del personal las elimina el superadministrador' });

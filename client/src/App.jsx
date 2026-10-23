@@ -73,7 +73,7 @@ export default function App() {
     apiGet('me')
       .then(({ user }) => setSession((cur) => {
         if (!cur || cur.user.id !== user.id) return cur;
-        const next = { ...cur, user: { ...cur.user, perms: user.perms, mustAcceptTerms: user.mustAcceptTerms, termsVersion: user.termsVersion, rating: user.rating, mapRotation: user.mapRotation } };
+        const next = { ...cur, user: { ...cur.user, perms: user.perms, mustAcceptTerms: user.mustAcceptTerms, termsVersion: user.termsVersion, rating: user.rating, mapRotation: user.mapRotation, gender: user.gender, genderVerified: user.genderVerified } };
         localStorage.setItem('jalon', JSON.stringify(next));
         return next;
       }))
@@ -135,6 +135,12 @@ export default function App() {
   }
 
   const staff = STAFF.includes(session?.user.role);
+  // Mi cuenta avisa cuando cambia el perfil (p. ej. el sexo) para guardarlo en la sesión
+  useEffect(() => {
+    const on = (e) => setSession((cur) => { if (!cur) return cur; const next = { ...cur, user: { ...cur.user, ...e.detail } }; localStorage.setItem('jalon', JSON.stringify(next)); return next; });
+    window.addEventListener('ktracho:profile', on);
+    return () => window.removeEventListener('ktracho:profile', on);
+  }, []);
   mapPrefs.rotation = session?.user.mapRotation !== false; // se guarda con la sesión: al abrir la app ya se sabe
   const hasBell = !!session && !session.user.mustChangePassword && !session.token;
   const panelOpen = staff && !!session && !session.user.mustChangePassword && !session.user.mustEnrollTwoFactor;
@@ -197,7 +203,7 @@ export default function App() {
       )}
       {socket && !session.user.mustChangePassword && (session.user.role === 'driver'
         ? <Driver socket={socket} token={session.token} userId={session.user.id} status={accountStatus} perms={session.user.perms || []} onWallet={setWallet} />
-        : <Passenger socket={socket} token={session.token} userId={session.user.id} perms={session.user.perms || []} />)}
+        : <Passenger socket={socket} token={session.token} userId={session.user.id} perms={session.user.perms || []} gender={session.user.gender} />)}
       {(showAccount || session.user.mustChangePassword) && (
         <Account
           forced={!!session.user.mustChangePassword}
