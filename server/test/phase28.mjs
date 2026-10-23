@@ -1,7 +1,8 @@
 import 'dotenv/config';
 // Recuperar la contraseña con el teléfono o con el correo, y entrar directo al terminar
 import { pool } from '../src/db.js';
-import { http, registerUser } from './helpers.mjs';
+import jwt from 'jsonwebtoken';
+import { http, registerUser, createTestSuperadmin } from './helpers.mjs';
 
 let fails = 0;
 const check = (name, ok, extra = '') => { console.log(`${ok ? 'OK  ' : 'FAIL'} ${name} ${extra}`); if (!ok) fails++; };
@@ -32,6 +33,22 @@ try {
   check('se puede pedir el código escribiendo el teléfono', /^\d{6}$/.test(byPhone.devCode || ''));
   const done2 = await http('POST', 'password/reset', null, { login: phone, code: byPhone.devCode, password: 'Otra-clave-99' });
   check('con el teléfono también entra directo', !!done2.token && done2.user?.id === P.user.id);
+
+  // ---- Sistema avisa si la comisión está activa pero falta la cuenta para transferir ----
+  const root = await createTestSuperadmin(pool);
+  const SA = jwt.sign({ id: root.id, role: 'superadmin' }, process.env.JWT_SECRET, { expiresIn: '10m' });
+  const before = await http('GET', 'admin/settings', SA);
+  const keep = { commission_enabled: before.commission_enabled === '1', bank_name: before.bank_name, bank_account: before.bank_account, bank_holder: before.bank_holder };
+  const bankItem = async () => (await http('GET', 'admin/system', SA)).items?.find((i) => i.label === 'Cuenta para las recargas');
+  await http('PUT', 'admin/settings', SA, { commission_enabled: false });
+  check('con la comisión apagada, Sistema dice que no hay recargas', (await bankItem())?.status === 'info');
+  const refused = await http('PUT', 'admin/settings', SA, { commission_enabled: true, bank_name: '', bank_account: '', bank_holder: '' });
+  check('no se puede activar la comisión sin la cuenta para transferir', refused.status === 400 && /cuenta/.test(refused.error || ''), `(${refused.status} ${refused.error || ''})`);
+  await http('PUT', 'admin/settings', SA, { commission_enabled: true, bank_name: 'Banco de prueba', bank_account: '12-345', bank_holder: 'Ktracho GO' });
+  const ready = await bankItem();
+  check('con la comisión activa y la cuenta llena, Sistema la muestra lista', ready?.status === 'ok' && ready.detail.includes('12-345'), `(${ready?.status})`);
+  await http('PUT', 'admin/settings', SA, keep);
+  await pool.query('DELETE FROM users WHERE id = ?', [root.id]).catch(() => {});
 } catch (e) {
   check('la prueba terminó sin errores', false, e.stack);
 }

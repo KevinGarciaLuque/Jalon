@@ -3,6 +3,16 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-23-cuenta-recargas',
+    date: '2026-10-23',
+    title: 'Aviso de la cuenta para recargas',
+    for: ['staff'],
+    items: [
+      'Si marcas «Cobrar comisión» sin los datos de la cuenta bancaria, Ajustes te dice en rojo qué falta antes de guardar.',
+      'Sistema muestra «Cuenta para las recargas»: lista, o qué le falta.',
+    ],
+  },
+  {
     id: '2026-10-23-recuperar',
     date: '2026-10-23',
     title: 'Recuperar tu contraseña, más fácil',

@@ -24,6 +24,14 @@ export default function Settings({ call, onError }) {
     }
   }
 
+  // Con la comisión (o el pago de alquileres por transferencia) activa, los conductores necesitan saber a qué cuenta transferir
+  const BANK_FIELDS = [['bank_name', 'el banco'], ['bank_account', 'el número de cuenta'], ['bank_holder', 'a nombre de quién']];
+  const bankMissing = BANK_FIELDS.filter(([k]) => !String(s[k] || '').trim()).map(([, label]) => label);
+  const needsBank = s.commission_enabled === '1' || s.rental_enabled === '1';
+  const bankWarning = needsBank && bankMissing.length > 0 && (
+    <div className="hint danger" role="alert">⚠ Faltan los datos de la cuenta ({bankMissing.join(', ')}): sin ellos los conductores no sabrían a dónde transferir, y no se puede guardar. Llénalos en «Cuenta de Ktracho GO» más abajo.</div>
+  );
+
   return (
     <form className="req settings" onSubmit={save}>
       <b>Comisión y saldo de los conductores</b>
@@ -31,6 +39,7 @@ export default function Settings({ call, onError }) {
         <input type="checkbox" checked={s.commission_enabled === '1'} onChange={set('commission_enabled')} />
         <span><b>Cobrar comisión</b>: los conductores necesitan saldo para recibir viajes y se les descuenta la comisión de cada viaje en efectivo.</span>
       </label>
+      {bankWarning}
       <label>Comisión por viaje (%)<input inputMode="decimal" value={s.commission_percent} onChange={set('commission_percent')} /></label>
       <label>Crédito de bienvenida al aprobar a un conductor (L)<input inputMode="decimal" value={s.welcome_credit} onChange={set('welcome_credit')} /></label>
       <label>Saldo mínimo para poder recibir viajes (L)<input inputMode="decimal" value={s.min_balance} onChange={set('min_balance')} /></label>
@@ -74,6 +83,7 @@ export default function Settings({ call, onError }) {
       <p className="muted small">La comisión de los alquileres es la misma de los viajes. El pago por transferencia usa la cuenta de Ktracho GO de abajo.</p>
 
       <b>Cuenta de Ktracho GO para recibir las transferencias</b>
+      {bankWarning}
       <label>Banco<input value={s.bank_name} onChange={set('bank_name')} placeholder="Ej. BAC Credomatic" /></label>
       <label>Tipo de cuenta<input value={s.bank_account_type} onChange={set('bank_account_type')} placeholder="Ahorros o Cheques" /></label>
       <label>Número de cuenta<input value={s.bank_account} onChange={set('bank_account')} /></label>
