@@ -3,6 +3,13 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-22-saldo-menu',
+    date: '2026-10-22',
+    title: 'Tu saldo en el menú',
+    for: ['driver'],
+    items: ['«Mi saldo y recargas» está en el menú ☰, con tu saldo a la vista (en rojo si está por debajo del mínimo). Desde ahí transfieres y subes el comprobante.'],
+  },
+  {
     id: '2026-10-22-panel-menu',
     date: '2026-10-22',
     title: 'Panel más ordenado',

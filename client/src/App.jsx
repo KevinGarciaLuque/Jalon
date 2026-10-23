@@ -47,6 +47,7 @@ export default function App() {
   const [showAccount, setShowAccount] = useState(false);
   const [showNews, setShowNews] = useState(false);
   const [adminNav, setAdminNav] = useState({ sections: null, current: null }); // secciones del panel para el menú
+  const [wallet, setWallet] = useState(null); // saldo del conductor para el menú (si la comisión está activa)
   const wide = useWide();
   const { news, unseen, markSeen } = useNews(session?.user.role);
   const [accountStatus, setAccountStatus] = useState(() => loadSession()?.user.status);
@@ -160,7 +161,7 @@ export default function App() {
     setSocket(null);
   }
 
-  const menuProps = session && { user: { ...session.user, status: accountStatus }, unseen, hasBell, go: openFromMenu, onLogout: () => logout(), sections: adminNav.sections, current: adminNav.current };
+  const menuProps = session && { user: { ...session.user, status: accountStatus }, unseen, hasBell, go: openFromMenu, onLogout: () => logout(), sections: adminNav.sections, current: adminNav.current, wallet };
 
   if (!session) return <Suspense fallback={<Loading />}><Auth onAuth={onAuth} notice={notice} /></Suspense>;
 
@@ -184,7 +185,7 @@ export default function App() {
         </div>
       )}
       {socket && !session.user.mustChangePassword && (session.user.role === 'driver'
-        ? <Driver socket={socket} token={session.token} userId={session.user.id} status={accountStatus} perms={session.user.perms || []} />
+        ? <Driver socket={socket} token={session.token} userId={session.user.id} status={accountStatus} perms={session.user.perms || []} onWallet={setWallet} />
         : <Passenger socket={socket} token={session.token} userId={session.user.id} perms={session.user.perms || []} />)}
       {(showAccount || session.user.mustChangePassword) && (
         <Account

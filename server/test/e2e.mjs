@@ -289,7 +289,18 @@ try {
   const commission = ((basePrice + 5) * 0.1).toFixed(2);
   check('al terminar el viaje se descuenta la comisión (10%) del saldo del conductor', await see(driver, `Saldo: L -${commission}`, 20000));
   check('con el saldo bajo el mínimo, avisa que debe recargar', await see(driver, 'Tu saldo está por debajo del mínimo'));
-  await click(driver, 'Recargar');
+  // El saldo también está en el menú (en rojo si está bajo el mínimo) y desde ahí se abre «Mi saldo»
+  await (await driver.waitForSelector('button.menu-btn')).evaluate((b) => b.click());
+  await driver.waitForSelector('.drawer');
+  await settled(driver);
+  check('el menú del conductor muestra «Mi saldo y recargas» con el saldo en rojo', await driver.$eval('.drawer', (d) => {
+    const b = [...d.querySelectorAll('button')].find((x) => x.textContent.includes('Mi saldo y recargas'));
+    return !!b?.querySelector('.drawer-amount.low') && b.textContent.includes('L -');
+  }));
+  await shot(driver, '5b-menu-saldo');
+  await driver.keyboard.press('Escape');
+  await driver.waitForFunction(() => !document.querySelector('.drawer-wrap'), { timeout: 5000 });
+  await menu(driver, 'Mi saldo y recargas');
   check('el conductor ve a qué cuenta transferir', (await see(driver, 'Banco de prueba')) && (await see(driver, '12-345-678')) && (await see(driver, 'Ktracho GO S. de R.L.')));
   await driver.type('input[placeholder^="Monto transferido"]', '200');
   await driver.type('input[placeholder^="Banco desde"]', 'BAC Credomatic');

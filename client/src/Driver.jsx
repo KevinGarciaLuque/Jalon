@@ -31,7 +31,7 @@ const STATUS = {
 
 const QUICK = ['Ya llegué', 'Estoy afuera', 'Voy en camino', 'Llego en 5 minutos', 'No te encuentro'];
 
-export default function Driver({ socket, token, status, userId, perms = [] }) {
+export default function Driver({ socket, token, status, userId, perms = [], onWallet }) {
   const { pos, setPos, denied } = useGeo();
   const [online, setOnline] = useState(false);
   const [requests, setRequests] = useState([]);
@@ -55,6 +55,12 @@ export default function Driver({ socket, token, status, userId, perms = [] }) {
   posRef.current = pos;
 
   const loadWallet = () => apiGet('driver/wallet', token).then(setWallet).catch(() => {});
+  // «Mi saldo y recargas» en el menú, con el saldo a la vista
+  const showsWallet = !!wallet?.enabled && status !== 'pending';
+  useEffect(() => {
+    onWallet?.(showsWallet ? { balance: wallet.balance, low: wallet.balance < wallet.minBalance } : null);
+  }, [showsWallet, wallet?.balance, wallet?.minBalance]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => onWallet?.(null), []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (status !== 'pending') loadWallet(); }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
   // La campanita: un aviso de recarga o de saldo abre «Mi saldo»
   useEffect(() => {

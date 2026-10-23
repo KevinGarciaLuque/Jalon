@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { API, authFetch, toJpeg, money2 } from './lib.js';
+import { Panel } from './Menu.jsx';
 
 const BANKS = ['BAC Credomatic', 'Ficohsa', 'Banco Atlántida', 'Banpaís', 'Davivienda', 'Banco de Occidente', 'Promerica', 'Lafise', 'Tigo Money', 'Otro'];
 const KIND = { topup: 'Recarga', commission: 'Comisión de viaje', bonus: 'Crédito', adjustment: 'Ajuste' };
@@ -46,9 +47,9 @@ export default function DriverWallet({ wallet, reload, onClose }) {
   }
 
   return (
-    <div className="overlay top">
+    <Panel onClose={onClose} labelledBy="wallet-title" className="top">
       <div className="overlay-head">
-        <b>Mi saldo</b>
+        <b id="wallet-title">Mi saldo</b>
         <button className="link" onClick={onClose}>Cerrar ✕</button>
       </div>
       <div className="overlay-body">
@@ -119,6 +120,6 @@ export default function DriverWallet({ wallet, reload, onClose }) {
           </>
         )}
       </div>
-    </div>
+    </Panel>
   );
 }

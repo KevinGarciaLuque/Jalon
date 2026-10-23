@@ -602,3 +602,6 @@ header .bell-count { top: -3px; right: -3px; box-shadow: 0 0 0 2px var(--card); 
 .sidebar > *, .drawer > * { flex-shrink: 0; }
 .notice-bar.tools button { min-height: 36px; padding: 7px 12px; font-size: 14px; }
 .notice-bar.tools .push p { order: 2; flex-basis: 100%; }
+/* Saldo del conductor junto a «Mi saldo y recargas» (en rojo si está por debajo del mínimo) */
+.drawer-amount { font-style: normal; font-size: 14px; font-weight: 700; color: var(--brand); font-variant-numeric: tabular-nums; }
+.drawer-amount.low { color: var(--danger); }

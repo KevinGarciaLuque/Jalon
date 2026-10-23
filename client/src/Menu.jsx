@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Avatar, Stars } from './components.jsx';
-import { useInstall } from './lib.js';
+import { money2, useInstall } from './lib.js';
 
 // Íconos de línea (heredan el color del texto): se ven igual en todos los celulares, a diferencia de los emojis
 const PATHS = {
@@ -45,7 +45,8 @@ const CLOSE_MS = 220; // lo que dura la salida (igual que en el CSS)
 // `go(target)`: abre lo que se tocó; `unseen`: hay novedades sin ver (punto verde).
 // Personal: `sections` son las secciones del panel que puede ver (con sus pendientes) y `current` la que está abierta.
 // `pinned`: en computadora el menú del personal queda fijo a la izquierda, sin botón ☰.
-export default function Menu({ user, unseen, hasBell, go, onLogout, sections, current, pinned = false }) {
+// `wallet`: saldo del conductor ({ balance, low }) cuando la comisión está activa.
+export default function Menu({ user, unseen, hasBell, go, onLogout, sections, current, wallet, pinned = false }) {
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
   const [drag, setDrag] = useState(0); // cuánto se arrastró hacia la izquierda para cerrarlo (negativo)
@@ -95,6 +96,7 @@ export default function Menu({ user, unseen, hasBell, go, onLogout, sections, cu
 
   const items = [
     !staff && { key: 'history', icon: 'history', label: 'Historial de viajes' },
+    user.role === 'driver' && wallet && { key: 'wallet', icon: 'wallet', label: 'Mi saldo y recargas', note: money2(wallet.balance), low: wallet.low },
     hasBell && { key: 'bell', icon: 'bell', label: 'Notificaciones' },
     user.role === 'driver' && user.status === 'active' && { key: 'earnings', icon: 'earnings', label: 'Mis ganancias' },
     user.role === 'driver' && user.status === 'active' && perms.includes('rent.offer') && { key: 'rental', icon: 'key', label: 'Alquiler de mi carro' },
@@ -114,6 +116,7 @@ export default function Menu({ user, unseen, hasBell, go, onLogout, sections, cu
       <button className={active ? 'on' : ''} aria-current={active ? 'page' : undefined} onClick={pick(it.target || it.key)}>
         <Icon name={it.icon} />
         <span>{it.label}</span>
+        {it.note && <em className={`drawer-amount${it.low ? ' low' : ''}`} aria-label={`saldo ${it.note}${it.low ? ', por debajo del mínimo' : ''}`}>{it.note}</em>}
         {!!it.badge && <em className={`drawer-badge${typeof it.badge === 'number' ? ' count' : ''}`} aria-label={typeof it.badge === 'number' ? `${it.badge} pendiente(s)` : undefined}>{it.badge}</em>}
       </button>
     </li>
