@@ -16,6 +16,7 @@ export const SETTING_DEFAULTS = {
   bank_holder: '',
   bank_note: '',
   staff_2fa_required: '1', // el personal debe usar la verificación en dos pasos; el superadmin puede apagarla
+  ride_pin_required: '1', // el conductor escribe el PIN del pasajero para iniciar el viaje
   map_rotation: '1', // el mapa puede girar según hacia dónde vas (como Waze); se apaga si da problemas en algún celular
   ...FARE_DEFAULTS, // tarifas por categoría (fares.js)
   // Alquiler de carros por días (apagado hasta que el superadmin lo active)
@@ -70,6 +71,7 @@ export function validateSettings(input, current) {
     bank_holder: () => text('bank_holder', 100),
     bank_note: () => text('bank_note', 400),
     staff_2fa_required: () => { values.staff_2fa_required = [false, '0', 0].includes(input.staff_2fa_required) ? '0' : '1'; return null; },
+    ride_pin_required: () => { values.ride_pin_required = [false, '0', 0].includes(input.ride_pin_required) ? '0' : '1'; return null; },
     map_rotation: () => { values.map_rotation = [false, '0', 0].includes(input.map_rotation) ? '0' : '1'; return null; },
     rental_enabled: () => { values.rental_enabled = [true, '1', 1].includes(input.rental_enabled) ? '1' : '0'; return null; },
     rental_price_min: () => num('rental_price_min', 1, 50000, 'El precio mínimo por día'),

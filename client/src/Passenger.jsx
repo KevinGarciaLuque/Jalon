@@ -12,6 +12,25 @@ function Recenter({ pos }) {
   return null;
 }
 
+// El PIN del viaje: el pasajero se lo dice al conductor al subir (así sabe que es el carro correcto)
+function TripPin({ ride, token }) {
+  const [pin, setPin] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    apiGet(`rides/${ride.id}/pin`, token).then((r) => alive && setPin(r.pin)).catch(() => {});
+    return () => { alive = false; };
+  }, [ride.id, token]);
+  if (ride.pinLocked) return <div className="hint danger" role="alert">⚠ El conductor no escribió tu PIN correcto. Si no es tu conductor, no te subas y cancela el viaje.</div>;
+  if (!pin) return null;
+  return (
+    <div className="trip-pin" role="status">
+      <span className="muted small">Tu PIN para empezar el viaje</span>
+      <b aria-label={`PIN ${pin.split('').join(' ')}`}>{pin}</b>
+      <span className="muted small">Díselo al conductor <b>cuando subas</b> al carro. Revisa que la placa sea la misma.</span>
+    </div>
+  );
+}
+
 function Picker({ onPick, enabled }) {
   useMapEvents({ click: (e) => enabled && onPick({ lat: e.latlng.lat, lng: e.latlng.lng }) });
   return null;
@@ -261,6 +280,8 @@ export default function Passenger({ socket, token, userId, perms = [] }) {
                 <span className="muted">({eta.km} km{eta.estimated ? ', aproximado' : ''})</span>
               </p>
             )}
+
+            {['accepted', 'arrived'].includes(ride.status) && ride.pinRequired && <TripPin ride={ride} token={token} />}
 
             {ride.status === 'requested' && (
               <>

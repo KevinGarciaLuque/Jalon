@@ -227,6 +227,14 @@ app.post('/api/logout-all', authUser, async (req, res) => {
   res.json({ ok: true, ...startSession(req, res, u) });
 });
 
+// El PIN del viaje: solo lo ve el pasajero (se lo dice al conductor al subir para iniciar el viaje)
+app.get('/api/rides/:id/pin', authUser, passengerOnly, async (req, res) => {
+  const ride = await getRide(Number(req.params.id));
+  if (!ride || ride.passenger_id !== req.user.id) return res.status(404).json({ error: 'Viaje no encontrado' });
+  if (!ride.start_pin || !['accepted', 'arrived'].includes(ride.status)) return res.json({ pin: null });
+  res.json({ pin: ride.start_pin });
+});
+
 app.get('/api/health', async (_req, res) => {
   try {
     await pool.query('SELECT 1');

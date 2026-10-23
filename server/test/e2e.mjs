@@ -274,7 +274,15 @@ try {
   await shot(pass, '5-pasajero-sos');
 
   await click(driver, 'Ya llegué');
+  // PIN de viaje: la pasajera lo ve en su pantalla y el conductor lo escribe para iniciar
+  const tripPin = await pass.waitForSelector('.trip-pin b', { timeout: 15000 }).then((el) => el.evaluate((b) => b.textContent.trim()), () => '');
+  check('la pasajera ve su PIN de 4 dígitos para empezar el viaje', /^\d{4}$/.test(tripPin), `(${tripPin})`);
+  await shot(pass, '5b-pin-pasajera');
+  check('sin el PIN el conductor no puede tocar «Iniciar viaje»', await driver.$eval('button.primary::-p-text(Iniciar viaje)', (b) => b.disabled).catch(() => false));
+  await driver.type('input[aria-label="PIN del pasajero (4 dígitos)"]', tripPin);
+  await shot(driver, '5c-pin-conductor');
   await click(driver, 'Iniciar viaje');
+  check('con el PIN correcto empieza el viaje', await see(pass, 'Viaje en curso', 15000));
 
   // ---- Mapa en vivo: el superadmin ve al conductor conectado y su ficha de rendimiento ----
   await section(admin, 'Mapa en vivo');

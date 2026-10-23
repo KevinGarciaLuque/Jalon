@@ -591,6 +591,10 @@ await conn.query(`
   )
 `);
 
+// ---- Etapa 9.1: PIN de viaje (el pasajero se lo dice al conductor para iniciar el viaje) ----
+await addColumn('rides', 'start_pin', 'CHAR(4) NULL');
+await addColumn('rides', 'pin_attempts', 'TINYINT NOT NULL DEFAULT 0');
+
 // ---- Recargas por solicitud: el conductor pide, el personal le asigna una de las cuentas por 24 horas ----
 // (la cuenta ya no se muestra a todos: solo a quien la pidió, mientras le sirve)
 await conn.query(`

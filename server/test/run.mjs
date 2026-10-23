@@ -22,6 +22,13 @@ if (!process.env.MYSQL_URL) {
   console.log(`Base de datos de pruebas: ${testDb} (nueva)`);
 }
 
+// Las pruebas de viajes no escriben el PIN de inicio (lo prueban phase30 y el recorrido completo): se apaga en la base de pruebas
+{
+  const off = "import { pool } from './src/db.js'; await pool.query(\"INSERT INTO settings (name, value) VALUES ('ride_pin_required', '0') ON DUPLICATE KEY UPDATE value = '0'\"); await pool.end();";
+  const r = spawnSync(process.execPath, ['--input-type=module', '-e', off], { env: process.env, encoding: 'utf8' });
+  if (r.status !== 0) { console.error(r.stderr || r.stdout); process.exit(1); }
+}
+
 const external = !!process.env.API_URL;
 const port = process.env.TEST_PORT || '4500';
 const apiUrl = process.env.API_URL || `http://localhost:${port}`;
@@ -51,7 +58,7 @@ if (!external) {
 }
 
 let failed = false;
-for (const t of (process.env.ONLY || 'sw-unit,maps-unit,flow,phase3,phase4,phase5b,phase6,phase7,phase7b,phase7c,phase8a,phase8b,phase8c,phase8d,phase9,phase10,phase11,phase12,phase13,phase14,phase15,phase16,phase17,phase18,phase19,phase20,phase21,rekey-unit,phase22,phase23,phase24,phase25,phase26,phase27,phase28,phase29,monitor,race,expiry').split(',')) {
+for (const t of (process.env.ONLY || 'sw-unit,maps-unit,flow,phase3,phase4,phase5b,phase6,phase7,phase7b,phase7c,phase8a,phase8b,phase8c,phase8d,phase9,phase10,phase11,phase12,phase13,phase14,phase15,phase16,phase17,phase18,phase19,phase20,phase21,rekey-unit,phase22,phase23,phase24,phase25,phase26,phase27,phase28,phase29,phase30,monitor,race,expiry').split(',')) {
   const r = spawnSync(process.execPath, [`test/${t}.mjs`], { stdio: 'inherit', env });
   if (r.status !== 0) failed = true;
 }

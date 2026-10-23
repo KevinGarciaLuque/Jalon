@@ -1,4 +1,5 @@
 // Tiempo real (Socket.IO): conductor, pasajero, chat del viaje y botón de emergencia
+import crypto from 'crypto';
 import { pool } from './db.js';
 import { distanceKm } from './geo.js';
 import { getSettings } from './wallet.js';
@@ -10,7 +11,7 @@ import { io } from './app.js';
 import { drivers, passengers, openRides, declined, room } from './live.js';
 import { isPoint, isPrice, serial, clean } from './util.js';
 import { push, pushStaff, hasPushSub, unreadCount } from './notify.js';
-import { getRide, activeRideFor, ratingsOf, rideView, nearbyDrivers, openRidesNear, closeOpenRide, releaseDriver, sendEta, cancelRide } from './services/rides.js';
+import { getRide, activeRideFor, ratingsOf, rideView, nearbyDrivers, openRidesNear, closeOpenRide, releaseDriver, sendEta, cancelRide, PIN_TRIES } from './services/rides.js';
 import { walletGate, chargeCommission } from './services/balance.js';
 import { shareWithContacts } from './services/accounts.js';
 import { notifySos } from './services/sos.js';
@@ -165,10 +166,23 @@ io.on('connection', async (socket) => {
       await cancelRide(rideId, 'driver', ['accepted', 'arrived']);
     });
 
-    on('ride:status', async ({ rideId, status }) => {
+    on('ride:status', async ({ rideId, status, pin }, ack) => {
       const order = { arrived: 'accepted', started: 'arrived', completed: 'started' };
       const ride = await getRide(rideId);
       if (!ride || ride.driver_id !== user.id || order[status] !== ride.status) return;
+      // Para iniciar el viaje el conductor escribe el PIN que le dice el pasajero
+      if (status === 'started' && ride.start_pin) {
+        if (Number(ride.pin_attempts) >= PIN_TRIES) return ack?.({ error: 'Se equivocaron demasiadas veces con el PIN: este viaje no se puede iniciar. Cancélalo o escribe a soporte.', locked: true });
+        if (String(pin || '').trim() !== ride.start_pin) {
+          await pool.query('UPDATE rides SET pin_attempts = pin_attempts + 1 WHERE id = ?', [rideId]);
+          const left = PIN_TRIES - Number(ride.pin_attempts) - 1;
+          if (left <= 0) {
+            push(ride.passenger_id, { title: 'No se pudo confirmar tu PIN', body: 'El conductor no escribió tu PIN correcto. Si no es tu conductor, no te subas y cancela el viaje.', tag: `ride-${rideId}`, url: '/' }, { always: true });
+            io.to(room(ride.passenger_id)).to(room(user.id)).emit('ride:state', await rideView(await getRide(rideId)));
+          }
+          return ack?.({ error: left > 0 ? `PIN incorrecto. Te quedan ${left} intento${left === 1 ? '' : 's'}.` : 'PIN incorrecto. Ya no se puede iniciar este viaje.', locked: left <= 0 });
+        }
+      }
       // Solo avanza desde el estado anterior: si justo lo cancelaron (o llegó un doble toque), no se pisa
       // También se anota cuándo empezó y cuándo terminó (para las ganancias por día y la duración real)
       const [moved] = await pool.query(
@@ -189,6 +203,7 @@ io.on('connection', async (socket) => {
         if (d?.lat != null) recordPoint(ride.id, { lat: d.lat, lng: d.lng }).catch(reportError); // primer punto del recorrido
       }
       if (status === 'completed') forgetTrack(ride.id);
+      ack?.({ ok: true });
       if (status === 'arrived') push(ride.passenger_id, { title: 'Tu conductor llegó', body: `${user.name} te espera · ${user.vehicle || ''} ${user.plate || ''}`.trim(), tag: `ride-${rideId}`, url: '/' });
       if (status === 'started') push(ride.passenger_id, { title: 'Tu viaje empezó', body: `Vas con ${user.name}${ride.dest_text ? ` a ${ride.dest_text}` : ''}. Puedes compartir tu viaje desde la app.`, tag: `ride-${rideId}`, url: '/' });
       if (status === 'completed') push(ride.passenger_id, { title: 'Llegaste a tu destino', body: `Total a pagar: L ${Math.round(ride.final_price ?? ride.offered_price)}. Califica a ${user.name} y mira el recibo en tu historial.`, tag: `ride-${rideId}`, target: 'history', url: '/' });
@@ -259,7 +274,9 @@ io.on('connection', async (socket) => {
       d.available = false;
 
       // El viaje solo se asigna si sigue buscando conductor (doble toque, o dos ofertas aceptadas a la vez)
-      const [assigned] = await pool.query('UPDATE rides SET driver_id = ?, final_price = ?, status = "accepted" WHERE id = ? AND status = "requested"', [offer.driver_id, offer.price, ride.id]);
+      // PIN de 4 dígitos para iniciar el viaje (si está activo en Ajustes): confirma que el pasajero se sube al carro correcto
+      const pin = (await getSettings(pool)).ride_pin_required === '0' ? null : String(crypto.randomInt(0, 10000)).padStart(4, '0');
+      const [assigned] = await pool.query('UPDATE rides SET driver_id = ?, final_price = ?, status = "accepted", start_pin = ? WHERE id = ? AND status = "requested"', [offer.driver_id, offer.price, pin, ride.id]);
       if (assigned.affectedRows !== 1) {
         releaseDriver(offer.driver_id);
         return socket.emit('offer:invalid', { offerId: offer.id });

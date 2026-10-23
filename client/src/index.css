@@ -694,3 +694,9 @@ header { gap: 8px; background: linear-gradient(135deg, var(--card), var(--bg)); 
 /* Cuentas bancarias en Ajustes */
 .bank-row.off { opacity: .6; }
 .bank-edit { background: var(--bg); }
+
+/* ---- PIN del viaje ---- */
+.trip-pin { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px; border: 2px dashed var(--brand); border-radius: var(--r-2); background: var(--brand-soft); text-align: center; }
+.trip-pin > b { font-family: var(--font-display); font-size: 40px; letter-spacing: .35em; padding-left: .35em; color: var(--text); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.pin-input { display: flex; flex-direction: column; gap: 4px; font-weight: 600; }
+.pin-input input.code { font-size: 28px; letter-spacing: 10px; text-align: center; }

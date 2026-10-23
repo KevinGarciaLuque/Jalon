@@ -30,15 +30,19 @@ export async function ratingsOf(ids) {
   return map;
 }
 
+export const PIN_TRIES = 5; // intentos para escribir el PIN antes de bloquear el inicio del viaje
+
 export async function rideView(ride) {
   const ids = [ride.passenger_id, ride.driver_id].filter(Boolean);
   // El teléfono de la otra persona NO se entrega (se coordina por el chat). SHOW_PARTNER_PHONES=true lo vuelve a mostrar.
   const [users] = await pool.query(`SELECT id,name,vehicle,plate${SHOW_PARTNER_PHONES ? ',phone' : ''} FROM users WHERE id IN (?)`, [ids]);
   const ratings = await ratingsOf(ids);
   const byId = Object.fromEntries(users.map((u) => [u.id, { ...u, rating: ratings.get(u.id) || { avg: null, count: 0 } }]));
-  const { route_json, share_token, ...rest } = ride;
+  const { route_json, share_token, start_pin, pin_attempts, ...rest } = ride;
   return {
     ...rest,
+    pinRequired: !!start_pin, // el PIN lo ve solo el pasajero (GET /api/rides/:id/pin)
+    pinLocked: Number(pin_attempts) >= PIN_TRIES,
     route: route_json ? JSON.parse(route_json) : null,
     passenger: byId[ride.passenger_id] || null,
     driver: ride.driver_id ? byId[ride.driver_id] : null,

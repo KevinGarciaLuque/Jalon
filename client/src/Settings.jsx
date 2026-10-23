@@ -91,6 +91,12 @@ export default function Settings({ call, onError }) {
         <span><b>Exigir verificación en dos pasos</b> al superadmin, administradores y soporte. Si la apagas, entran solo con su contraseña (quien ya la tenía configurada la vuelve a usar si la enciendes de nuevo).</span>
       </label>
 
+      <b>Seguridad de los viajes</b>
+      <label className="check">
+        <input type="checkbox" checked={s.ride_pin_required !== '0'} onChange={set('ride_pin_required')} />
+        <span><b>PIN para iniciar el viaje</b>: el pasajero ve un PIN de 4 dígitos y se lo dice al conductor al subir; sin él no se puede iniciar el viaje. Así se confirma que se sube al carro correcto.</span>
+      </label>
+
       <b>Mapa</b>
       <label className="check">
         <input type="checkbox" checked={s.map_rotation !== '0'} onChange={set('map_rotation')} />

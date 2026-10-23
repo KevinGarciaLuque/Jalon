@@ -50,6 +50,8 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
   const [showRental, setShowRental] = useState(false); // alquiler de su carro por días
   const [showEarnings, setShowEarnings] = useState(false); // mis ganancias por día, semana o mes
   const [menuNote, setMenuNote] = useState(''); // por qué no se abrió algo del menú
+  const [pin, setPin] = useState(''); // el PIN que le dice el pasajero para iniciar el viaje
+  const [pinError, setPinError] = useState('');
   const [renting, setRenting] = useState(false); // tiene un alquiler en curso: no recibe viajes
   const posRef = useRef(pos);
   posRef.current = pos;
@@ -316,8 +318,20 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
                 Cancelar viaje
               </button>
             )}
-            {NEXT[ride.status] && (
-              <button className="primary" onClick={() => socket.emit('ride:status', { rideId: ride.id, status: NEXT[ride.status].status })}>
+            {ride.status === 'accepted' && ride.pinRequired && <p className="muted small">Cuando suba el pasajero, pídele su PIN de 4 dígitos para iniciar el viaje.</p>}
+            {ride.status === 'arrived' && ride.pinRequired && !ride.pinLocked && (
+              <label className="pin-input">
+                <span>PIN del pasajero</span>
+                <input className="code" inputMode="numeric" autoComplete="off" maxLength={4} aria-label="PIN del pasajero (4 dígitos)" placeholder="• • • •" value={pin} onChange={(e) => { setPin(e.target.value.replace(/\D/g, '')); setPinError(''); }} />
+              </label>
+            )}
+            {(pinError || (ride.status === 'arrived' && ride.pinLocked)) && <div className="error">{pinError || 'Se equivocaron demasiadas veces con el PIN: este viaje no se puede iniciar. Cancélalo o escribe a soporte.'}</div>}
+            {NEXT[ride.status] && !(ride.status === 'arrived' && ride.pinLocked) && (
+              <button
+                className="primary"
+                disabled={ride.status === 'arrived' && ride.pinRequired && pin.length !== 4}
+                onClick={() => socket.emit('ride:status', { rideId: ride.id, status: NEXT[ride.status].status, pin }, (r) => { if (r?.error) setPinError(r.error); else setPin(''); })}
+              >
                 {NEXT[ride.status].label}
               </button>
             )}
