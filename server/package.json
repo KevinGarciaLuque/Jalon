@@ -16,6 +16,7 @@
     "test:responsive": "node test/responsive.mjs",
     "test:update": "node test/update.mjs",
     "test:passkey": "node test/passkey-ui.mjs",
+    "test:map": "node test/map-ui.mjs",
     "test:tiles": "node test/tiles.mjs",
     "test:load": "node test/load.mjs",
     "test:prod": "node test/prod-smoke.mjs"

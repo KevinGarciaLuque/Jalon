@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
 import { lempiras, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
-import { CAR_HTML, icons, NorthArrow } from './mapParts.jsx';
+import { CAR_HTML, icons, MapControls } from './mapParts.jsx';
 import { Empty, Loading } from './components.jsx';
 
 const REFRESH_MS = 5000;
@@ -101,7 +101,7 @@ export default function Monitor({ call, onError }) {
         <div className="monmap">
           <MapContainer center={[14.0723, -87.1921]} zoom={12} style={{ height: '100%' }}>
             <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
-            <NorthArrow />
+            <MapControls />
             {withPos.map((d) => (
               <Marker key={d.id} position={[d.lat, d.lng]} icon={driverIcon(d.state, d.plate, d.id === sel)} eventHandlers={{ click: () => pick(d.id) }} />
             ))}

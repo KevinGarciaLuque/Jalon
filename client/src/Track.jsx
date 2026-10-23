@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import { apiGet, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
-import { CarMarker, FitTo, RouteLine, icons, NorthArrow } from './mapParts.jsx';
+import { CarMarker, FitTo, MapControls, RouteLine, icons, rotateOptions } from './mapParts.jsx';
 import { Brand } from './components.jsx';
 
 const STATUS = {
@@ -43,9 +43,9 @@ export default function Track({ token }) {
       </header>
       <div className="screen">
         <div className="map">
-          <MapContainer center={points[0]} zoom={14} style={{ height: '100%' }}>
+          <MapContainer center={points[0]} zoom={14} style={{ height: '100%' }} {...rotateOptions()}>
             <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
-            <NorthArrow />
+            <MapControls me={data.driverPos || null} modeKey="track" meLabel="Ver el carro" route={points} />
             <FitTo points={points} />
             <RouteLine positions={points} />
             <Marker position={[data.origin.lat, data.origin.lng]} icon={icons.me} />

@@ -678,3 +678,14 @@ header { gap: 8px; background: linear-gradient(135deg, var(--card), var(--bg)); 
 /* El anillo de color del avatar se ve alrededor (el borde interior separa la foto/iniciales del anillo) */
 .avatar-ring .avatar { box-shadow: none; border: 2px solid var(--card); }
 .avatar-ring.lg .avatar { box-shadow: none; border-width: 3px; }
+
+/* ---- Botones del mapa: brújula, «Mi ubicación» y «Ver todo el viaje» (arriba a la derecha) ---- */
+.map-tools { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; margin-top: 10px !important; margin-right: 10px !important; }
+.map-btn { position: relative; width: 42px; height: 42px; min-height: 0; padding: 0; display: grid; place-items: center; border-radius: 50%; border: none; background: #fff; color: #33403a; box-shadow: 0 1px 5px rgba(0, 0, 0, .35); }
+.map-btn:hover { background: #f2f6f3; }
+.map-btn.on { color: #1a73e8; } /* el mapa te está siguiendo / gira contigo */
+.map-btn.compass svg { width: 24px; height: 24px; transition: transform var(--fast) linear; }
+.map-btn.compass b { position: absolute; inset: 0; display: grid; place-items: center; padding-bottom: 9px; font: 800 8px var(--font-text); color: #fff; pointer-events: none; transition: transform var(--fast) linear; }
+.map-btn.compass.on { box-shadow: 0 0 0 2px #1a73e8, 0 1px 5px rgba(0, 0, 0, .35); }
+.map-toast { position: absolute; right: 50px; top: 8px; white-space: nowrap; background: rgba(20, 23, 28, .88); color: #fff; font-size: 13px; font-weight: 600; padding: 6px 10px; border-radius: 999px; pointer-events: none; animation: fade-in var(--fast) ease-out; }
+@media (prefers-reduced-motion: reduce) { .map-btn.compass svg, .map-btn.compass b { transition: none; } }

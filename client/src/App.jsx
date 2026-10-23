@@ -3,7 +3,7 @@ import News, { useNews } from './News.jsx';
 import Bell from './Bell.jsx';
 import Menu, { HelpPanel, NewsButton, ProfileMenu } from './Menu.jsx';
 import { Brand, Loading } from './components.jsx';
-import { apiGet, apiPost, authFetch, API, lazyPage } from './lib.js';
+import { apiGet, apiPost, authFetch, API, lazyPage, mapPrefs } from './lib.js';
 
 // Cada pantalla se descarga cuando se usa: el panel solo lo baja el personal; el mapa, pasajeros y conductores
 const Auth = lazyPage(() => import('./Auth.jsx')); // quien ya tiene sesión no la necesita
@@ -73,7 +73,7 @@ export default function App() {
     apiGet('me')
       .then(({ user }) => setSession((cur) => {
         if (!cur || cur.user.id !== user.id) return cur;
-        const next = { ...cur, user: { ...cur.user, perms: user.perms, mustAcceptTerms: user.mustAcceptTerms, termsVersion: user.termsVersion, rating: user.rating } };
+        const next = { ...cur, user: { ...cur.user, perms: user.perms, mustAcceptTerms: user.mustAcceptTerms, termsVersion: user.termsVersion, rating: user.rating, mapRotation: user.mapRotation } };
         localStorage.setItem('jalon', JSON.stringify(next));
         return next;
       }))
@@ -135,6 +135,7 @@ export default function App() {
   }
 
   const staff = STAFF.includes(session?.user.role);
+  mapPrefs.rotation = session?.user.mapRotation !== false; // se guarda con la sesión: al abrir la app ya se sabe
   const hasBell = !!session && !session.user.mustChangePassword && !session.token;
   const panelOpen = staff && !!session && !session.user.mustChangePassword && !session.user.mustEnrollTwoFactor;
   const pinned = panelOpen && wide; // en computadora, el menú del panel queda fijo a la izquierda

@@ -86,6 +86,12 @@ export default function Settings({ call, onError }) {
         <span><b>Exigir verificación en dos pasos</b> al superadmin, administradores y soporte. Si la apagas, entran solo con su contraseña (quien ya la tenía configurada la vuelve a usar si la enciendes de nuevo).</span>
       </label>
 
+      <b>Mapa</b>
+      <label className="check">
+        <input type="checkbox" checked={s.map_rotation !== '0'} onChange={set('map_rotation')} />
+        <span><b>El mapa puede girar</b> según hacia dónde va la persona (como Waze) y con dos dedos. Si en algún celular da problemas, apágalo: el mapa queda con el norte arriba (se aplica al volver a abrir la app).</span>
+      </label>
+
       <button className="primary" disabled={busy}>{busy ? 'Guardando…' : 'Guardar ajustes'}</button>
       {saved && <div className="hint ok">Ajustes guardados. Los conductores ya ven los cambios.</div>}
     </form>

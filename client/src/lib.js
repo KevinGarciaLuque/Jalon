@@ -6,6 +6,8 @@ export const API = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? 'http:
 export const TILE_URL = import.meta.env.VITE_TILE_URL || 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 export const TILE_ATTRIBUTION = import.meta.env.VITE_TILE_ATTRIBUTION || '&copy; OpenStreetMap';
 export const DEFAULT_POS = { lat: 14.0723, lng: -87.1921 }; // Tegucigalpa
+// Ajustes del mapa que pone el superadmin (llegan con la sesión). `rotation`: el mapa puede girar (como Waze)
+export const mapPrefs = { rotation: true };
 
 // Categorías de servicio (las mismas que server/src/fares.js)
 export const CATEGORIES = [['moto', 'Moto'], ['car', 'Carro'], ['xl', 'Carro amplio']];
@@ -82,16 +84,22 @@ export const lempiras = (n) => `L ${Number(n).toFixed(0)}`;
 export function useGeo() {
   const [pos, setPos] = useState(null);
   const [denied, setDenied] = useState(false);
+  // Rumbo (grados desde el norte) y velocidad (m/s) que da el GPS al moverse; null si no los da (quieto o en computadora)
+  const [course, setCourse] = useState({ heading: null, speed: null });
   useEffect(() => {
     if (!navigator.geolocation) { setPos(DEFAULT_POS); setDenied(true); return; }
     const id = navigator.geolocation.watchPosition(
-      (p) => setPos({ lat: p.coords.latitude, lng: p.coords.longitude }),
+      (p) => {
+        setPos({ lat: p.coords.latitude, lng: p.coords.longitude });
+        const { heading, speed } = p.coords;
+        setCourse({ heading: Number.isFinite(heading) ? heading : null, speed: Number.isFinite(speed) ? speed : null });
+      },
       () => { setDenied(true); setPos((cur) => cur || DEFAULT_POS); },
       { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 }
     );
     return () => navigator.geolocation.clearWatch(id);
   }, []);
-  return { pos, setPos, denied };
+  return { pos, setPos, denied, course };
 }
 
 // "Instalar app": Chrome/Android avisa con beforeinstallprompt; iPhone no tiene botón y hay que explicarlo

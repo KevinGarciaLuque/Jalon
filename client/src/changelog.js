@@ -3,6 +3,32 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-23-mapa-gira',
+    date: '2026-10-23',
+    title: 'El mapa gira como Waze',
+    for: ['all'],
+    items: [
+      'Nuevos botones en el mapa (arriba a la derecha): 📍 «Mi ubicación» te centra y te sigue; «Ver todo el viaje» muestra la ruta completa.',
+      'Toca la brújula para elegir: norte arriba, o que el mapa gire según hacia dónde vas. La aguja roja siempre señala el norte.',
+      'También puedes girar el mapa con dos dedos; la brújula lo regresa con el norte arriba.',
+      'Al centrarte, tu posición queda en la parte del mapa que se ve, no debajo de la hoja de abajo.',
+    ],
+  },
+  {
+    id: '2026-10-23-mapa-conductor',
+    date: '2026-10-23',
+    title: 'Manejando, el mapa va contigo',
+    for: ['driver'],
+    items: ['Cuando vas en movimiento, el mapa te sigue y gira según hacia dónde vas, con tu carro apuntando hacia arriba. Parado no da vueltas. Al empezar un viaje vuelve a seguirte.'],
+  },
+  {
+    id: '2026-10-23-mapa-panel',
+    date: '2026-10-23',
+    title: 'Interruptor del mapa',
+    for: ['staff'],
+    items: ['En Ajustes → Mapa puedes apagar el giro del mapa si en algún celular da problemas; se aplica al volver a abrir la app.'],
+  },
+  {
     id: '2026-10-22-encabezado',
     date: '2026-10-22',
     title: 'Encabezado nuevo',

@@ -14,7 +14,9 @@ const check = (name, ok, extra = '') => { console.log(`${ok ? 'OK  ' : 'FAIL'} $
 const rnd = String(Math.floor(Math.random() * 1e6)).padStart(6, '0');
 const shot = (page, name) => SHOTS && page.screenshot({ path: path.join(SHOTS, `${name}.png`) });
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-const clickText = async (page, sel, text, timeout = 15000) => (await page.waitForSelector(`${sel}::-p-text(${text})`, { timeout })).click();
+// Antes de tocar, que terminen de entrar los paneles y la tarjeta del avatar (se deslizan)
+const settled = (page) => page.waitForFunction(() => !document.getAnimations().some((x) => x.playState === 'running' && /^(slide-in|pop-in|rate-pop)/.test(x.animationName || '')), { timeout: 5000 }).catch(() => {});
+const clickText = async (page, sel, text, timeout = 15000) => { const el = await page.waitForSelector(`${sel}::-p-text(${text})`, { timeout }); await settled(page); await el.click(); };
 
 const phone = `8${rnd}9`.slice(0, 8);
 const P = await registerUser({ name: 'PK Pasajera', phone, password: 'Cielo-azul-77', role: 'passenger' });

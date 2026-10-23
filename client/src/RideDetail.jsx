@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import { apiGet, lempiras, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
-import { FitTo, RouteLine, icons, NorthArrow } from './mapParts.jsx';
+import { FitTo, MapControls, RouteLine, icons } from './mapParts.jsx';
 import { Loading } from './components.jsx';
 
 const STATUS = { requested: 'Solicitado', accepted: 'Aceptado', arrived: 'Llegó', started: 'En curso', completed: 'Completado', cancelled: 'Cancelado' };
@@ -34,7 +34,7 @@ export default function RideDetail({ rideId, token, onClose, onReceipt, onReport
             <div className="detail-map">
               <MapContainer center={fit[0]} zoom={14} style={{ height: '100%' }}>
                 <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
-                <NorthArrow />
+                <MapControls route={fit} />
                 <FitTo points={fit} />
                 {r.route?.length > 1 && <RouteLine positions={r.route} color={PLANNED} dashed />}
                 {r.track?.length > 1 && <RouteLine positions={r.track} color={REAL} />}

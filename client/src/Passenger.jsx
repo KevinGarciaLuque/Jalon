@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import { useGeo, apiGet, apiPost, lempiras, minutes, useChat, useNow, CATEGORIES, CATEGORY_LABEL, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
-import { CarMarker, FitTo, RouteLine, icons, NorthArrow } from './mapParts.jsx';
+import { CarMarker, FitTo, MapControls, RouteLine, icons, rotateOptions, showAt } from './mapParts.jsx';
 import ReportForm from './ReportForm.jsx';
 import Rentals from './Rentals.jsx';
 import { AddressSearch, Avatar, Chat, PriceStepper, Rate, SafetyBar, Stars, TimeRing, Grab } from './components.jsx';
 
 function Recenter({ pos }) {
   const map = useMap();
-  useEffect(() => { if (pos) map.setView([pos.lat, pos.lng], map.getZoom() < 14 ? 15 : map.getZoom()); }, [!!pos]); // eslint-disable-line
+  useEffect(() => { if (pos) showAt(map, [pos.lat, pos.lng], map.getZoom() < 14 ? 15 : map.getZoom()); }, [!!pos]); // eslint-disable-line
   return null;
 }
 
@@ -36,7 +36,7 @@ const CANCELLED = {
 const QUICK = ['Ya salgo', 'Dame 2 minutos', 'Estoy en la esquina', '¿Dónde estás?'];
 
 export default function Passenger({ socket, token, userId, perms = [] }) {
-  const { pos, setPos, denied } = useGeo();
+  const { pos, setPos, denied, course } = useGeo();
   const [drivers, setDrivers] = useState([]);
   const [origin, setOrigin] = useState(null); // punto de recogida elegido a mano; null = mi GPS
   const [dest, setDest] = useState(null);
@@ -169,9 +169,9 @@ export default function Passenger({ socket, token, userId, perms = [] }) {
     <div className="screen">
       <div className="map">
         {pos && (
-          <MapContainer center={[pos.lat, pos.lng]} zoom={15} style={{ height: '100%' }}>
+          <MapContainer center={[pos.lat, pos.lng]} zoom={15} style={{ height: '100%' }} {...rotateOptions()}>
             <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
-            <NorthArrow />
+            <MapControls me={pos} course={course} modeKey="passenger" route={fitPoints.length > 1 ? fitPoints : null} />
             <Recenter pos={pos} />
             <FitTo points={fitPoints} />
             <Picker onPick={pickDest} enabled={!active} />

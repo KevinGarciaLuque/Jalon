@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import { useGeo, distanceKm, lempiras, minutes, useChat, useNow, wazeUrl, mapsUrl, apiGet, money2, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
-import { CarMarker, FitTo, RouteLine, icons, NorthArrow } from './mapParts.jsx';
+import { CarMarker, FitTo, MapControls, RouteLine, icons, rotateOptions, showAt } from './mapParts.jsx';
 import DriverWallet from './DriverWallet.jsx';
 import DriverRental from './DriverRental.jsx';
 import Earnings from './Earnings.jsx';
@@ -11,7 +11,7 @@ import DriverDocs from './DriverDocs.jsx';
 
 function Recenter({ pos }) {
   const map = useMap();
-  useEffect(() => { if (pos) map.setView([pos.lat, pos.lng], 15); }, [!!pos]); // eslint-disable-line
+  useEffect(() => { if (pos) showAt(map, [pos.lat, pos.lng], 15); }, [!!pos]); // eslint-disable-line
   return null;
 }
 
@@ -32,7 +32,7 @@ const STATUS = {
 const QUICK = ['Ya llegué', 'Estoy afuera', 'Voy en camino', 'Llego en 5 minutos', 'No te encuentro'];
 
 export default function Driver({ socket, token, status, userId, perms = [], onWallet }) {
-  const { pos, setPos, denied } = useGeo();
+  const { pos, setPos, denied, course } = useGeo();
   const [online, setOnline] = useState(false);
   const [requests, setRequests] = useState([]);
   const [sent, setSent] = useState({}); // rideId -> { price, until } de la oferta hecha (vale unos segundos)
@@ -139,9 +139,17 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
     <div className="screen">
       <div className="map">
         {pos && (
-          <MapContainer center={[pos.lat, pos.lng]} zoom={15} style={{ height: '100%' }}>
+          <MapContainer center={[pos.lat, pos.lng]} zoom={15} style={{ height: '100%' }} {...rotateOptions()}>
             <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} />
-            <NorthArrow />
+            <MapControls
+              me={pos}
+              course={course}
+              modeKey="driver"
+              defaultMode="heading"
+              follow
+              resumeOn={ride?.status === 'started' ? ride.id : null}
+              route={active ? (ride.route?.length > 1 ? ride.route : [[ride.origin_lat, ride.origin_lng], [ride.dest_lat, ride.dest_lng]]) : online && preview?.route?.length > 1 ? preview.route : null}
+            />
             <Recenter pos={pos} />
             <CarMarker
               position={pos}
