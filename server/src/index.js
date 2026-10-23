@@ -43,7 +43,8 @@ if (existsSync(DIST)) {
     index: false,
     maxAge: '1h',
     setHeaders: (res, file) => {
-      if (/(sw\.js|manifest\.webmanifest)$/.test(file)) res.setHeader('Cache-Control', 'no-cache');
+      // version.json dice qué versión está publicada: siempre se consulta al servidor
+      if (/(sw\.js|manifest\.webmanifest|version\.json)$/.test(file)) res.setHeader('Cache-Control', 'no-cache');
     },
   }));
   app.use((req, res, next) => {

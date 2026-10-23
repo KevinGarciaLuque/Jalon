@@ -14,6 +14,7 @@
     "test": "node test/run.mjs",
     "test:e2e": "node test/e2e.mjs",
     "test:responsive": "node test/responsive.mjs",
+    "test:update": "node test/update.mjs",
     "test:tiles": "node test/tiles.mjs",
     "test:load": "node test/load.mjs",
     "test:prod": "node test/prod-smoke.mjs"

@@ -3,6 +3,23 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-22-actualizar',
+    date: '2026-10-22',
+    title: 'Actualiza con un toque',
+    for: ['all'],
+    items: [
+      'Cuando salga una versión nueva de Ktracho GO, arriba aparece «Hay una versión nueva» con el botón «Actualizar». Al tocarlo, la app se recarga con los cambios y no pierdes tu sesión ni tu viaje.',
+      'Si estás ocupado, toca «Más tarde» y te lo vuelve a recordar en unos minutos.',
+    ],
+  },
+  {
+    id: '2026-10-22-llavero',
+    date: '2026-10-22',
+    title: 'Guarda tu contraseña en el celular',
+    for: ['all'],
+    items: ['El iPhone (y otros celulares) ahora te ofrecen guardar tu contraseña al entrar. La próxima vez solo tocas tu cuenta sobre el teclado y entras con Face ID o tu huella.'],
+  },
+  {
     id: '2026-10-22-saldo-menu',
     date: '2026-10-22',
     title: 'Tu saldo en el menú',

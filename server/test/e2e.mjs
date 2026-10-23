@@ -378,6 +378,7 @@ try {
   await click(admin, 'Listo, ya la anoté');
 
   const staffPage = await openAs(null, { latitude: 14.07, longitude: -87.19 }, 'soporte');
+  await staffPage.waitForSelector('input[placeholder^="Teléfono"]', { timeout: 15000 }); // la pantalla de entrada se descarga al abrir
   await staffPage.type('input[placeholder^="Teléfono"]', staffPhone);
   await staffPage.type('input[placeholder="Contraseña"]', tempPass);
   await click(staffPage, 'Entrar');

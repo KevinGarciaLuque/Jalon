@@ -99,7 +99,8 @@ export default function Auth({ onAuth, notice }) {
     <div className="auth">
       <h1><Brand size="lg" /></h1>
       <p className="tagline">Tú pones el precio. Tu conductor llega.</p>
-      <form onSubmit={submit} className="card">
+      {/* method/action y los name: así el llavero del iPhone (y los gestores de contraseñas) reconocen el formulario y ofrecen guardar la contraseña */}
+      <form onSubmit={submit} className="card" method="post" action="/" autoComplete="on">
         <b>{title}</b>
 
         {mode === 'register' && step === 1 && (
@@ -131,11 +132,13 @@ export default function Auth({ onAuth, notice }) {
 
         {step === 1 && !challenge && (
           <>
-            <input aria-label="Teléfono (8 dígitos)" placeholder="Teléfono (8 dígitos)" inputMode="tel" autoComplete="tel" value={f.phone} onChange={set('phone')} required />
+            {/* El teléfono es el usuario de la cuenta: «username» (no «tel») para que el iPhone lo guarde junto con la contraseña */}
+            <input id="username" name="username" aria-label="Teléfono (8 dígitos)" placeholder="Teléfono (8 dígitos)" inputMode="tel" autoComplete="username" value={f.phone} onChange={set('phone')} required />
             {mode === 'register' && (
               <input aria-label="Correo electrónico" placeholder="Correo electrónico" type="email" inputMode="email" autoComplete="email" maxLength={160} value={f.email} onChange={set('email')} required />
             )}
             <PasswordInput
+              id="password" name="password"
               aria-label={mode === 'forgot' ? 'Nueva contraseña' : 'Contraseña'} placeholder={mode === 'forgot' ? 'Nueva contraseña' : 'Contraseña'}
               autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
               value={f.password}
