@@ -20,7 +20,7 @@ const RIDE_STATUS = {
 const CANCELLED_BY = { passenger: 'pasajero', driver: 'conductor', admin: 'personal', system: 'sistema' };
 // Secciones del panel: se eligen en el menú ☰ (o en la barra fija de la izquierda en computadora)
 export const SECTIONS = {
-  metrics: { label: 'Indicadores', icon: 'earnings', group: 'Operación', hint: 'Cómo va Ktracho GO: viajes, dinero y conductores en el período que elijas.' },
+  metrics: { label: 'Indicadores', icon: 'earnings', group: 'Principal', hint: 'Cómo va Ktracho GO: viajes, dinero y conductores en el período que elijas.' },
   rides: { label: 'Viajes', icon: 'car', group: 'Operación', hint: 'Todos los viajes: en curso, terminados y cancelados.' },
   monitor: { label: 'Mapa en vivo', icon: 'map', group: 'Operación', hint: 'Dónde están ahora los conductores y los viajes.' },
   users: { label: 'Usuarios', icon: 'users', group: 'Operación', hint: 'Pasajeros y conductores: busca, revisa y aprueba.' },
@@ -123,8 +123,10 @@ export default function Admin({ token, onGate, onSections }) {
   // Las secciones que esta persona puede ver, en el orden del menú, con lo que tienen pendiente
   const badge = { users: can('users.manage') ? stats?.pendingDrivers : 0, reports: stats?.openReports, topups: (stats?.pendingTopups || 0) + (stats?.waitingRequests || 0) };
   const tabs = [
-    can('metrics') && 'metrics', 'rides', can('monitor') && 'monitor', 'users', 'reports', can('wallet') && 'topups', can('rentals') && 'rentals',
-    can('share') && 'share', can('settings') && 'settings', can('settings') && 'system', can('staff.manage') && 'staff', can('staff.manage') && 'perms', can('audit') && 'audit',
+    can('metrics') && 'metrics',
+    'users', can('wallet') && 'topups', 'reports', 'rides', can('monitor') && 'monitor', can('rentals') && 'rentals',
+    can('share') && 'share',
+    can('settings') && 'settings', can('staff.manage') && 'staff', can('staff.manage') && 'perms', can('audit') && 'audit', can('settings') && 'system',
   ].filter(Boolean);
   const loaded = me.id !== 0; // los permisos ya llegaron
   const current = tabs.includes(tab) ? tab : tabs[0];

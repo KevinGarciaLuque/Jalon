@@ -3,6 +3,24 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-23-orden-menu',
+    date: '2026-10-23',
+    title: 'Menú ordenado: lo de cada día primero',
+    for: ['all'],
+    items: [
+      '«Notificaciones» ahora está entre lo primero del menú y muestra cuántos avisos tienes sin leer.',
+      'Conductores: Notificaciones, Mi saldo, Mis ganancias, Historial y Alquiler de tu carro, en ese orden.',
+      'Pasajeros: Notificaciones, Historial de viajes y «Alquilar un carro», que ahora también está en el menú.',
+    ],
+  },
+  {
+    id: '2026-10-23-orden-panel',
+    date: '2026-10-23',
+    title: 'Panel: secciones por prioridad',
+    for: ['staff'],
+    items: ['Arriba van Indicadores y Notificaciones; luego Usuarios, Recargas y Reportes (lo que suele tener pendientes), Viajes, Mapa en vivo y Alquileres; la configuración queda abajo.'],
+  },
+  {
     id: '2026-10-23-recarga-solicitud',
     date: '2026-10-23',
     title: 'Recargar saldo: ahora se solicita',

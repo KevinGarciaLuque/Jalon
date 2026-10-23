@@ -55,6 +55,11 @@ export default function Passenger({ socket, token, userId, perms = [] }) {
   const [error, setError] = useState('');
   const [compact, setCompact] = useState(false); // en el celular, la hoja de abajo se puede achicar para ver más mapa
   const [renting, setRenting] = useState(false); // pantalla de alquilar un carro por días
+  useEffect(() => {
+    const go = (e) => { if (e.detail === 'rentals' && perms.includes('rent')) setRenting(true); };
+    window.addEventListener('ktracho:go', go);
+    return () => window.removeEventListener('ktracho:go', go);
+  }, [perms]);
 
   const chat = useChat(socket, ride, userId);
   const active = ride && ['requested', 'accepted', 'arrived', 'started'].includes(ride.status);

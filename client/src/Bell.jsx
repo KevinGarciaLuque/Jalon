@@ -63,6 +63,7 @@ export default function Bell({ socket, onGo }) {
   const loadCount = useCallback(() => apiGet('notifications/unread').then((r) => setUnread(r.unread)).catch(() => {}), []);
 
   useEffect(() => { loadCount(); }, [loadCount]);
+  useEffect(() => { window.__ktUnread = unread; window.dispatchEvent(new CustomEvent('ktracho:unread', { detail: unread })); }, [unread]);
   // El panel del personal revisa cada 20 s: si hay más avisos sin leer que antes, suena
   useEffect(() => {
     if (socket) return;

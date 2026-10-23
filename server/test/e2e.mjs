@@ -422,7 +422,7 @@ try {
   await staffPage.waitForSelector('.admin', { timeout: 15000 });
   check('después de activarla entra al panel', true);
   const tabs = await sectionsOf(staffPage);
-  check('soporte ve Viajes, Usuarios y Reportes, pero no Personal, Registro, Recargas ni Ajustes', tabs[0] === 'Viajes' && tabs[1] === 'Usuarios' && tabs.some((t) => t.startsWith('Reportes')) && !tabs.some((t) => /Personal|Registro|Recargas|Ajustes/.test(t)), `(${tabs})`);
+  check('soporte ve primero Notificaciones y luego Usuarios, Reportes y Viajes, pero no Personal, Registro, Recargas ni Ajustes', tabs[0] === 'Notificaciones' && tabs[1] === 'Usuarios' && tabs.some((t) => t.startsWith('Reportes')) && tabs.includes('Viajes') && !tabs.some((t) => /Personal|Registro|Recargas|Ajustes/.test(t)), `(${tabs})`);
   await section(staffPage, 'Usuarios');
   await staffPage.waitForSelector('.ucard.click', { timeout: 15000 });
   await staffPage.click('.ucard.click');

@@ -53,6 +53,12 @@ const BUILD_DATE = new Date(__BUILD_DATE__).toLocaleDateString('es-HN', { day: '
 // `pinned`: en computadora el menú del personal queda fijo a la izquierda, sin botón ☰.
 // `wallet`: saldo del conductor ({ balance, low }) cuando la comisión está activa.
 export default function Menu({ user, hasBell, go, sections, current, wallet, pinned = false }) {
+  const [unread, setUnread] = useState(() => window.__ktUnread || 0); // el número de la campanita, también en el menú
+  useEffect(() => {
+    const on = (e) => setUnread(Number(e.detail) || 0);
+    window.addEventListener('ktracho:unread', on);
+    return () => window.removeEventListener('ktracho:unread', on);
+  }, []);
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
   const [drag, setDrag] = useState(0); // cuánto se arrastró hacia la izquierda para cerrarlo (negativo)
@@ -100,18 +106,25 @@ export default function Menu({ user, hasBell, go, sections, current, wallet, pin
     touch.current = null;
   };
 
+  const bellItem = hasBell && { key: 'bell', icon: 'bell', label: 'Notificaciones', badge: unread || 0 };
+  // Pasajeros y conductores: lo de cada día primero
   const items = [
-    !staff && { key: 'history', icon: 'history', label: 'Historial de viajes' },
+    bellItem,
     user.role === 'driver' && wallet && { key: 'wallet', icon: 'wallet', label: 'Mi saldo y recargas', note: money2(wallet.balance), low: wallet.low },
-    hasBell && { key: 'bell', icon: 'bell', label: 'Notificaciones' },
     user.role === 'driver' && user.status === 'active' && { key: 'earnings', icon: 'earnings', label: 'Mis ganancias' },
+    { key: 'history', icon: 'history', label: 'Historial de viajes' },
     user.role === 'driver' && user.status === 'active' && perms.includes('rent.offer') && { key: 'rental', icon: 'key', label: 'Alquiler de mi carro' },
+    user.role === 'passenger' && perms.includes('rent') && { key: 'rentals', icon: 'car', label: 'Alquilar un carro' },
   ].filter(Boolean);
   // Secciones del panel agrupadas (Operación, Crecimiento, Administración)
   const groups = [];
   for (const sct of sections || []) {
     const last = groups[groups.length - 1];
-    if (last?.name === sct.group) last.list.push(sct); else groups.push({ name: sct.group, list: [sct] });
+    if (last?.name === sct.group) last.list.push({ ...sct, target: `section:${sct.key}` }); else groups.push({ name: sct.group, list: [{ ...sct, target: `section:${sct.key}` }] });
+  }
+  // Personal: Notificaciones va en «Principal», junto a Indicadores (o sola si no ve Indicadores)
+  if (staff && bellItem) {
+    if (groups[0]?.name === 'Principal') groups[0].list.push(bellItem); else groups.unshift({ name: 'Principal', list: [bellItem] });
   }
   const pendingTotal = (sections || []).reduce((n, sct) => n + (sct.badge || 0), 0);
 
@@ -144,13 +157,13 @@ export default function Menu({ user, hasBell, go, sections, current, wallet, pin
       {groups.map((g) => (
         <div key={g.name} className="drawer-group">
           <h3>{g.name}</h3>
-          <ul className="drawer-list">{g.list.map((sct) => row({ ...sct, target: `section:${sct.key}` }, sct.key === current))}</ul>
+          <ul className="drawer-list">{g.list.map((it) => row(it, it.target === `section:${current}`))}</ul>
         </div>
       ))}
       <div className="drawer-group plain">
-        <h3>{staff ? 'General' : 'Mi cuenta'}</h3>
+        {!staff && <h3>Mi cuenta</h3>}
         <ul className="drawer-list">
-          {items.map((it) => row(it))}
+          {!staff && items.map((it) => row(it))}
           {(install.canInstall || install.ios) && (
             <li>
               <button onClick={() => (install.canInstall ? close(install.prompt) : pick('account')())}>
