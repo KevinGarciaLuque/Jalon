@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiGet, apiPost, apiPut, lempiras, RENTAL_STATUS, RENTAL_PILL, PAYMENT_LABEL, PAYMENT_STATUS, vehicleText, dateHN, todayHN } from './lib.js';
 import { Empty, Loading } from './components.jsx';
+import { Panel } from './Menu.jsx';
 
 // Conductor: ofrecer su carro (con él como conductor) por días y atender las reservas
 export default function DriverRental({ token, socket, onClose }) {
@@ -105,12 +106,12 @@ export default function DriverRental({ token, socket, onClose }) {
   };
 
   return (
-    <div className="overlay">
+    <Panel onClose={onClose} labelledBy="rental-title">
       <div className="overlay-head">
-        <b>Alquiler de mi carro</b>
+        <b id="rental-title">Alquiler de mi carro</b>
         <button className="link" onClick={onClose}>Cerrar ✕</button>
       </div>
       <div className="overlay-body">{body()}</div>
-    </div>
+    </Panel>
   );
 }

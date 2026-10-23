@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Empty } from './components.jsx';
+import { Panel } from './Menu.jsx';
 
 // Recuerda en este dispositivo cuál fue la última novedad vista (para el punto de «hay algo nuevo»)
 const SEEN_KEY = 'jalon:news-seen';
@@ -25,9 +26,9 @@ export function useNews(role) {
 
 export default function News({ news, onClose }) {
   return (
-    <div className="overlay">
+    <Panel onClose={onClose} labelledBy="news-title">
       <div className="overlay-head">
-        <b>Novedades</b>
+        <b id="news-title">Novedades</b>
         <button className="link" onClick={onClose}>Cerrar ✕</button>
       </div>
       <div className="overlay-body">
@@ -40,6 +41,6 @@ export default function News({ news, onClose }) {
           </div>
         ))}
       </div>
-    </div>
+    </Panel>
   );
 }

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { apiGet, apiPost, useInstall } from './lib.js';
 import { PushToggle, PasswordInput } from './components.jsx';
 import { SavedPlaces, TrustedContacts } from './PersonalLists.jsx';
+import { Panel } from './Menu.jsx';
 
 const ROLE = { passenger: 'Pasajero', driver: 'Conductor', admin: 'Administrador', superadmin: 'Superadministrador', support: 'Soporte' };
 const STAFF = ['superadmin', 'admin', 'support'];
@@ -85,9 +86,9 @@ export default function Account({ user, token, onToken, onClose, onLogout, force
   }
 
   return (
-    <div className="overlay">
+    <Panel onClose={forced ? null : onClose} labelledBy="account-title">
       <div className="overlay-head">
-        <b>{forced ? 'Cambia tu contraseña para continuar' : 'Mi cuenta'}</b>
+        <b id="account-title">{forced ? 'Cambia tu contraseña para continuar' : 'Mi cuenta'}</b>
         {!forced && <button className="link" onClick={onClose}>Cerrar ✕</button>}
       </div>
       <div className="overlay-body">
@@ -168,6 +169,6 @@ export default function Account({ user, token, onToken, onClose, onLogout, force
         </p>
         <button className="danger" onClick={() => onLogout()}>Cerrar sesión</button>
       </div>
-    </div>
+    </Panel>
   );
 }

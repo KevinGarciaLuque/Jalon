@@ -202,7 +202,13 @@ app.post('/api/push/unsubscribe', authUser, async (req, res) => {
 // Cerrar la sesión en todos los dispositivos (por si perdiste el celular o la dejaste abierta en otro): invalida todos los tokens y devuelve uno nuevo
 // Datos de la sesión al abrir la app (por ejemplo, los módulos que el superadmin le dio o le quitó desde la última vez)
 app.get('/api/me', authUser, async (req, res) => {
-  res.json({ user: publicUser(req.user, isStaff(req.user.role) && (await twoFactorRequired()), await permsFor(req.user)) });
+  const user = publicUser(req.user, isStaff(req.user.role) && (await twoFactorRequired()), await permsFor(req.user));
+  // Pasajeros y conductores ven su calificación en el menú
+  if (!isStaff(req.user.role)) {
+    const [[r]] = await pool.query('SELECT AVG(stars) AS avg, COUNT(*) AS n FROM ratings WHERE ratee_id = ?', [req.user.id]);
+    user.rating = { avg: Number(r.avg) || 0, count: Number(r.n) || 0 };
+  }
+  res.json({ user });
 });
 
 // Aceptar la versión nueva de los términos y la política de privacidad (se guarda cuándo y cuál)

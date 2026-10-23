@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiGet, lempiras } from './lib.js';
 import { Loading } from './components.jsx';
+import { Panel } from './Menu.jsx';
 
 const PERIODS = [['day', 'Hoy'], ['week', 'Semana'], ['month', 'Mes']];
 const WEEKDAY = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'];
@@ -66,9 +67,9 @@ export default function Earnings({ token, onClose }) {
 
   const range = data && (data.period === 'day' ? longDate(data.from) : `${longDate(data.from)} al ${longDate(data.to)}`);
   return (
-    <div className="overlay">
+    <Panel onClose={onClose} labelledBy="earnings-title">
       <div className="overlay-head">
-        <b>Mis ganancias</b>
+        <b id="earnings-title">Mis ganancias</b>
         <button className="link" onClick={onClose}>Cerrar ✕</button>
       </div>
       <div className="overlay-body">
@@ -99,6 +100,6 @@ export default function Earnings({ token, onClose }) {
           </>
         )}
       </div>
-    </div>
+    </Panel>
   );
 }

@@ -1,6 +1,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import News, { useNews } from './News.jsx';
 import Bell from './Bell.jsx';
+import Menu from './Menu.jsx';
 import { Brand, Loading } from './components.jsx';
 import { apiGet, apiPost, authFetch, API, lazyPage } from './lib.js';
 
@@ -15,7 +16,6 @@ const TwoFactorSetup = lazyPage(() => import('./TwoFactorSetup.jsx'));
 const TermsUpdate = lazyPage(() => import('./TermsUpdate.jsx'));
 
 const STAFF = ['superadmin', 'admin', 'support'];
-const ROLE_NAME = { passenger: 'Pasajero', driver: 'Conductor', superadmin: 'Superadministrador', admin: 'Administrador', support: 'Soporte' };
 
 // En el teléfono solo queda quién es la persona (nombre, rol); la sesión misma está en la cookie, que JavaScript no puede leer.
 // `token` aparece solo en sesiones guardadas antes de la cookie: al abrir la app se pasa a la cookie y se borra.
@@ -53,7 +53,7 @@ export default function App() {
     apiGet('me')
       .then(({ user }) => setSession((cur) => {
         if (!cur || cur.user.id !== user.id) return cur;
-        const next = { ...cur, user: { ...cur.user, perms: user.perms, mustAcceptTerms: user.mustAcceptTerms, termsVersion: user.termsVersion } };
+        const next = { ...cur, user: { ...cur.user, perms: user.perms, mustAcceptTerms: user.mustAcceptTerms, termsVersion: user.termsVersion, rating: user.rating } };
         localStorage.setItem('jalon', JSON.stringify(next));
         return next;
       }))
@@ -114,6 +114,15 @@ export default function App() {
   }
 
   const staff = STAFF.includes(session?.user.role);
+  const hasBell = !!session && !session.user.mustChangePassword && !session.token;
+
+  // Lo que se toca en el menú: aquí se abren historial, cuenta, novedades y la campanita; lo demás lo atiende su pantalla
+  function openFromMenu(target) {
+    if (target === 'account') return setShowAccount(true);
+    if (target === 'news') { setShowNews(true); markSeen(); return; }
+    if (target === 'bell') return window.dispatchEvent(new Event('ktracho:bell'));
+    goTo(target);
+  }
 
   // Al tocar un aviso de la campanita: el historial se abre aquí; lo demás lo atiende su pantalla (pestaña del panel, saldo del conductor)
   function goTo(target) {
@@ -136,17 +145,16 @@ export default function App() {
 
   return (
     <div className="app">
+      {/* Encabezado limpio: el menú ☰ y la marca a la izquierda, la campanita a la derecha (lo demás está en el menú) */}
       <header>
+        {session.user.mustChangePassword
+          ? null
+          : <Menu user={{ ...session.user, status: accountStatus }} unseen={unseen} hasBell={hasBell} go={openFromMenu} onLogout={() => logout()} />}
         <Brand />
-        <span>{session.user.name} · {ROLE_NAME[session.user.role]}</span>
-        {!STAFF.includes(session.user.role) && !session.user.mustChangePassword && <button className="link" aria-label="Historial" onClick={() => setShowHistory(true)}><span className="hdr-icon" aria-hidden="true">🕘</span><span className="hdr-label">Historial</span></button>}
+        <span className="hdr-space" />
         {/* La campanita espera a que la sesión esté en la cookie (las de antes de la cookie se pasan al abrir la app) */}
-        {!session.user.mustChangePassword && !session.token && <Bell socket={staff ? null : socket} onGo={goTo} />}
-        <button className="link news-btn" aria-label={unseen ? 'Novedades (hay algo nuevo)' : 'Novedades'} onClick={() => { setShowNews(true); markSeen(); }}>
-          <span className="news-icon" aria-hidden="true">✨</span><span className="news-label">Novedades</span>{unseen && <i className="news-dot" />}
-        </button>
-        <button className="link" aria-label="Cuenta" onClick={() => setShowAccount(true)}><span className="hdr-icon" aria-hidden="true">👤</span><span className="hdr-label">Cuenta</span></button>
-        <button className="link" onClick={() => logout()}>Salir</button>
+        {hasBell && <Bell socket={staff ? null : socket} onGo={goTo} />}
+        {session.user.mustChangePassword && <button className="link" onClick={() => logout()}>Salir</button>}
       </header>
       {connError && <div className="banner">{connError}</div>}
       <Suspense fallback={<Loading />}>

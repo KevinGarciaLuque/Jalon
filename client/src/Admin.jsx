@@ -229,7 +229,10 @@ export default function Admin({ token, onGate }) {
   useEffect(() => {
     const go = (e) => {
       if (e.detail === 'alerts') return window.scrollTo({ top: 0, behavior: 'smooth' });
-      if (tabs.some(([key]) => key === e.detail)) setTab(e.detail);
+      if (!tabs.some(([key]) => key === e.detail)) return;
+      setTab(e.detail);
+      // Las pestañas quedan debajo de los indicadores: se baja hasta ellas para que se vea lo que se abrió
+      requestAnimationFrame(() => document.querySelector('.seg.tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
     };
     window.addEventListener('ktracho:go', go);
     return () => window.removeEventListener('ktracho:go', go);

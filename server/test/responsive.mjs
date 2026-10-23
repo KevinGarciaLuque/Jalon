@@ -62,6 +62,19 @@ try {
       const r = await overflow(page);
       check(`${sname} @ ${vname} (${w}px) sin desborde`, !r.wide && r.bad.length === 0, r.bad.join(', '));
       await page.screenshot({ path: path.join(SHOTS, `r-${sname}-${vname}.png`) });
+      // El menú ☰ cabe en la pantalla y no la desborda
+      const menuBtn = session && (await page.$('button.menu-btn'));
+      if (menuBtn) {
+        await menuBtn.click();
+        await page.waitForSelector('.drawer');
+        await new Promise((r) => setTimeout(r, 400));
+        const m = await overflow(page);
+        const fits = await page.$eval('.drawer', (d) => { const r = d.getBoundingClientRect(); return r.left >= 0 && r.right <= document.documentElement.clientWidth + 1; });
+        check(`menú de ${sname} @ ${vname} cabe en la pantalla`, fits && !m.wide && m.bad.length === 0, m.bad.join(', '));
+        if (w === 390) await page.screenshot({ path: path.join(SHOTS, `r-menu-${sname}-${vname}.png`) });
+        await page.keyboard.press('Escape');
+        await page.waitForFunction(() => !document.querySelector('.drawer-wrap'), { timeout: 3000 }).catch(() => {});
+      }
       if (sname === 'panel') {
         for (const tab of ['Reportes', 'Recargas', 'Mapa en vivo', 'Ajustes', 'Personal', 'Registro', 'Usuarios']) {
           const b = await page.$(`button::-p-text(${tab})`);
@@ -77,7 +90,7 @@ try {
     }
   }
 } finally {
-  await browser.close();
+  await Promise.race([browser.close(), new Promise((r) => setTimeout(r, 8000))]); // en Windows a veces no termina de cerrar
   await pool.query("DELETE FROM users WHERE name IN ('R Driver','R Pasajero','T Superadmin')").catch(() => {});
   await pool.end();
 }

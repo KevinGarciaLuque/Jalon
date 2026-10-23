@@ -159,7 +159,7 @@ td.actions { display: flex; gap: 6px; }
 .safety .row button { flex: 1; }
 button.sos { background: var(--danger); color: var(--on-danger); border-color: var(--danger); }
 .overlay { position: fixed; inset: 0; z-index: 3000; background: var(--bg); display: flex; flex-direction: column; }
-.overlay-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--card); border-bottom: 1px solid var(--line); }
+.overlay-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; padding-top: max(12px, env(safe-area-inset-top)); background: var(--card); border-bottom: 1px solid var(--line); }
 .overlay-body { flex: 1; overflow: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; max-width: 640px; width: 100%; margin: 0 auto; }
 .sos-alert { background: var(--danger-soft); border: 2px solid var(--danger); border-radius: var(--r-2); padding: 12px; display: flex; flex-direction: column; gap: 6px; }
 .sos-alert a { color: var(--brand); font-weight: 600; }
@@ -349,10 +349,7 @@ header span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-spa
 .pw-eye:hover, .pw-eye:focus-visible { color: var(--text); }
 
 /* Novedades */
-.news-btn { position: relative; }
 .news-dot { position: absolute; top: 4px; right: 0; width: 8px; height: 8px; border-radius: 50%; background: var(--brand); }
-.news-icon { display: none; }
-@media (max-width: 480px) { .news-icon { display: inline; } .news-label { display: none; } }
 .req.news ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
 
 /* Íconos del mapa (SVG) */
@@ -505,7 +502,7 @@ table.perms input[type=checkbox] { width: 20px; height: 20px; }
 button.whatsapp { background: #128c4a; border-color: #128c4a; color: #fff; }
 
 /* Campanita de notificaciones */
-.bell-btn { position: relative; font-size: 20px; line-height: 1; padding: 4px 8px; }
+.bell-btn { position: relative; line-height: 1; }
 .bell-count { position: absolute; top: -4px; right: -2px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--danger); color: #fff; font: 700 11px/18px var(--font-text); text-align: center; }
 .bell-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .bell-item { display: flex; gap: 10px; align-items: flex-start; width: 100%; text-align: left; border: 1px solid var(--line); background: var(--card); border-radius: var(--r-2); padding: 10px 12px; min-height: 0; font-weight: 400; }
@@ -519,13 +516,53 @@ button.whatsapp { background: #128c4a; border-color: #128c4a; color: #fff; }
 .admin > *, .overlay-body > *, .sheet > * { flex-shrink: 0; }
 /* La marca no se recorta como el resto de los textos del encabezado */
 header .brand { flex: none; overflow: visible; min-width: auto; }
-.hdr-icon { display: none; }
-@media (max-width: 480px) {
-  header { gap: 4px; padding-left: 12px; padding-right: 12px; }
-  header .brand b { display: none; } /* solo el símbolo: el nombre no cabe junto a los botones */
-  header button.link { padding: 6px 7px; }
-  .hdr-icon { display: inline; font-size: 19px; line-height: 1; }
-  .hdr-label { display: none; }
+
+/* ---- Encabezado: menú ☰ y marca a la izquierda; campanita a la derecha ---- */
+header { flex-wrap: nowrap; gap: 8px; padding-left: max(14px, env(safe-area-inset-left)); padding-right: max(14px, env(safe-area-inset-right)); }
+header .hdr-space { flex: 1; }
+.icon { display: block; flex: none; }
+header .bell-btn, .menu-btn { position: relative; width: 44px; height: 44px; min-height: 0; padding: 0; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+header .bell-btn:hover, .menu-btn:hover { border-color: var(--brand); }
+.menu-btn .news-dot { top: 6px; right: 6px; box-shadow: 0 0 0 2px var(--bg); }
+header .bell-count { top: -3px; right: -3px; box-shadow: 0 0 0 2px var(--card); }
+
+/* ---- Menú lateral: sale de la izquierda, con el fondo oscurecido ---- */
+.scrim { position: fixed; inset: 0; background: rgba(4, 10, 7, .55); animation: fade-in var(--slow) ease-out; }
+.drawer-wrap { position: fixed; inset: 0; z-index: 4500; }
+.drawer { position: absolute; top: 0; left: 0; bottom: 0; width: min(340px, 84vw); display: flex; flex-direction: column; background: var(--card); color: var(--text); box-shadow: 16px 0 40px rgba(0, 0, 0, .35); padding: max(10px, env(safe-area-inset-top)) 0 max(12px, env(safe-area-inset-bottom)); overflow-y: auto; overscroll-behavior: contain; animation: slide-in-left var(--slow) cubic-bezier(.2, .8, .2, 1); transition: transform var(--fast) ease-out; }
+.drawer-wrap.closing .drawer { transform: translateX(-105%); transition: transform 220ms ease-in; }
+.drawer-wrap.closing .scrim { opacity: 0; transition: opacity 220ms ease-in; }
+.drawer-top { display: flex; justify-content: flex-end; padding: 0 10px; }
+.drawer-close { width: 44px; height: 44px; min-height: 0; padding: 0; display: grid; place-items: center; border: none; background: none; color: var(--muted); border-radius: 50%; }
+.drawer-profile { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; border: none; border-bottom: 1px solid var(--line); border-radius: 0; background: none; padding: 6px 18px 18px; font-weight: 400; }
+.drawer-profile .avatar { width: 56px; height: 56px; font-size: 19px; }
+.drawer-profile > .icon { color: var(--muted); }
+.drawer-who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.drawer-who b { font-family: var(--font-display); font-size: 19px; line-height: 1.2; overflow-wrap: anywhere; }
+.drawer-list { list-style: none; margin: 0; padding: 8px 0; flex: 1; }
+.drawer-list button { display: flex; align-items: center; gap: 16px; width: 100%; min-height: 54px; text-align: left; border: none; border-radius: 0; background: none; padding: 0 20px; font-size: 17px; font-weight: 500; color: var(--text); }
+.drawer-list button .icon { color: var(--muted); }
+.drawer-list button:hover, .drawer-profile:hover { background: var(--bg); }
+.drawer-list button > span { flex: 1; }
+.drawer-badge { font-style: normal; font-size: 12px; font-weight: 700; color: var(--on-brand); background: var(--brand); border-radius: 999px; padding: 2px 8px; }
+.drawer-foot { display: flex; flex-direction: column; align-items: center; gap: 10px; border-top: 1px solid var(--line); padding: 14px 18px 4px; }
+.drawer-logout { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; background: none; color: var(--danger); border-color: var(--line); }
+.drawer-list button:active, .drawer-profile:active { transform: none; background: var(--line); }
+
+/* ---- Novedades, historial, cuenta y notificaciones entran desde la derecha ---- */
+.overlay.slide { animation: slide-in var(--slow) cubic-bezier(.2, .8, .2, 1); }
+.panel-scrim { z-index: 2999; display: none; }
+@keyframes slide-in { from { transform: translateX(100%); } }
+@keyframes slide-in-left { from { transform: translateX(-100%); } }
+@keyframes fade-in { from { opacity: 0; } }
+/* En computadora o tableta: un panel al lado, no toda la pantalla */
+@media (min-width: 768px) {
+  .panel-scrim { display: block; }
+  .overlay.slide { left: auto; width: min(520px, 100%); border-left: 1px solid var(--line); box-shadow: -16px 0 40px rgba(0, 0, 0, .3); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .drawer, .overlay.slide, .scrim { animation: none; }
+  .drawer, .drawer-wrap.closing .drawer, .drawer-wrap.closing .scrim { transition: none; }
 }
 /* La barrita de la hoja queda fija arriba aunque se desplace el contenido */
 .screen .sheet > .grab { position: sticky; top: -4px; z-index: 2; background: var(--card); min-height: 30px; touch-action: none; }

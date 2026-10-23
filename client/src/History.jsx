@@ -4,6 +4,7 @@ import { Empty, Loading, Stars } from './components.jsx';
 import Receipt from './Receipt.jsx';
 import ReportForm, { REPORT_LABEL } from './ReportForm.jsx';
 import RideDetail from './RideDetail.jsx';
+import { Panel } from './Menu.jsx';
 
 const STATUS = {
   requested: 'Solicitado', accepted: 'Aceptado', arrived: 'Llegó', started: 'En curso',
@@ -46,9 +47,9 @@ export default function History({ token, role, onClose }) {
 
   const other = role === 'driver' ? 'Pasajero' : 'Conductor';
   return (
-    <div className="overlay">
+    <Panel onClose={onClose} labelledBy="history-title">
       <div className="overlay-head">
-        <b>Mis viajes</b>
+        <b id="history-title">Mis viajes</b>
         <button className="link" onClick={onClose}>Cerrar ✕</button>
       </div>
       <div className="overlay-body">
@@ -114,6 +115,6 @@ export default function History({ token, role, onClose }) {
       {detail && <RideDetail rideId={detail} token={token} onClose={() => setDetail(null)} onReceipt={(id) => setReceipt(id)} onReport={(id) => setReport(id)} />}
       {receipt && <Receipt rideId={receipt} token={token} onClose={() => setReceipt(null)} />}
       {report && <ReportForm rideId={report} token={token} onClose={() => setReport(null)} />}
-    </div>
+    </Panel>
   );
 }

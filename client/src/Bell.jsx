@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { apiGet, apiPost } from './lib.js';
 import { Empty, PushToggle } from './components.jsx';
+import { Icon, Panel } from './Menu.jsx';
 
 // La campanita: avisos de chat, ofertas, viajes, saldo, alquileres, reportes y emergencias (lo que corresponda a cada persona)
 const ICON = { chat: '💬', offer: '💵', ride: '🚗', wallet: '💰', report: '📝', rental: '🔑', sos: '🆘', docs: '📄', rating: '⭐', account: '✅', info: '🔔' };
@@ -92,6 +93,11 @@ export default function Bell({ socket, onGo }) {
     setError('');
     loadList();
   }
+  // «Notificaciones» en el menú abre esta misma lista
+  useEffect(() => {
+    window.addEventListener('ktracho:bell', show);
+    return () => window.removeEventListener('ktracho:bell', show);
+  });
   async function go(n) {
     if (!n.read) {
       setItems((list) => list.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
@@ -114,12 +120,12 @@ export default function Bell({ socket, onGo }) {
   return (
     <>
       <button className="link bell-btn" aria-label={label} title={label} onClick={show}>
-        <span aria-hidden="true">🔔</span>
+        <Icon name="bell" />
         {unread > 0 && <b className="bell-count" aria-hidden="true">{unread > 99 ? '99+' : unread}</b>}
       </button>
       {/* El panel va fuera del encabezado (portal): si no, heredaría sus estilos */}
       {open && createPortal(
-        <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="bell-title">
+        <Panel onClose={() => setOpen(false)} labelledBy="bell-title">
           <div className="overlay-head">
             <b id="bell-title">Notificaciones</b>
             {unread > 0 && <button className="link" onClick={readAll}>Marcar todo como leído</button>}
@@ -149,7 +155,7 @@ export default function Bell({ socket, onGo }) {
             )}
             <p className="muted small">Se guardan 30 días.</p>
           </div>
-        </div>,
+        </Panel>,
         document.body
       )}
     </>

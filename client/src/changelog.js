@@ -3,6 +3,31 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-22-menu',
+    date: '2026-10-22',
+    title: 'Nuevo menú',
+    for: ['all'],
+    items: [
+      'La barra de arriba quedó más limpia: el botón ☰ del menú, el logo y la campanita.',
+      'El menú ☰ está a la izquierda y sale de ese lado con tu nombre y tus opciones: historial, notificaciones, novedades, tu cuenta y cerrar sesión. Ciérralo tocando fuera o deslizándolo a la izquierda.',
+      'Novedades, historial, tu cuenta y las notificaciones entran deslizándose desde la derecha; en computadora se abren como un panel al lado.',
+    ],
+  },
+  {
+    id: '2026-10-22-menu-conductor',
+    date: '2026-10-22',
+    title: 'Atajos en el menú',
+    for: ['driver'],
+    items: ['Desde el menú llegas a «Mis ganancias» y a «Alquiler de mi carro» en cualquier momento.'],
+  },
+  {
+    id: '2026-10-22-menu-panel',
+    date: '2026-10-22',
+    title: 'Compartir desde el menú',
+    for: ['staff'],
+    items: ['«Compartir la app» también está en el menú (si tienes ese permiso); al tocarlo, el panel baja hasta la pestaña.'],
+  },
+  {
     id: '2026-10-22-recoger',
     date: '2026-10-22',
     title: 'Dónde recoger, más claro',

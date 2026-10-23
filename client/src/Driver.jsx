@@ -49,6 +49,7 @@ export default function Driver({ socket, token, status, userId, perms = [] }) {
   const [compact, setCompact] = useState(false); // en el celular, la hoja de abajo se puede achicar para ver más mapa
   const [showRental, setShowRental] = useState(false); // alquiler de su carro por días
   const [showEarnings, setShowEarnings] = useState(false); // mis ganancias por día, semana o mes
+  const [menuNote, setMenuNote] = useState(''); // por qué no se abrió algo del menú
   const [renting, setRenting] = useState(false); // tiene un alquiler en curso: no recibe viajes
   const posRef = useRef(pos);
   posRef.current = pos;
@@ -57,7 +58,12 @@ export default function Driver({ socket, token, status, userId, perms = [] }) {
   useEffect(() => { if (status !== 'pending') loadWallet(); }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
   // La campanita: un aviso de recarga o de saldo abre «Mi saldo»
   useEffect(() => {
-    const go = (e) => { if (e.detail === 'wallet') { loadWallet(); setShowWallet(true); } };
+    const go = (e) => {
+      if (e.detail === 'wallet') { loadWallet(); setShowWallet(true); }
+      if (e.detail === 'earnings') setShowEarnings(true);
+      // Desde el menú: el alquiler por días se arregla sin estar disponible ni en un viaje (igual que el botón de abajo)
+      if (e.detail === 'rental') { if (online || ride) setMenuNote('Para alquilar tu carro por días, termina el viaje y desconéctate primero.'); else setShowRental(true); }
+    };
     window.addEventListener('ktracho:go', go);
     return () => window.removeEventListener('ktracho:go', go);
   }); // eslint-disable-line react-hooks/exhaustive-deps
@@ -177,6 +183,7 @@ export default function Driver({ socket, token, status, userId, perms = [] }) {
             {ride?.status === 'completed' && <button onClick={() => setReporting(true)}>⚠ Reportar un problema con este viaje</button>}
             {showWallet && wallet && <DriverWallet wallet={wallet} reload={loadWallet} onClose={() => setShowWallet(false)} />}
             {showRental && <DriverRental token={token} socket={socket} onClose={() => { setShowRental(false); setRenting(false); }} />}
+            {menuNote && <div className="hint" role="status">{menuNote} <button className="link" onClick={() => setMenuNote('')}>Entendido</button></div>}
             {renting && <div className="hint">Tienes un alquiler en curso: no recibes viajes hasta terminarlo en «Alquiler de mi carro».</div>}
             {reporting && ride && <ReportForm rideId={ride.id} token={token} onClose={() => setReporting(false)} />}
             {ride?.status === 'completed' && chat.open && <Chat chat={chat} meId={userId} quick={['Encontré tu objeto, ¿dónde nos vemos?']} />}

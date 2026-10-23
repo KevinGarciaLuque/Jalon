@@ -49,12 +49,26 @@ async function openAs(session, geo, name) {
   }
   return page;
 }
-// Primero por el nombre accesible (en el celular algunos botones del encabezado muestran solo un ícono, p. ej. 👤 Cuenta), si no por el texto
+// Los paneles entran deslizándose: se espera a que terminen de entrar antes de tocar algo en ellos
+const settled = (page) => page.waitForFunction(() => !document.getAnimations().some((a) => a.playState === 'running' && a.animationName?.startsWith('slide-in')), { timeout: 5000 }).catch(() => {});
+// Primero por el nombre accesible, si no por el texto
 const click = async (page, text, timeout = 15000) => {
+  await settled(page);
   const byName = await page.waitForSelector(`::-p-aria([name="${text}"][role="button"])`, { timeout: 1500 }).catch(() => null);
   const el = byName || (await page.waitForSelector(`button::-p-text(${text}), a::-p-text(${text})`, { timeout }));
   await el.click();
 };
+// Historial, cuenta y cerrar sesión están en el menú ☰ (sale de la izquierda; se espera a que termine de cerrarse)
+const menu = async (page, item) => {
+  await (await page.waitForSelector('button.menu-btn', { timeout: 15000 })).evaluate((b) => b.click());
+  await page.waitForSelector('.drawer');
+  await settled(page);
+  const el = await page.waitForSelector(`.drawer button::-p-text(${item})`, { timeout: 5000 });
+  await el.evaluate((b) => b.scrollIntoView({ block: 'center' })); // «Cerrar sesión» queda abajo en pantallas bajas
+  await el.click();
+  await page.waitForFunction(() => !document.querySelector('.drawer-wrap'), { timeout: 5000 });
+};
+const entered = (page) => page.waitForSelector('button.menu-btn', { timeout: 15000 }).then(() => true, () => false);
 const see = (page, text, timeout = 15000) =>
   page.waitForSelector(`::-p-text(${text})`, { timeout }).then(() => true, () => false);
 const shot = (page, name) => page.screenshot({ path: path.join(SHOTS, `${name}.png`) });
@@ -93,7 +107,7 @@ try {
   check('en desarrollo se muestra el código de prueba', await see(pass, 'Modo desarrollo'));
   await shot(pass, '0-codigo-sms');
   await click(pass, 'Verificar y crear cuenta');
-  check('el pasajero queda registrado y entra', await see(pass, 'Historial'));
+  check('el pasajero queda registrado y entra', await entered(pass));
 
   // ---- Páginas legales y datos de la app instalable ----
   const legal = await browser.newPage();
@@ -115,7 +129,7 @@ try {
   await legal.close();
 
   // ---- Cambiar la contraseña desde Mi cuenta ----
-  await click(pass, 'Cuenta');
+  await menu(pass, 'Mi cuenta');
   check('se abre Mi cuenta', await see(pass, 'Mi cuenta'));
   await pass.waitForSelector('input[placeholder^="Nombre (ej."]'); // aparece cuando termina de cargar la lista de contactos
   await pass.type('input[placeholder^="Nombre (ej."]', 'Mamá');
@@ -295,7 +309,7 @@ try {
   await shot(driver, '6-conductor-termino');
 
   // Historial
-  await click(pass, 'Historial');
+  await menu(pass, 'Historial de viajes');
   check('historial muestra el viaje con la calificación', await see(pass, 'Mall Multiplaza') && (await see(pass, 'Tu calificación: ★★★★★')));
   await shot(pass, '7-historial');
   await click(pass, 'Ver recibo');
@@ -372,8 +386,8 @@ try {
   await shot(staffPage, '0f-soporte-ficha');
 
   // Volver a entrar: ahora pide el segundo paso (se usa un código de respaldo porque el de la app ya se usó al activarla)
-  await click(staffPage, 'Cerrar ✕'); // la ficha del usuario sigue abierta y tapa el botón Salir
-  await click(staffPage, 'Salir');
+  await click(staffPage, 'Cerrar ✕'); // la ficha del usuario sigue abierta y tapa el menú
+  await menu(staffPage, 'Cerrar sesión');
   await staffPage.type('input[placeholder^="Teléfono"]', staffPhone);
   await staffPage.type('input[placeholder="Contraseña"]', 'soporte-clave-9');
   await click(staffPage, 'Entrar');
@@ -408,12 +422,12 @@ try {
   check('al resolverlo sale de la lista de abiertos', await admin.waitForFunction(() => !document.body.innerText.includes('Dejé mi celular negro'), { timeout: 15000 }).then(() => true, () => false));
   admin.promptText = '';
   await click(pass, 'Cerrar ✕');
-  await click(pass, 'Historial');
+  await menu(pass, 'Historial de viajes');
   check('la persona ve la respuesta del personal en "Mis reportes"', (await see(pass, 'Mis reportes')) && (await see(pass, 'te devolverá el celular hoy')));
 
   // ---- Recuperar contraseña por pantalla ----
   await click(pass, 'Cerrar ✕');
-  await click(pass, 'Salir');
+  await menu(pass, 'Cerrar sesión');
   await click(pass, '¿Olvidaste tu contraseña?');
   await pass.type('input[placeholder^="Teléfono"]', passPhone);
   await pass.type('input[placeholder="Nueva contraseña"]', 'clave-nueva-9');
@@ -424,9 +438,9 @@ try {
   // El teléfono se conserva en el formulario tras cambiar la contraseña; solo falta escribir la nueva
   await pass.type('input[placeholder="Contraseña"]', 'clave-nueva-9');
   await click(pass, 'Entrar');
-  check('puede entrar con la contraseña nueva', await see(pass, 'Historial'));
+  check('puede entrar con la contraseña nueva', await entered(pass));
 } catch (e) {
-  check('recorrido completo', false, e.message);
+  check('recorrido completo', false, e.message + ' ' + (e.stack.match(/e2e\.mjs:\d+/g) || []).join(' '));
 } finally {
   await fetch(`${API}/api/admin/settings`, { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt.sign({ id: (await pool.query("SELECT id FROM users WHERE name = 'T Superadmin' ORDER BY id DESC LIMIT 1"))[0][0]?.id || 0, role: 'superadmin' }, process.env.JWT_SECRET, { expiresIn: '5m' })}` }, body: JSON.stringify({ commission_enabled: false, welcome_credit: 0, min_balance: 0 }) }).catch(() => {});
   // En Windows cerrar Chrome a veces se queda esperando: se le da un tope para que la prueba termine y dé su resumen
