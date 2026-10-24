@@ -39,10 +39,11 @@ export async function rideView(ride) {
   const [users] = await pool.query(`SELECT id,name,vehicle,plate${SHOW_PARTNER_PHONES ? ',phone' : ''} FROM users WHERE id IN (?)`, [ids]);
   const ratings = await ratingsOf(ids);
   const byId = Object.fromEntries(users.map((u) => [u.id, { ...u, rating: ratings.get(u.id) || { avg: null, count: 0 } }]));
-  const { route_json, share_token, start_pin, pin_attempts, ...rest } = ride;
+  const { route_json, share_token, start_pin, pin_attempts, stops_json, rider_phone, ...rest } = ride;
   return {
     ...rest,
     pinRequired: !!start_pin, // el PIN lo ve solo el pasajero (GET /api/rides/:id/pin)
+    stops: ride.stops_json ? JSON.parse(ride.stops_json) : [], // paradas en el camino, en orden
     pinLocked: Number(pin_attempts) >= PIN_TRIES,
     safetyCheck: ride.status === 'started' ? await openSafetyCheck(ride.id) : null, // «¿Todo bien?» pendiente
     route: route_json ? JSON.parse(route_json) : null,
@@ -69,6 +70,15 @@ export function nearbyDrivers(lat, lng) {
 
 // Un viaje «solo conductoras» solo lo ven y lo toman conductoras con el sexo confirmado por el personal
 export const canTake = (d, ride) => !Number(ride.women_only) || !!d?.woman;
+
+export function announceRide(ride) {
+  openRides.set(ride.id, ride);
+  for (const d of drivers.values()) {
+    if (!d.available || (d.category || 'car') !== (ride.category || 'car') || !canTake(d, ride) || distanceKm(d.lat, d.lng, ride.origin_lat, ride.origin_lng) > NEARBY_KM) continue;
+    if (!d.disconnected) io.to(room(d.id)).emit('ride:new', ride);
+    else push(d.id, { bell: false, title: 'Nuevo viaje cerca de ti', body: `${ride.dest_text ? `A ${ride.dest_text}` : 'Viaje disponible'} · L ${Math.round(ride.offered_price)}`, tag: `ride-${ride.id}`, url: '/' });
+  }
+}
 
 export function openRidesNear(lat, lng, driverId, category = 'car', woman = false) {
   return [...openRides.values()].filter((r) => (r.category || 'car') === category && canTake({ woman }, r) && distanceKm(lat, lng, r.origin_lat, r.origin_lng) <= NEARBY_KM && !declined.get(r.id)?.has(driverId));
@@ -149,9 +159,11 @@ export async function kickUser(userId) {
 
 // Viajes sin conductor tras REQUEST_TTL_MIN minutos se cancelan solos
 export async function expireStaleRides() {
+  // Un viaje programado tiene hasta unos minutos después de su hora para encontrar conductor
   const [stale] = await pool.query(
-    `SELECT id, passenger_id FROM rides WHERE status = 'requested' AND created_at < NOW() - INTERVAL ? MINUTE`,
-    [REQUEST_TTL_MIN]
+    `SELECT id, passenger_id FROM rides WHERE status = 'requested' AND created_at < NOW() - INTERVAL ? MINUTE
+       AND (scheduled_for IS NULL OR scheduled_for < NOW() - INTERVAL ? MINUTE)`,
+    [REQUEST_TTL_MIN, REQUEST_TTL_MIN]
   );
   for (const r of stale) await cancelRide(r.id, 'system', ['requested']);
 }

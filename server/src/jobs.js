@@ -2,10 +2,11 @@
 import { pool } from './db.js';
 import { purgeNotifications } from './notify.js';
 import { purgeOldMessages } from './chat.js';
-import { reportError, CHAT_RETENTION_DAYS, REQUEST_TTL_MIN } from './config.js';
+import { reportError, CHAT_RETENTION_DAYS, REQUEST_TTL_MIN, SCHEDULE_LEAD_MIN } from './config.js';
+import { push } from './notify.js';
 import { io } from './app.js';
 import { drivers, passengers, openRides, room } from './live.js';
-import { rideView, nearbyDrivers, expireOffers, expireStaleRides } from './services/rides.js';
+import { rideView, nearbyDrivers, expireOffers, expireStaleRides, announceRide, activeRideFor, getRide } from './services/rides.js';
 import { remindOpenAlerts } from './services/sos.js';
 import { expireRentals } from './services/rentals.js';
 import { reconcileSessions, purgeTracks } from './services/activity.js';
@@ -41,11 +42,41 @@ setInterval(() => remindOpenAlerts().catch(console.error), 30000);
 
 setInterval(() => expireStaleRides().catch(console.error), 30000);
 
+// Viajes programados: un rato antes de la hora salen a buscar conductor como un pedido normal.
+// Si a 5 minutos de la hora nadie lo tomó, se le avisa al pasajero para que suba su oferta.
+const warnedScheduled = new Set();
+export async function releaseScheduled() {
+  const [due] = await pool.query("SELECT * FROM rides WHERE status = 'scheduled' AND scheduled_for <= NOW() + INTERVAL ? MINUTE", [SCHEDULE_LEAD_MIN]);
+  for (const r of due) {
+    // Si en ese momento tiene otro viaje en curso, se espera; pasada la hora por 10 minutos, se cancela
+    if (await activeRideFor({ id: r.passenger_id, role: 'passenger' })) {
+      if (new Date(r.scheduled_for).getTime() < Date.now() - 10 * 60000) {
+        await pool.query("UPDATE rides SET status = 'cancelled', cancelled_by = 'system' WHERE id = ? AND status = 'scheduled'", [r.id]);
+        push(r.passenger_id, { title: 'Se canceló tu viaje programado', body: 'Tenías otro viaje en curso a esa hora.', tag: `ride-${r.id}`, url: '/' }, { always: true });
+      }
+      continue;
+    }
+    const [u] = await pool.query("UPDATE rides SET status = 'requested', created_at = NOW() WHERE id = ? AND status = 'scheduled'", [r.id]);
+    if (!u.affectedRows) continue;
+    const view = await rideView(await getRide(r.id));
+    announceRide(view);
+    io.to(room(r.passenger_id)).emit('ride:state', view);
+    push(r.passenger_id, { title: 'Buscando conductor para tu viaje programado', body: `${r.dest_text ? `A ${r.dest_text}` : 'Tu viaje'} · ya les avisamos a los conductores cercanos`, tag: `ride-${r.id}`, url: '/' }, { always: true });
+  }
+  const [late] = await pool.query("SELECT id, passenger_id FROM rides WHERE status = 'requested' AND scheduled_for IS NOT NULL AND scheduled_for <= NOW() + INTERVAL 5 MINUTE");
+  for (const r of late) {
+    if (warnedScheduled.has(r.id)) continue;
+    warnedScheduled.add(r.id);
+    push(r.passenger_id, { title: 'Nadie ha tomado tu viaje programado', body: 'Sube tu oferta para que un conductor lo acepte, o cancélalo si ya no lo necesitas.', tag: `ride-${r.id}`, url: '/' }, { always: true });
+  }
+}
+setInterval(() => releaseScheduled().catch(reportError), Number(process.env.SCHEDULE_SWEEP_MS || 30000)).unref();
+
 // Al reiniciar (p. ej. en cada despliegue) las solicitudes que siguen buscando conductor se vuelven a cargar en memoria:
 // los conductores las reciben al reconectarse y el vencimiento normal (REQUEST_TTL_MIN) cancela las que ya eran viejas.
 // Las ofertas pendientes de antes del reinicio no se pueden aceptar (el conductor aún no se reconectó) y la pantalla las quita.
 {
-  const [pending] = await pool.query("SELECT * FROM rides WHERE status = 'requested' AND created_at > NOW() - INTERVAL ? MINUTE", [REQUEST_TTL_MIN]);
+  const [pending] = await pool.query("SELECT * FROM rides WHERE status = 'requested' AND (created_at > NOW() - INTERVAL ? MINUTE OR scheduled_for > NOW() - INTERVAL ? MINUTE)", [REQUEST_TTL_MIN, REQUEST_TTL_MIN]);
   for (const r of pending) openRides.set(r.id, await rideView(r));
   if (pending.length) console.log(`Se recuperaron ${pending.length} solicitud(es) abiertas tras el reinicio`);
   await expireStaleRides();

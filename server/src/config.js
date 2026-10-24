@@ -75,6 +75,10 @@ export const SESSION_HEADER = 'x-jalon-session';
 
 export const MAX_PRICE = 5000; // L
 export const REQUEST_TTL_MIN = 10; // un viaje sin conductor se cancela solo
+// Viajes programados: de 30 minutos a 7 días; salen a buscar conductor 20 minutos antes de la hora
+export const SCHEDULE_MIN_AHEAD = Number(process.env.SCHEDULE_MIN_AHEAD || 30);
+export const SCHEDULE_MAX_DAYS = 7;
+export const SCHEDULE_LEAD_MIN = Number(process.env.SCHEDULE_LEAD_MIN || 20);
 // Máximo de mensajes por evento y por conexión cada 10 s. Una persona real queda muy por debajo (el GPS manda ~1 por segundo).
 export const SOCKET_WINDOW_MS = 10000;
 export const SOCKET_LIMIT_DEFAULT = 30;

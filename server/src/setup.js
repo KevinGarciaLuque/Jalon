@@ -634,6 +634,14 @@ await addColumn('users', 'gender', "ENUM('f','m','x') NULL");
 await addColumn('users', 'gender_verified', 'TINYINT(1) NOT NULL DEFAULT 0');
 await addColumn('rides', 'women_only', 'TINYINT(1) NOT NULL DEFAULT 0');
 
+// ---- Etapa 10: viajes programados, paradas, viaje para otra persona y punto de referencia ----
+await conn.query("ALTER TABLE rides MODIFY status ENUM('scheduled','requested','accepted','arrived','started','completed','cancelled') NOT NULL DEFAULT 'requested'");
+await addColumn('rides', 'scheduled_for', 'DATETIME NULL');
+await addColumn('rides', 'stops_json', 'TEXT NULL');
+await addColumn('rides', 'rider_name', 'VARCHAR(80) NULL');
+await addColumn('rides', 'rider_phone', 'VARCHAR(20) NULL');
+await addColumn('rides', 'pickup_note', 'VARCHAR(160) NULL');
+
 // ---- Recargas por solicitud: el conductor pide, el personal le asigna una de las cuentas por 24 horas ----
 // (la cuenta ya no se muestra a todos: solo a quien la pidió, mientras le sirve)
 await conn.query(`

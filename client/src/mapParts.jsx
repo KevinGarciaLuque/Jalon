@@ -31,6 +31,8 @@ export const icons = {
   car: svgIcon(`<div class="car-rot">${CAR_HTML}</div>`, [48, 48], [24, 24], 'car'),
   me: svgIcon(pin('#14802f', '<circle cx="17" cy="17.5" r="4" fill="#14802f"/>'), [34, 44], [17, 43], 'pin'),
   dest: svgIcon(pin('#14171c', FLAG), [34, 44], [17, 43], 'pin'),
+  // Paradas en el camino, con su número
+  stop: (n) => svgIcon(pin('#f59e0b', `<text x="17" y="21.5" text-anchor="middle" font-size="11" font-weight="800" font-family="sans-serif" fill="#7a4a00">${n}</text>`), [34, 44], [17, 43], 'pin'),
 };
 
 // Rumbo en grados (0 = norte, 90 = este) para ir del punto a al b

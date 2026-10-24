@@ -6,12 +6,13 @@ import { getSettings } from './wallet.js';
 import { fareFor, isCategory } from './fares.js';
 import { getRoute, reversePlace } from './maps.js';
 import { chatOpen, chatAllowed, CHAT_MAX } from './chat.js';
-import { reportError, SESSION_COOKIE, trustedOrigin, NEARBY_KM, OFFER_TTL_SECONDS, RAISE_COOLDOWN_MS, MAX_PRICE, SOCKET_WINDOW_MS, SOCKET_LIMIT_DEFAULT, SOCKET_LIMITS } from './config.js';
+import { reportError, SESSION_COOKIE, trustedOrigin, NEARBY_KM, OFFER_TTL_SECONDS, RAISE_COOLDOWN_MS, MAX_PRICE, SOCKET_WINDOW_MS, SOCKET_LIMIT_DEFAULT, SOCKET_LIMITS, SCHEDULE_MIN_AHEAD, SCHEDULE_MAX_DAYS } from './config.js';
+import { normalizePhone } from './phone.js';
 import { io } from './app.js';
 import { drivers, passengers, openRides, declined, room } from './live.js';
 import { isPoint, isPrice, serial, clean } from './util.js';
 import { push, pushStaff, hasPushSub, unreadCount } from './notify.js';
-import { getRide, activeRideFor, ratingsOf, rideView, nearbyDrivers, openRidesNear, closeOpenRide, releaseDriver, sendEta, cancelRide, PIN_TRIES, canTake } from './services/rides.js';
+import { getRide, activeRideFor, ratingsOf, rideView, nearbyDrivers, openRidesNear, closeOpenRide, releaseDriver, sendEta, cancelRide, PIN_TRIES, canTake, announceRide } from './services/rides.js';
 import { walletGate, chargeCommission } from './services/balance.js';
 import { shareWithContacts } from './services/accounts.js';
 import { notifySos } from './services/sos.js';
@@ -228,7 +229,7 @@ io.on('connection', async (socket) => {
       socket.emit('drivers:nearby', nearbyDrivers(lat, lng));
     });
 
-    on('ride:request', async ({ origin, dest, price, category: cat, womenOnly }, ack) => {
+    on('ride:request', async ({ origin, dest, price, category: cat, womenOnly, stops: rawStops, pickupNote, rider, scheduledFor }, ack) => {
       try {
         if (!isPoint(origin) || !isPoint(dest)) return ack?.({ error: 'Ubicación inválida' });
         // Si ya hay uno (p. ej. pedido desde otro celular), se le muestra para que lo vea o lo cancele
@@ -240,8 +241,30 @@ io.on('connection', async (socket) => {
         const straight = distanceKm(origin.lat, origin.lng, dest.lat, dest.lng);
         if (straight < 0.1) return ack?.({ error: 'El destino está demasiado cerca' });
         if (straight > 100) return ack?.({ error: 'El destino está demasiado lejos' });
+        // Etapa 10: paradas (hasta 2), punto de referencia, viaje para otra persona y viaje programado
+        const stops = (Array.isArray(rawStops) ? rawStops : []).slice(0, 3);
+        if (stops.length > 2) return ack?.({ error: 'Puedes agregar hasta 2 paradas' });
+        if (stops.some((p) => !isPoint(p))) return ack?.({ error: 'Una parada no es válida' });
+        const cleanStops = stops.map((p) => ({ lat: Number(p.lat), lng: Number(p.lng), text: clean(p.text)?.slice(0, 200) || null }));
+        const note = clean(pickupNote)?.slice(0, 160) || null;
+        let riderName = null;
+        let riderPhone = null;
+        if (rider && (rider.name || rider.phone)) {
+          riderName = clean(rider.name)?.slice(0, 80) || null;
+          riderPhone = normalizePhone(rider.phone);
+          if (!riderName || riderName.length < 2) return ack?.({ error: 'Escribe el nombre de quien va a viajar' });
+          if (!riderPhone) return ack?.({ error: 'Escribe el teléfono de quien va a viajar (8 dígitos)' });
+        }
+        let when = null;
+        if (scheduledFor) {
+          when = new Date(scheduledFor);
+          const ahead = (when.getTime() - Date.now()) / 60000;
+          if (!Number.isFinite(ahead) || ahead < SCHEDULE_MIN_AHEAD || ahead > SCHEDULE_MAX_DAYS * 1440) return ack?.({ error: `Programa el viaje entre ${SCHEDULE_MIN_AHEAD} minutos y ${SCHEDULE_MAX_DAYS} días desde ahora` });
+          const [[count]] = await pool.query("SELECT COUNT(*) AS n FROM rides WHERE passenger_id = ? AND status = 'scheduled'", [user.id]);
+          if (count.n >= 5) return ack?.({ error: 'Ya tienes 5 viajes programados' });
+        }
         // La distancia y la ruta las calcula el servidor, no la app (no se pueden falsear)
-        const route = await getRoute(origin, dest);
+        const route = await getRoute(origin, dest, cleanStops);
         const km = route.distanceKm;
         const category = isCategory(cat) ? cat : 'car';
         // «Solo conductoras»: para pasajeras (lo indican en Mi cuenta)
@@ -254,18 +277,20 @@ io.on('connection', async (socket) => {
         const offered = price == null || price === '' ? fareFor(await getSettings(pool), category, km, route.durationMin) : Number(price);
         if (!isPrice(offered)) return ack?.({ error: `El precio debe estar entre L 1 y L ${MAX_PRICE}` });
         const [r] = await pool.query(
-          `INSERT INTO rides (passenger_id, origin_lat, origin_lng, origin_text, dest_lat, dest_lng, dest_text, distance_km, duration_min, route_json, offered_price, category, women_only)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-          [user.id, origin.lat, origin.lng, await pickupText(origin), dest.lat, dest.lng, clean(dest.text), km, route.durationMin, JSON.stringify(route.coords), offered, category, women]
+          `INSERT INTO rides (passenger_id, origin_lat, origin_lng, origin_text, dest_lat, dest_lng, dest_text, distance_km, duration_min, route_json, offered_price, category, women_only,
+                              stops_json, pickup_note, rider_name, rider_phone, scheduled_for, status)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [user.id, origin.lat, origin.lng, await pickupText(origin), dest.lat, dest.lng, clean(dest.text), km, route.durationMin, JSON.stringify(route.coords), offered, category, women,
+           cleanStops.length ? JSON.stringify(cleanStops) : null, note, riderName, riderPhone, when, when ? 'scheduled' : 'requested']
         );
-        const ride = await rideView(await getRide(r.insertId));
-        openRides.set(ride.id, ride);
-        // Avisar a conductores libres cercanos de la misma categoría
-        for (const d of drivers.values()) {
-          if (!d.available || (d.category || 'car') !== category || !canTake(d, ride) || distanceKm(d.lat, d.lng, origin.lat, origin.lng) > NEARBY_KM) continue;
-          if (!d.disconnected) io.to(room(d.id)).emit('ride:new', ride);
-          else push(d.id, { bell: false, title: 'Nuevo viaje cerca de ti', body: `${ride.dest_text ? `A ${ride.dest_text}` : 'Viaje disponible'} · L ${Math.round(ride.offered_price)}`, tag: `ride-${ride.id}`, url: '/' });
+        // Programado: queda guardado y sale a buscar conductor un rato antes de la hora (jobs.js)
+        if (when) {
+          // La hora se guarda contada desde el reloj de MySQL, para que coincida con NOW() aunque las zonas horarias difieran
+          await pool.query('UPDATE rides SET scheduled_for = NOW() + INTERVAL ? SECOND WHERE id = ?', [Math.round((when.getTime() - Date.now()) / 1000), r.insertId]);
+          return ack?.({ ok: true, scheduled: { id: r.insertId, scheduledFor: when } });
         }
+        const ride = await rideView(await getRide(r.insertId));
+        announceRide(ride); // a los conductores libres cercanos de la misma categoría
         io.to(room(user.id)).emit('ride:state', ride); // a todos sus dispositivos (si tiene la app abierta en otro celular, también lo ve)
         ack?.({ ok: true });
       } catch (e) {

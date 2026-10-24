@@ -290,10 +290,42 @@ app.get('/api/route', authUser, mapsLimiter, async (req, res) => {
   const to = parsePoint(req.query.to);
   if (!isPoint(from) || !isPoint(to)) return res.status(400).json({ error: 'Ubicación inválida' });
   if (distanceKm(from.lat, from.lng, to.lat, to.lng) > 100) return res.status(400).json({ error: 'El destino está demasiado lejos' });
-  const r = await getRoute(from, to);
+  // Paradas en el camino: via=lat,lng|lat,lng (hasta 2)
+  const via = String(req.query.via || '').split('|').filter(Boolean).slice(0, 2).map(parsePoint);
+  if (via.some((p) => !isPoint(p))) return res.status(400).json({ error: 'Parada inválida' });
+  const r = await getRoute(from, to, via);
   // Precio sugerido de cada categoría; suggestedPrice (carro) se mantiene para versiones anteriores de la app
   const prices = faresFor(await getSettings(pool), r.distanceKm, r.durationMin);
   res.json({ ...r, prices, suggestedPrice: prices.car });
+});
+
+// Destinos recientes del pasajero (accesos directos al pedir): los 5 últimos distintos de sus viajes terminados
+app.get('/api/rides/recent-destinations', authUser, passengerOnly, async (req, res) => {
+  const [rows] = await pool.query(
+    `SELECT dest_lat AS lat, dest_lng AS lng, dest_text AS text, MAX(id) AS last FROM rides
+     WHERE passenger_id = ? AND status = 'completed' AND dest_text IS NOT NULL AND dest_text <> ''
+     GROUP BY dest_text, dest_lat, dest_lng ORDER BY last DESC LIMIT 5`, [req.user.id]
+  );
+  res.json({ places: rows.map(({ last: _last, ...p }) => p) });
+});
+
+// Datos de la persona que viaja (solo los ve quien pidió el viaje): para mandarle el seguimiento por WhatsApp
+app.get('/api/rides/:id/rider', authUser, passengerOnly, async (req, res) => {
+  const ride = await getRide(Number(req.params.id));
+  if (!ride || ride.passenger_id !== req.user.id) return res.status(404).json({ error: 'Viaje no encontrado' });
+  res.json({ name: ride.rider_name, phone: ride.rider_phone });
+});
+
+// Viajes programados del pasajero (los que todavía no salen a buscar conductor)
+app.get('/api/rides/scheduled', authUser, passengerOnly, async (req, res) => {
+  const [rows] = await pool.query("SELECT id, dest_text, origin_text, scheduled_for, offered_price, category FROM rides WHERE passenger_id = ? AND status = 'scheduled' ORDER BY scheduled_for", [req.user.id]);
+  res.json({ rides: rows.map((r) => ({ ...r, offered_price: Number(r.offered_price) })) });
+});
+
+app.post('/api/rides/:id/cancel-scheduled', authUser, passengerOnly, async (req, res) => {
+  const [r] = await pool.query("UPDATE rides SET status = 'cancelled', cancelled_by = 'passenger' WHERE id = ? AND passenger_id = ? AND status = 'scheduled'", [Number(req.params.id), req.user.id]);
+  if (!r.affectedRows) return res.status(404).json({ error: 'Ese viaje programado ya no existe' });
+  res.json({ ok: true });
 });
 
 // El historial de viajes (con filtros y detalle) está en routes/history.js

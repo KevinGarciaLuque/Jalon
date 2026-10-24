@@ -124,11 +124,13 @@ export function reversePlace(lat, lng) {
 }
 
 // Ruta por calles. Si el servicio falla (o está caído) se estima al instante: línea recta x 1.3 a ~25 km/h, para no bloquear los viajes.
-export function getRoute(a, b) {
-  const key = `${a.lat.toFixed(4)},${a.lng.toFixed(4)};${b.lat.toFixed(4)},${b.lng.toFixed(4)}`;
+// `stops`: paradas en el camino (en orden), hasta 2
+export function getRoute(a, b, stops = []) {
+  const pts = [a, ...stops, b];
+  const key = pts.map((p) => `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`).join(';');
   return cached(`route:${key}`, 10 * 60 * 1000, async () => {
     try {
-      const data = await ask('routes', use.routeUrl(`${a.lng},${a.lat};${b.lng},${b.lat}`), 8000);
+      const data = await ask('routes', use.routeUrl(pts.map((p) => `${p.lng},${p.lat}`).join(';')), 8000);
       const r = data.routes?.[0];
       if (data.code !== 'Ok' || !r) throw new Error('sin ruta');
       return {
@@ -138,8 +140,9 @@ export function getRoute(a, b) {
         estimated: false,
       };
     } catch {
-      const km = distanceKm(a.lat, a.lng, b.lat, b.lng) * 1.3;
-      return { distanceKm: km, durationMin: (km / 25) * 60, coords: [[a.lat, a.lng], [b.lat, b.lng]], estimated: true };
+      let km = 0;
+      for (let i = 1; i < pts.length; i++) km += distanceKm(pts[i - 1].lat, pts[i - 1].lng, pts[i].lat, pts[i].lng) * 1.3;
+      return { distanceKm: km, durationMin: (km / 25) * 60, coords: pts.map((p) => [p.lat, p.lng]), estimated: true };
     }
   });
 }

@@ -63,6 +63,28 @@ function SafetyCheck({ check, socket, onDone }) {
   );
 }
 
+// Viaje para otra persona: se le manda el enlace para seguir el viaje por WhatsApp
+function RiderShare({ ride, token }) {
+  const [err, setErr] = useState('');
+  async function send() {
+    try {
+      const [{ phone }, { token: t }] = await Promise.all([apiGet(`rides/${ride.id}/rider`, token), apiPost(`rides/${ride.id}/share`, token)]);
+      const digits = String(phone || '').replace(/\D/g, '');
+      const text = `Hola ${ride.rider_name}, te pedí un viaje en Ktracho GO. Síguelo aquí: ${window.location.origin}/t/${t}`;
+      window.open(`https://wa.me/${digits.length === 8 ? `504${digits}` : digits}?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
+    } catch (e) {
+      setErr(e.message);
+    }
+  }
+  return (
+    <div className="rider-box">
+      <span>Viaje para <b>{ride.rider_name}</b></span>
+      <button className="sm whatsapp" onClick={send}>Enviarle el seguimiento por WhatsApp</button>
+      {err && <div className="error">{err}</div>}
+    </div>
+  );
+}
+
 function Picker({ onPick, enabled }) {
   useMapEvents({ click: (e) => enabled && onPick({ lat: e.latlng.lat, lng: e.latlng.lng }) });
   return null;
@@ -100,6 +122,15 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
   const [offers, setOffers] = useState([]);
   const [eta, setEta] = useState(null); // tiempo estimado de llegada del conductor
   const [favs, setFavs] = useState([]); // lugares guardados
+  const [recent, setRecent] = useState([]); // destinos recientes (accesos directos)
+  const [stops, setStops] = useState([]); // paradas en el camino (hasta 2)
+  const [addingStop, setAddingStop] = useState(false);
+  const [note, setNote] = useState(''); // punto de referencia para el conductor
+  const [forOther, setForOther] = useState(false); // el viaje es para otra persona
+  const [rider, setRider] = useState({ name: '', phone: '' });
+  const [when, setWhen] = useState(''); // '' = ahora; si no, fecha y hora (datetime-local)
+  const [scheduled, setScheduled] = useState([]); // viajes programados
+  const [info, setInfo] = useState('');
   const [reporting, setReporting] = useState(false);
   const now = useNow();
   const [driverPos, setDriverPos] = useState(null);
@@ -120,6 +151,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
   // Se redondea (~100 m) para no recalcular la ruta por pequeños saltos del GPS
   const fromKey = from && `${from.lat.toFixed(3)},${from.lng.toFixed(3)}`;
   const destKey = dest && `${dest.lat.toFixed(5)},${dest.lng.toFixed(5)}`;
+  const stopsKey = stops.map((p) => `${p.lat.toFixed(5)},${p.lng.toFixed(5)}`).join('|');
 
   const loadFavs = () => apiGet('favorites', token).then(setFavs).catch(() => {});
   useEffect(() => { loadFavs(); }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -162,7 +194,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
     let stale = false;
     setPreview(null);
     setPreviewError('');
-    apiGet(`route?from=${from.lat},${from.lng}&to=${dest.lat},${dest.lng}`, token)
+    apiGet(`route?from=${from.lat},${from.lng}&to=${dest.lat},${dest.lng}${stopsKey ? `&via=${stopsKey}` : ''}`, token)
       .then((r) => {
         if (stale) return;
         setPreview(r);
@@ -170,7 +202,14 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
       })
       .catch((e) => !stale && setPreviewError(e.message));
     return () => { stale = true; };
-  }, [fromKey, destKey, active]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fromKey, destKey, stopsKey, active]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Destinos recientes y viajes programados
+  const loadScheduled = () => apiGet('rides/scheduled', token).then((r) => setScheduled(r.rides)).catch(() => {});
+  useEffect(() => {
+    apiGet('rides/recent-destinations', token).then((r) => setRecent(r.places)).catch(() => {});
+    loadScheduled();
+  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function pickDest(p) {
     priceEdited.current = false;
@@ -197,16 +236,42 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
 
   function request() {
     setError('');
-    socket.emit(
-      'ride:request',
-      { origin: { lat: from.lat, lng: from.lng, text: from.text }, dest: { lat: dest.lat, lng: dest.lng, text: dest.text }, price: Number(price), category, womenOnly: gender === 'f' && womenOnly },
-      (res) => res?.error && setError(res.error)
-    );
+    setInfo('');
+    const payload = {
+      origin: { lat: from.lat, lng: from.lng, text: from.text }, dest: { lat: dest.lat, lng: dest.lng, text: dest.text }, price: Number(price), category,
+      womenOnly: gender === 'f' && womenOnly,
+      stops: stops.map((p) => ({ lat: p.lat, lng: p.lng, text: p.text })),
+      pickupNote: note.trim() || undefined,
+      rider: forOther ? { name: rider.name.trim(), phone: rider.phone.trim() } : undefined,
+      scheduledFor: when ? new Date(when).toISOString() : undefined,
+    };
+    socket.emit('ride:request', payload, (res) => {
+      if (res?.error) return setError(res.error);
+      if (res?.scheduled) {
+        setInfo(`✓ Viaje programado para el ${new Date(res.scheduled.scheduledFor).toLocaleString('es-HN', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}. Te avisaremos cuando busquemos conductor.`);
+        newTrip();
+        loadScheduled();
+      }
+    });
   }
+  async function cancelScheduled(r) {
+    if (!window.confirm('¿Cancelar este viaje programado?')) return;
+    try { await apiPost(`rides/${r.id}/cancel-scheduled`, token); loadScheduled(); } catch (e) { setError(e.message); }
+  }
+  // Mínimo y máximo para programar (30 minutos a 7 días), en la hora local del celular
+  const localInput = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  const minWhen = localInput(new Date(Date.now() + 31 * 60000));
+  const maxWhen = localInput(new Date(Date.now() + 7 * 86400000));
 
   function newTrip() {
     setRide(null);
     setDest(null);
+    setStops([]);
+    setAddingStop(false);
+    setNote('');
+    setForOther(false);
+    setRider({ name: '', phone: '' });
+    setWhen('');
     setPreview(null);
     setPrice('');
     setDriverPos(null);
@@ -253,6 +318,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
               <Marker position={active ? [ride.dest_lat, ride.dest_lng] : [dest.lat, dest.lng]} icon={icons.dest} />
             )}
             {routeLine && <RouteLine positions={routeLine} />}
+            {(active ? ride.stops || [] : stops).map((p, i) => <Marker key={`stop-${i}`} position={[p.lat, p.lng]} icon={icons.stop(i + 1)} />)}
             {active && driverPos && ride.status !== 'requested' && <CarMarker position={driverPos} />}
           </MapContainer>
         )}
@@ -271,9 +337,12 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
 
             <AddressSearch icon={<i className="dot-o" />} token={token} near={pos} placeholder="¿Dónde te recogemos?" value={origin ? origin.text : 'Mi ubicación'} onPick={setOrigin} />
             {origin && <button className="link left" onClick={() => setOrigin(null)}>📍 Usar mi ubicación</button>}
-            {favs.length > 0 && !dest && (
+            {(favs.length > 0 || recent.length > 0) && !dest && (
               <div className="quick">
                 {favs.map((f) => <button key={f.id} className="sm" onClick={() => pickDest({ lat: f.lat, lng: f.lng, text: f.text })}>⭐ {f.label}</button>)}
+                {recent.filter((r) => !favs.some((f) => Math.abs(f.lat - r.lat) < 1e-4 && Math.abs(f.lng - r.lng) < 1e-4)).map((r) => (
+                  <button key={`${r.lat},${r.lng}`} className="sm recent" title={r.text} onClick={() => pickDest(r)}>🕘 {r.text.split(',')[0]}</button>
+                ))}
               </div>
             )}
             <AddressSearch icon={<i className="dot-d" />} token={token} near={from} placeholder="¿A dónde vas? (o toca el mapa)" value={dest?.text || ''} onPick={pickDest} />
@@ -281,6 +350,47 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
               <button className="link left" onClick={saveFav}>⭐ Guardar este lugar</button>
             )}
 
+            {dest && (
+              <div className="trip-extras">
+                {stops.map((p, i) => (
+                  <div key={i} className="stop-row">
+                    <span className="stop-num">{i + 1}</span>
+                    <span className="grow">{p.text || 'Parada en el mapa'}</span>
+                    <button className="link" aria-label={`Quitar la parada ${i + 1}`} onClick={() => setStops(stops.filter((_, j) => j !== i))}>✕</button>
+                  </div>
+                ))}
+                {addingStop && <AddressSearch icon={<span className="stop-num">{stops.length + 1}</span>} token={token} near={from} placeholder="¿Dónde es la parada?" value="" onPick={(p) => { setStops([...stops, { ...p, text: p.text || 'Parada' }]); setAddingStop(false); priceEdited.current = false; }} />}
+                {stops.length < 2 && !addingStop && <button className="link left" onClick={() => setAddingStop(true)}>+ Agregar parada</button>}
+                <input aria-label="Punto de referencia para el conductor" placeholder="Punto de referencia (opcional): frente a la pulpería, portón verde…" maxLength={160} value={note} onChange={(e) => setNote(e.target.value)} />
+                <label className="check">
+                  <input type="checkbox" checked={forOther} onChange={(e) => setForOther(e.target.checked)} />
+                  <span>El viaje es <b>para otra persona</b></span>
+                </label>
+                {forOther && (
+                  <div className="row wrap">
+                    <input className="grow" aria-label="Nombre de quien viaja" placeholder="Nombre de quien viaja" maxLength={80} value={rider.name} onChange={(e) => setRider({ ...rider, name: e.target.value })} />
+                    <input className="grow" aria-label="Teléfono de quien viaja" placeholder="Su teléfono (8 dígitos)" inputMode="tel" maxLength={15} value={rider.phone} onChange={(e) => setRider({ ...rider, phone: e.target.value })} />
+                  </div>
+                )}
+                <div className="seg when-seg" role="radiogroup" aria-label="¿Cuándo?">
+                  <button type="button" role="radio" aria-checked={!when} className={!when ? 'on' : ''} onClick={() => setWhen('')}>Ahora</button>
+                  <button type="button" role="radio" aria-checked={!!when} className={when ? 'on' : ''} onClick={() => setWhen(when || minWhen)}>🗓 Programar</button>
+                </div>
+                {when && <input type="datetime-local" aria-label="Fecha y hora del viaje" min={minWhen} max={maxWhen} value={when} onChange={(e) => setWhen(e.target.value)} />}
+              </div>
+            )}
+            {info && <div className="hint ok" role="status">{info}</div>}
+            {scheduled.length > 0 && !dest && (
+              <div className="req scheduled-list">
+                <b>🗓 Tus viajes programados</b>
+                {scheduled.map((r) => (
+                  <div key={r.id} className="row between">
+                    <span className="small"><b>{new Date(r.scheduled_for).toLocaleString('es-HN', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</b> · {r.dest_text || 'Destino'} · {lempiras(r.offered_price)}</span>
+                    <button className="sm" onClick={() => cancelScheduled(r)}>Cancelar</button>
+                  </div>
+                ))}
+              </div>
+            )}
             {!dest && perms.includes('rent') && <button className="link left" onClick={() => setRenting(true)}>¿Necesitas un carro todo el día? Alquila uno con conductor</button>}
             {dest && !preview && !previewError && <div className="pulse">Calculando ruta…</div>}
             {previewError && <div className="error">{previewError}</div>}
@@ -306,7 +416,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
                 )}
                 <PriceStepper value={price} label="Tu oferta en lempiras" onChange={(v) => { priceEdited.current = true; setPrice(v); }} />
                 {error && <div className="error">{error}</div>}
-                <button className="primary" disabled={!price} onClick={request}>Pedir viaje por {lempiras(price || 0)}</button>
+                <button className="primary" disabled={!price} onClick={request}>{when ? 'Programar viaje por' : 'Pedir viaje por'} {lempiras(price || 0)}</button>
               </>
             )}
           </>
@@ -329,6 +439,8 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
             )}
 
             {['accepted', 'arrived'].includes(ride.status) && ride.pinRequired && <TripPin ride={ride} token={token} />}
+            {ride.rider_name && ride.status !== 'requested' && <RiderShare ride={ride} token={token} />}
+            {ride.stops?.length > 0 && <p className="muted small">Paradas: {ride.stops.map((p, i) => `${i + 1}. ${p.text || 'en el mapa'}`).join(' · ')}</p>}
 
             {ride.status === 'requested' && (
               <>

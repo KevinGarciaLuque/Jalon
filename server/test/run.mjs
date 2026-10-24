@@ -35,7 +35,7 @@ const apiUrl = process.env.API_URL || `http://localhost:${port}`;
 // Llaves de notificaciones solo para estas pruebas (si no hay unas definidas)
 const vapid = process.env.VAPID_PUBLIC_KEY ? {} : (({ publicKey, privateKey }) => ({ VAPID_PUBLIC_KEY: publicKey, VAPID_PRIVATE_KEY: privateKey }))(generateKeys());
 // Tiempos cortos solo para las pruebas (en producción valen los de verdad)
-const env = { SAFETY_OFF_SEC: '2', SAFETY_STOP_SEC: '3', SAFETY_ANSWER_SEC: '3', SAFETY_SWEEP_MS: '1000', SAFETY_COOLDOWN_SEC: '2', RACE_ROUNDS: '10', OFFER_TTL_SECONDS: '3', OFFER_SWEEP_MS: '500', RAISE_COOLDOWN_MS: '700', ETA_EVERY_MS: '2500', ...process.env, ...vapid, API_URL: apiUrl, SOS_ALERT_PHONES: process.env.SOS_ALERT_PHONES || '99990001,99990002' };
+const env = { SAFETY_OFF_SEC: '2', SAFETY_STOP_SEC: '3', SAFETY_ANSWER_SEC: '3', SAFETY_SWEEP_MS: '1000', SAFETY_COOLDOWN_SEC: '2', RACE_ROUNDS: '10', OFFER_TTL_SECONDS: '3', OFFER_SWEEP_MS: '500', RAISE_COOLDOWN_MS: '700', ETA_EVERY_MS: '2500', SCHEDULE_SWEEP_MS: '1000', ...process.env, ...vapid, API_URL: apiUrl, SOS_ALERT_PHONES: process.env.SOS_ALERT_PHONES || '99990001,99990002' };
 
 let server = null;
 if (!external) {
@@ -58,7 +58,7 @@ if (!external) {
 }
 
 let failed = false;
-for (const t of (process.env.ONLY || 'sw-unit,maps-unit,flow,phase3,phase4,phase5b,phase6,phase7,phase7b,phase7c,phase8a,phase8b,phase8c,phase8d,phase9,phase10,phase11,phase12,phase13,phase14,phase15,phase16,phase17,phase18,phase19,phase20,phase21,rekey-unit,phase22,phase23,phase24,phase25,phase26,phase27,phase28,phase29,phase30,phase31,phase32,phase33,monitor,race,expiry').split(',')) {
+for (const t of (process.env.ONLY || 'sw-unit,maps-unit,flow,phase3,phase4,phase5b,phase6,phase7,phase7b,phase7c,phase8a,phase8b,phase8c,phase8d,phase9,phase10,phase11,phase12,phase13,phase14,phase15,phase16,phase17,phase18,phase19,phase20,phase21,rekey-unit,phase22,phase23,phase24,phase25,phase26,phase27,phase28,phase29,phase30,phase31,phase32,phase33,phase34,monitor,race,expiry').split(',')) {
   const r = spawnSync(process.execPath, [`test/${t}.mjs`], { stdio: 'inherit', env });
   if (r.status !== 0) failed = true;
 }

@@ -251,6 +251,10 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
                         <span className="tag">{lempiras(r.offered_price)}</span>
                       </div>
                       {!!r.women_only && <span className="pill women">🚺 Solo conductoras</span>}
+                      {r.scheduled_for && <span className="pill">🗓 Programado: {new Date(r.scheduled_for).toLocaleTimeString('es-HN', { hour: 'numeric', minute: '2-digit' })}</span>}
+                      {r.rider_name && <div className="small">Recoger a: <b>{r.rider_name}</b></div>}
+                      {r.pickup_note && <div className="small">📍 {r.pickup_note}</div>}
+                      {r.stops?.length > 0 && <div className="small">Con {r.stops.length} parada{r.stops.length === 1 ? '' : 's'}: {r.stops.map((p) => p.text || 'en el mapa').join(' → ')}</div>}
                       <div className="route-list">
                         <div><i className="dot-o" /><span><span className="sr-only">Recoger en: </span>{r.origin_text || 'Punto marcado en el mapa'} <span className="muted small">· a {away.toFixed(1)} km</span></span></div>
                         <div><i className="dot-d" /><span><span className="sr-only">Destino: </span>{r.dest_text || 'Punto marcado en el mapa'} <span className="muted small">· {r.distance_km.toFixed(1)} km{r.duration_min ? `, ${minutes(r.duration_min)}` : ''}</span></span></div>
@@ -296,6 +300,9 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
                 {ride.status === 'started'
                   ? <span className="small"><span className="muted">Destino:</span> {ride.dest_text || 'Punto marcado en el mapa'}</span>
                   : <span className="small"><span className="muted">Recoger en:</span> {ride.origin_text || 'Punto marcado en el mapa'}</span>}
+                {ride.rider_name && ride.status !== 'started' && <span className="small"><span className="muted">Recoger a:</span> <b>{ride.rider_name}</b></span>}
+                {ride.pickup_note && ride.status !== 'started' && <span className="small">📍 {ride.pickup_note}</span>}
+                {ride.stops?.length > 0 && <span className="small"><span className="muted">Paradas:</span> {ride.stops.map((p, i) => `${i + 1}. ${p.text || 'en el mapa'}`).join(' · ')}</span>}
                 <span className="muted small">{ride.distance_km.toFixed(1)} km de viaje · efectivo</span>
               </div>
               <div className="row">

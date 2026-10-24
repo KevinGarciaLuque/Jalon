@@ -3,6 +3,29 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-23-pedir-mejor',
+    date: '2026-10-23',
+    title: 'Pide a tu manera',
+    for: ['passenger'],
+    items: [
+      '🗓 Programa tu viaje: elige «Programar» y la fecha y hora (de 30 minutos a 7 días). Un rato antes buscamos conductor y te avisamos. Puedes cancelarlo desde «Tus viajes programados».',
+      '📍 Hasta 2 paradas en el camino: toca «+ Agregar parada» después de elegir el destino. El precio sugerido ya las incluye.',
+      '👵 Pide para otra persona: marca «El viaje es para otra persona» y escribe su nombre y teléfono. Cuando un conductor acepte, mándale el seguimiento por WhatsApp.',
+      'Punto de referencia: escribe algo como «frente a la pulpería, portón verde» para que el conductor te encuentre fácil.',
+      '🕘 Tus destinos recientes aparecen como accesos directos junto a tus lugares guardados.',
+    ],
+  },
+  {
+    id: '2026-10-23-pedir-mejor-conductor',
+    date: '2026-10-23',
+    title: 'Más datos en cada solicitud',
+    for: ['driver'],
+    items: [
+      'Ahora ves si el viaje tiene paradas, el punto de referencia del pasajero y, si pidió para otra persona, a quién recoger.',
+      'Los viajes programados te llegan un rato antes de la hora, con la hora indicada.',
+    ],
+  },
+  {
     id: '2026-10-23-seguridad-pasajero',
     date: '2026-10-23',
     title: 'Viaja más seguro',
