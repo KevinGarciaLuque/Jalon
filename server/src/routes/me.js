@@ -63,6 +63,13 @@ app.get('/api/me/export', authUser, async (req, res) => {
 });
 
 // Eliminar la propia cuenta (pide la contraseña). No se puede con un viaje en curso. El personal no se elimina solo: lo hace el superadmin.
+// «Usar PIN en mis viajes» (pasajeros)
+app.put('/api/me/ride-pin', authUser, passengerOnly, async (req, res) => {
+  const enabled = !!req.body?.enabled;
+  await pool.query('UPDATE users SET ride_pin = ? WHERE id = ?', [enabled ? 1 : 0, req.user.id]);
+  res.json({ ok: true, ridePin: enabled });
+});
+
 app.put('/api/me/gender', authUser, async (req, res) => {
   const g = req.body?.gender;
   if (![null, 'f', 'm', 'x'].includes(g ?? null)) return res.status(400).json({ error: 'Opción inválida' });

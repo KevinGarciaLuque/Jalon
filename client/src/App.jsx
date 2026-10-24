@@ -73,7 +73,7 @@ export default function App() {
     apiGet('me')
       .then(({ user }) => setSession((cur) => {
         if (!cur || cur.user.id !== user.id) return cur;
-        const next = { ...cur, user: { ...cur.user, perms: user.perms, mustAcceptTerms: user.mustAcceptTerms, termsVersion: user.termsVersion, rating: user.rating, mapRotation: user.mapRotation, gender: user.gender, genderVerified: user.genderVerified } };
+        const next = { ...cur, user: { ...cur.user, perms: user.perms, mustAcceptTerms: user.mustAcceptTerms, termsVersion: user.termsVersion, rating: user.rating, mapRotation: user.mapRotation, gender: user.gender, genderVerified: user.genderVerified, ridePin: user.ridePin } };
         localStorage.setItem('jalon', JSON.stringify(next));
         return next;
       }))

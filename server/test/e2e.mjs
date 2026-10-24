@@ -156,6 +156,9 @@ try {
   // ---- Cambiar la contraseña desde Mi cuenta ----
   await profile(pass, 'Mi perfil');
   check('se abre Mi cuenta', await see(pass, 'Mi cuenta'));
+  // PIN de viaje opcional: la pasajera lo activa (más abajo se usa al iniciar el viaje)
+  await (await pass.waitForSelector('label.check ::-p-text(Usar PIN en mis viajes)', { timeout: 15000 })).click();
+  check('la pasajera activa «Usar PIN en mis viajes»', await pass.waitForFunction(() => [...document.querySelectorAll('label.check')].some((l) => l.textContent.includes('Usar PIN') && l.querySelector('input').checked), { timeout: 5000 }).then(() => true, () => false));
   await pass.waitForSelector('input[placeholder^="Nombre (ej."]'); // aparece cuando termina de cargar la lista de contactos
   await pass.type('input[placeholder^="Nombre (ej."]', 'Mamá');
   await pass.type('input[placeholder="Teléfono (8 dígitos)"]', `71${rnd.slice(0, 6)}`);

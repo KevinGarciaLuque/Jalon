@@ -8,7 +8,7 @@ export const CHANGELOG = [
     title: 'Viaja más seguro',
     for: ['passenger'],
     items: [
-      '🔢 PIN de viaje: cuando el conductor acepta, ves un PIN de 4 dígitos. Díselo al subir: sin él no puede iniciar el viaje. Así sabes que es el carro correcto.',
+      '🔢 PIN de viaje (opcional): actívalo en Mi cuenta. Cuando el conductor acepte verás un PIN de 4 dígitos; díselo al subir y sin él no puede iniciar el viaje. Así sabes que es el carro correcto. En «Solo conductoras» se usa siempre.',
       '¿Todo bien?: si el carro se desvía de la ruta o se queda detenido mucho tiempo, te preguntamos. Si pides ayuda o no respondes en 2 minutos, avisamos al equipo con tu ubicación.',
       '🚺 Solo conductoras: si indicas en Mi cuenta que eres mujer, al pedir puedes elegir que solo te ofrezcan viaje conductoras confirmadas por el equipo.',
     ],
@@ -19,7 +19,7 @@ export const CHANGELOG = [
     title: 'Seguridad en tus viajes',
     for: ['driver'],
     items: [
-      'Para iniciar el viaje, pídele al pasajero su PIN de 4 dígitos y escríbelo.',
+      'Si el pasajero usa PIN de viaje, para iniciar el viaje pídele su PIN de 4 dígitos y escríbelo (la app te avisa cuando hace falta).',
       'Al ponerte disponible, cada cierto tiempo te pediremos una selfie con la cámara frontal para confirmar que eres tú.',
       'Conductoras: indica en Mi cuenta que eres mujer; el equipo lo confirma con tu licencia y recibirás también los viajes «Solo conductoras».',
     ],
@@ -30,7 +30,7 @@ export const CHANGELOG = [
     title: 'Seguridad: PIN, avisos, selfies y conductoras',
     for: ['staff'],
     items: [
-      'Ajustes → «Seguridad de los viajes»: PIN para iniciar el viaje, «¿Todo bien?» durante el viaje y cada cuántas horas se pide la selfie.',
+      'Ajustes → «Seguridad de los viajes»: pedir el PIN en todos los viajes (apagado: solo quien lo activa y los «Solo conductoras»), «¿Todo bien?» durante el viaje y cada cuántas horas se pide la selfie.',
       'Las alertas automáticas (desvío o parada larga sin respuesta, o «Pedir ayuda») llegan como las emergencias, con el motivo.',
       'Nueva sección «Selfies»: compara cada selfie con la foto aprobada; si no coincide, se bloquea la cuenta.',
       'En la ficha de cada conductora puedes confirmar su sexo (visto en la licencia) para los viajes «Solo conductoras».',

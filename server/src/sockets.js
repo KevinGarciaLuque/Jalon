@@ -290,8 +290,11 @@ io.on('connection', async (socket) => {
       d.available = false;
 
       // El viaje solo se asigna si sigue buscando conductor (doble toque, o dos ofertas aceptadas a la vez)
-      // PIN de 4 dígitos para iniciar el viaje (si está activo en Ajustes): confirma que el pasajero se sube al carro correcto
-      const pin = (await getSettings(pool)).ride_pin_required === '0' ? null : String(crypto.randomInt(0, 10000)).padStart(4, '0');
+      // PIN de 4 dígitos para iniciar el viaje: confirma que el pasajero se sube al carro correcto.
+      // Va si el superadmin lo pide para todos, si el pasajero lo activó en Mi cuenta, o si el viaje es «Solo conductoras»
+      const [[pref]] = await pool.query('SELECT ride_pin FROM users WHERE id = ?', [ride.passenger_id]);
+      const wantsPin = (await getSettings(pool)).ride_pin_required === '1' || !!pref?.ride_pin || !!Number(ride.women_only);
+      const pin = wantsPin ? String(crypto.randomInt(0, 10000)).padStart(4, '0') : null;
       const [assigned] = await pool.query('UPDATE rides SET driver_id = ?, final_price = ?, status = "accepted", start_pin = ? WHERE id = ? AND status = "requested"', [offer.driver_id, offer.price, pin, ride.id]);
       if (assigned.affectedRows !== 1) {
         releaseDriver(offer.driver_id);

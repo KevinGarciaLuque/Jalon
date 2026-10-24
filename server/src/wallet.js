@@ -18,7 +18,7 @@ export const SETTING_DEFAULTS = {
   staff_2fa_required: '1', // el personal debe usar la verificación en dos pasos; el superadmin puede apagarla
   driver_selfie_hours: '12', // cada cuántas horas el conductor se toma una selfie para conectarse (0 = no se pide)
   ride_safety_checks: '1', // durante el viaje se pregunta «¿Todo bien?» si el carro se desvía o se detiene mucho
-  ride_pin_required: '1', // el conductor escribe el PIN del pasajero para iniciar el viaje
+  ride_pin_required: '0', // '1' = PIN en todos los viajes; si no, solo quien lo activó en Mi cuenta y los «Solo conductoras»
   map_rotation: '1', // el mapa puede girar según hacia dónde vas (como Waze); se apaga si da problemas en algún celular
   ...FARE_DEFAULTS, // tarifas por categoría (fares.js)
   // Alquiler de carros por días (apagado hasta que el superadmin lo active)

@@ -66,7 +66,7 @@ function Terms() {
       <ul>
         <li>Antes de subir a un vehículo, comprueba que la placa y el conductor coinciden con los que ves en la app.</li>
         <li>Puedes compartir tu viaje en vivo con una persona de confianza.</li>
-        <li>Al subir, el pasajero le dice al conductor su <b>PIN de 4 dígitos</b>: sin él el viaje no se puede iniciar.</li>
+        <li>Si activas el <b>PIN de viaje</b> en Mi cuenta (y siempre en los viajes «Solo conductoras»), al subir le dices al conductor un PIN de 4 dígitos: sin él el viaje no se puede iniciar.</li>
         <li>Si durante el viaje el carro se desvía de la ruta o se queda detenido mucho tiempo, te preguntamos «¿Todo bien?». Si pides ayuda o no respondes, avisamos al equipo con la ubicación.</li>
         <li>Los conductores se toman una <b>selfie</b> al conectarse para confirmar que son la persona aprobada.</li>
         <li>Las pasajeras pueden pedir <b>«Solo conductoras»</b>: esos viajes solo los ven conductoras cuyo sexo confirmó el equipo con su licencia.</li>

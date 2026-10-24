@@ -74,7 +74,12 @@ try {
   check('la pasajera ve cuántas conductoras hay cerca', nearby.some((d) => d.id === W.user.id && d.woman) && nearby.some((d) => d.id === M.user.id && !d.woman));
   const offerW = got(ps, 'offer:new', () => true, 3000);
   ws.emit('offer:make', { rideId: ride.id, price: 95 });
-  check('la conductora oferta y le llega a la pasajera', (await offerW)?.driver?.id === W.user.id);
+  const wOffer = await offerW;
+  check('la conductora oferta y le llega a la pasajera', wOffer?.driver?.id === W.user.id);
+  // En «Solo conductoras» el PIN se usa siempre (aunque la pasajera no lo haya activado)
+  const acc = got(ps, 'ride:state', (st) => st.status === 'accepted', 3000);
+  ps.emit('offer:accept', { offerId: wOffer.id });
+  check('en «Solo conductoras» se pide el PIN aunque no lo haya activado', (await acc)?.pinRequired === true);
   ps.emit('ride:cancel', { rideId: ride.id });
   await wait(400);
 

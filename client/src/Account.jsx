@@ -8,6 +8,34 @@ import { PasskeySection } from './PasskeyParts.jsx';
 const ROLE = { passenger: 'Pasajero', driver: 'Conductor', admin: 'Administrador', superadmin: 'Superadministrador', support: 'Soporte' };
 const STAFF = ['superadmin', 'admin', 'support'];
 
+// PIN de viaje opcional: al subir, el pasajero le dice al conductor un PIN de 4 dígitos (sin él no inicia el viaje)
+function PinSection({ user }) {
+  const [on, setOn] = useState(!!user.ridePin);
+  const [error, setError] = useState('');
+  async function toggle(v) {
+    setOn(v);
+    setError('');
+    try {
+      const r = await apiPut('me/ride-pin', null, { enabled: v });
+      window.dispatchEvent(new CustomEvent('ktracho:profile', { detail: { ridePin: r.ridePin } }));
+    } catch (e) {
+      setOn(!v);
+      setError(e.message);
+    }
+  }
+  return (
+    <section className="req" aria-labelledby="pin-title">
+      <b id="pin-title">PIN de viaje</b>
+      <label className="check">
+        <input type="checkbox" checked={on} onChange={(e) => toggle(e.target.checked)} />
+        <span><b>Usar PIN en mis viajes</b>: cuando el conductor acepte, verás un PIN de 4 dígitos. Díselo al subir; sin él no puede iniciar el viaje. Así confirmas que te subes al carro correcto.</span>
+      </label>
+      <p className="muted small">En los viajes «Solo conductoras» el PIN se usa siempre.</p>
+      {error && <div className="error">{error}</div>}
+    </section>
+  );
+}
+
 // Sexo (opcional): solo sirve para «Solo conductoras». A las conductoras se lo confirma el equipo con su licencia.
 function GenderSection({ user }) {
   const [value, setValue] = useState(user.gender || '');
@@ -145,6 +173,7 @@ export default function Account({ user, token, onToken, onClose, onLogout, force
           </div>
         )}
 
+        {!forced && user.role === 'passenger' && <PinSection user={user} />}
         {!forced && !isStaff && <GenderSection user={user} />}
         {!forced && <PasskeySection token={token} />}
 

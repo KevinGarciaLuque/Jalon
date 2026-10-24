@@ -89,8 +89,20 @@ try {
   ds.emit('ride:driver_cancel', { rideId: second.rd.id });
   await wait(400);
 
-  // Con el PIN apagado en Ajustes, el viaje empieza sin PIN
+  // Con el PIN apagado para todos, solo lo usa quien lo activó en Mi cuenta
   await http('PUT', 'admin/settings', SA, { ride_pin_required: false });
+  check('un conductor no puede activar el PIN de pasajero', (await http('PUT', 'me/ride-pin', D.token, { enabled: true })).status === 403);
+  check('la pasajera activa «Usar PIN en mis viajes»', (await http('PUT', 'me/ride-pin', P.token, { enabled: true })).ridePin === true);
+  check('su sesión lo trae', (await http('GET', 'me', P.token)).user?.ridePin === true);
+  ds.emit('driver:online', { lat: 14.0712, lng: -87.1935 });
+  await wait(600);
+  const byPref = await arrivedRide(ps, ds);
+  check('con el PIN apagado para todos, a quien lo activó se le pide', byPref.rp.pinRequired === true);
+  ds.emit('ride:driver_cancel', { rideId: byPref.rd.id });
+  await wait(400);
+  await http('PUT', 'me/ride-pin', P.token, { enabled: false });
+
+  // Apagado para todos y sin activarlo: el viaje empieza sin PIN
   ds.emit('driver:online', { lat: 14.0712, lng: -87.1935 });
   await wait(600);
   const third = await arrivedRide(ps, ds);

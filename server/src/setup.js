@@ -594,6 +594,7 @@ await conn.query(`
 // ---- Etapa 9.1: PIN de viaje (el pasajero se lo dice al conductor para iniciar el viaje) ----
 await addColumn('rides', 'start_pin', 'CHAR(4) NULL');
 await addColumn('rides', 'pin_attempts', 'TINYINT NOT NULL DEFAULT 0');
+await addColumn('users', 'ride_pin', 'TINYINT(1) NOT NULL DEFAULT 0'); // el pasajero eligió usar PIN en sus viajes
 
 // ---- Etapa 9.2: avisos automáticos durante el viaje (desvío de la ruta o mucho tiempo detenido) ----
 await conn.query(`

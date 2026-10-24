@@ -69,7 +69,7 @@ export function checkPassword(password, { phone = '', role = 'passenger' } = {})
 // El superadmin puede apagar la verificación en dos pasos del personal desde Ajustes (por defecto es obligatoria)
 export const twoFactorRequired = async () => (await getSettings(pool)).staff_2fa_required !== '0';
 // `perms`: los módulos que puede usar (la app muestra u oculta, por ejemplo, el alquiler)
-export const publicUser = (u, require2fa = true, perms = []) => ({ id: u.id, name: u.name, phone: u.phone, email: u.email || null, role: u.role, status: u.status, vehicle: u.vehicle, plate: u.plate, gender: u.gender || null, genderVerified: !!u.gender_verified, mustChangePassword: !!u.must_change_password, perms,
+export const publicUser = (u, require2fa = true, perms = []) => ({ id: u.id, name: u.name, phone: u.phone, email: u.email || null, role: u.role, status: u.status, vehicle: u.vehicle, plate: u.plate, gender: u.gender || null, genderVerified: !!u.gender_verified, ridePin: !!u.ride_pin, mustChangePassword: !!u.must_change_password, perms,
   // Pasajeros y conductores que aceptaron una versión anterior de los términos los vuelven a ver al abrir la app
   mustAcceptTerms: ['passenger', 'driver'].includes(u.role) && u.terms_version !== TERMS_VERSION, termsVersion: TERMS_VERSION,
   // El personal debe tener la verificación en dos pasos activa para usar el panel (si está exigida)

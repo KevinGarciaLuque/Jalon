@@ -94,7 +94,7 @@ export default function Settings({ call, onError }) {
       <b>Seguridad de los viajes</b>
       <label className="check">
         <input type="checkbox" checked={s.ride_pin_required !== '0'} onChange={set('ride_pin_required')} />
-        <span><b>PIN para iniciar el viaje</b>: el pasajero ve un PIN de 4 dígitos y se lo dice al conductor al subir; sin él no se puede iniciar el viaje. Así se confirma que se sube al carro correcto.</span>
+        <span><b>Pedir el PIN en todos los viajes</b>: el pasajero ve un PIN de 4 dígitos y se lo dice al conductor al subir; sin él no se puede iniciar el viaje. Apagado, se usa solo para quien lo activó en Mi cuenta y en los viajes «Solo conductoras».</span>
       </label>
 
       <label className="check">
