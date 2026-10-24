@@ -9,7 +9,7 @@ export const pushEnabled = Boolean(PUB && PRIV);
 export const publicKey = PUB || null;
 
 if (pushEnabled) {
-  const subject = process.env.VAPID_SUBJECT || (/^https:/.test(process.env.PUBLIC_URL || '') ? process.env.PUBLIC_URL : 'https://jalon.up.railway.app');
+  const subject = process.env.VAPID_SUBJECT || (/^https:/.test(process.env.PUBLIC_URL || '') ? process.env.PUBLIC_URL : 'https://ktrachogo.com');
   webpush.setVapidDetails(subject, PUB, PRIV);
 }
 

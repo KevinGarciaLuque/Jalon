@@ -473,7 +473,7 @@ Lo que falta antes de abrir Ktracho GO al público. Casi todo es configuración 
 
 ### 2. Configuración en Railway (Variables del servicio de la app)
 - [ ] **Volume** montado en `/data` y `UPLOADS_DIR=/data/uploads` (sin esto los documentos se borran en cada despliegue).
-- [ ] `NODE_ENV=production`, `TRUST_PROXY=1` y `PUBLIC_URL=https://jalon.up.railway.app` (o tu dominio).
+- [ ] `NODE_ENV=production`, `TRUST_PROXY=1` y `PUBLIC_URL=https://ktrachogo.com`. Las direcciones viejas de Railway (`*.up.railway.app`) redirigen solas a esa.
 - [ ] **Correo:** variables `SMTP_*` aplicadas; regístrate con un teléfono nuevo y confirma que el código llega al correo. Solo entonces **quita `SMS_DEV_ECHO`**.
 - [ ] **Correo de soporte:** `VITE_CONTACT_EMAIL=jalonsoporte@gmail.com` (o el que uses) y vuelve a desplegar: los términos hoy dicen «falta definir».
 - [ ] **Emergencias:** `SOS_ALERT_PHONES` con al menos dos teléfonos de personas que respondan, y Twilio (`TWILIO_*`) para que les llegue el SMS.

@@ -1,8 +1,8 @@
 // Revisión de la app publicada, SOLO LECTURA: no crea cuentas, no escribe nada y hace pocas peticiones.
-// Uso: npm run test:prod                      (revisa https://jalon.up.railway.app)
+// Uso: npm run test:prod                      (revisa https://ktrachogo.com)
 //      PROD_URL=https://otra-direccion npm run test:prod
 // Dice qué etapas están publicadas y si la seguridad básica (HTTPS, cabeceras, CORS, caché) está bien.
-const BASE = (process.env.PROD_URL || 'https://jalon.up.railway.app').replace(/\/$/, '');
+const BASE = (process.env.PROD_URL || 'https://ktrachogo.com').replace(/\/$/, '');
 let fails = 0;
 const check = (name, ok, extra = '') => { console.log(`${ok ? 'OK  ' : 'FAIL'} ${name} ${extra}`); if (!ok) fails++; };
 const get = (path, opts = {}) => fetch(`${BASE}${path}`, { redirect: 'manual', ...opts });

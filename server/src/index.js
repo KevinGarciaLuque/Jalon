@@ -29,6 +29,14 @@ import './jobs.js';
 
 // En producción el mismo servidor entrega la web ya compilada (client/dist), incluida /t/<código> del seguimiento
 const DIST = path.join(HERE, '..', '..', 'client', 'dist');
+// Quien abre la app por una dirección vieja de Railway va a la del dominio (PUBLIC_URL). La API no se redirige
+// (una app vieja abierta seguiría funcionando hasta recargar) y Railway puede seguir revisando /api/health.
+const PUBLIC_HOST = (() => { try { return new URL(process.env.PUBLIC_URL || '').host; } catch { return ''; } })();
+app.use((req, res, next) => {
+  const host = req.get('host') || '';
+  if (!PUBLIC_HOST || host === PUBLIC_HOST || !/\.up\.railway\.app$/i.test(host) || req.path.startsWith('/api/') || req.path.startsWith('/socket.io/')) return next();
+  res.redirect(301, `https://${PUBLIC_HOST}${req.originalUrl}`);
+});
 if (existsSync(DIST)) {
   // Los .js y .css van también comprimidos con Brotli (client/scripts/compress.mjs): ~12% menos que gzip
   app.use('/assets', (req, res, next) => {
