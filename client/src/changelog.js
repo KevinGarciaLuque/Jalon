@@ -32,7 +32,7 @@ export const CHANGELOG = [
     items: [
       'Ajustes → «Seguridad de los viajes»: pedir el PIN en todos los viajes (apagado: solo quien lo activa y los «Solo conductoras»), «¿Todo bien?» durante el viaje y cada cuántas horas se pide la selfie.',
       'Las alertas automáticas (desvío o parada larga sin respuesta, o «Pedir ayuda») llegan como las emergencias, con el motivo.',
-      'Nueva sección «Selfies»: compara cada selfie con la foto aprobada; si no coincide, se bloquea la cuenta.',
+      'Nueva sección «Selfies»: compara cada selfie con la foto aprobada; si no coincide, se bloquea la cuenta. En Ajustes hay un interruptor para pedir la selfie o no.',
       'En la ficha de cada conductora puedes confirmar su sexo (visto en la licencia) para los viajes «Solo conductoras».',
     ],
   },

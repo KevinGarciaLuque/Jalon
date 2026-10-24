@@ -22,7 +22,8 @@ app.use(helmet({
 }));
 app.use(cors({ origin: allowOrigin, credentials: true })); // credentials: en desarrollo la web (:5173) usa la cookie de la API (:4000)
 const smallJson = express.json({ limit: '10kb' });
-app.use((req, res, next) => (/^\/api\/(driver\/(documents|topups)|rentals\/\d+\/receipt)/.test(req.path) ? next() : smallJson(req, res, next)));
+// Las rutas que reciben fotos (documentos, comprobantes y la selfie) usan photoJson (3 MB); las demás, 10 KB
+app.use((req, res, next) => (/^\/api\/(driver\/(documents|topups|selfie)|rentals\/\d+\/receipt)/.test(req.path) ? next() : smallJson(req, res, next)));
 
 // Una línea JSON por petición a la API (método, ruta, estado y milisegundos), útil en los registros de Railway. Sin teléfonos ni contraseñas.
 if (isProd || process.env.LOG_REQUESTS === 'true') {

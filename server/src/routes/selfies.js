@@ -18,8 +18,9 @@ export const SELFIE_KEEP_DAYS = 30;
 
 // ¿Le toca tomarse una selfie para ponerse disponible? (0 horas en Ajustes = apagado)
 export async function needsSelfie(driverId) {
-  const hours = Number((await getSettings(pool)).driver_selfie_hours);
-  if (!(hours > 0)) return false;
+  const s = await getSettings(pool);
+  const hours = Number(s.driver_selfie_hours);
+  if (s.driver_selfie_required === '0' || !(hours > 0)) return false; // apagado en Ajustes: se conecta sin selfie
   const [[r]] = await pool.query("SELECT COUNT(*) AS n FROM driver_selfies WHERE driver_id = ? AND status <> 'mismatch' AND created_at > NOW() - INTERVAL ? HOUR", [driverId, hours]);
   return !r.n;
 }

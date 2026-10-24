@@ -24,7 +24,7 @@ if (!process.env.MYSQL_URL) {
 
 // Las pruebas de viajes no escriben el PIN de inicio (lo prueban phase30 y el recorrido completo): se apaga en la base de pruebas
 {
-  const off = "import { pool } from './src/db.js'; await pool.query(\"INSERT INTO settings (name, value) VALUES ('ride_pin_required', '0'), ('driver_selfie_hours', '0') ON DUPLICATE KEY UPDATE value = VALUES(value)\"); await pool.end();";
+  const off = "import { pool } from './src/db.js'; await pool.query(\"INSERT INTO settings (name, value) VALUES ('ride_pin_required', '0'), ('driver_selfie_required', '0') ON DUPLICATE KEY UPDATE value = VALUES(value)\"); await pool.end();";
   const r = spawnSync(process.execPath, ['--input-type=module', '-e', off], { env: process.env, encoding: 'utf8' });
   if (r.status !== 0) { console.error(r.stderr || r.stdout); process.exit(1); }
 }

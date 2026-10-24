@@ -102,8 +102,13 @@ export default function Settings({ call, onError }) {
         <span><b>Preguntar «¿Todo bien?» durante el viaje</b> si el carro se desvía de la ruta o se queda detenido mucho tiempo. Si el pasajero pide ayuda o no responde en 2 minutos, se crea una alerta como la de emergencia.</span>
       </label>
 
-      <label>Selfie del conductor para conectarse: cada cuántas horas (0 = no se pide)<input inputMode="numeric" value={s.driver_selfie_hours} onChange={set('driver_selfie_hours')} /></label>
-      <p className="muted small">Al ponerse disponible, el conductor se toma una selfie con la cámara frontal; la revisas en «Selfies» comparándola con su foto aprobada.</p>
+      <label className="check">
+        <input type="checkbox" checked={s.driver_selfie_required !== '0'} onChange={set('driver_selfie_required')} />
+        <span><b>Pedir selfie al conductor para ponerse disponible</b>: se la toma con la cámara frontal y la revisas en «Selfies» comparándola con su foto aprobada. Apagado, se conecta sin selfie.</span>
+      </label>
+      {s.driver_selfie_required !== '0' && (
+        <label>Cada cuántas horas se pide la selfie<input inputMode="numeric" value={s.driver_selfie_hours} onChange={set('driver_selfie_hours')} /></label>
+      )}
 
       <b>Mapa</b>
       <label className="check">

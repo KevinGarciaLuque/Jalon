@@ -26,7 +26,7 @@ const SUP = jwt.sign({ id: sup.insertId, role: 'support' }, process.env.JWT_SECR
 const before = await http('GET', 'admin/settings', SA);
 
 try {
-  await http('PUT', 'admin/settings', SA, { driver_selfie_hours: 12 });
+  await http('PUT', 'admin/settings', SA, { driver_selfie_required: true, driver_selfie_hours: 12 });
   const D = await registerUser({ name: 'C32 Conductor', phone: `93${rnd}2`.slice(0, 8), password: 'Cielo-azul-77', role: 'driver', vehicle: 'Yaris', plate: `HF3${rnd.slice(0, 4)}` });
   await uploadDocs(D.token);
   await http('POST', `admin/users/${D.user.id}/status`, SA, { status: 'active' });
@@ -36,8 +36,12 @@ try {
   check('sin selfie no puede ponerse disponible', (await tryOnline(ds))?.status === 'selfie');
   check('una selfie que no es foto se rechaza', (await http('POST', 'driver/selfie', D.token, { image: 'data:image/jpeg;base64,AAAA' })).status === 400);
   check('un pasajero no sube selfies', (await http('POST', 'driver/selfie', (await registerUser({ name: 'C32 P', phone: `83${rnd}2`.slice(0, 8), password: 'Cielo-azul-77', role: 'passenger' })).token, { image: IMG })).status === 403);
-  const up = await http('POST', 'driver/selfie', D.token, { image: IMG });
-  check('el conductor sube su selfie', up.ok === true && up.id > 0);
+  // Una foto de tamaño real (unos 60 KB, como la de un celular): antes el servidor la rechazaba con «Solicitud inválida»
+  const seg = (n) => { const b = Buffer.alloc(n + 4, 0x20); b[0] = 0xff; b[1] = 0xfe; b.writeUInt16BE(n + 2, 2); return b; };
+  const BIG = `data:image/jpeg;base64,${Buffer.concat([FIXTURE.subarray(0, 2), seg(20000), seg(20000), seg(20000), FIXTURE.subarray(2)]).toString('base64')}`;
+  check('la prueba usa una foto de más de 50 KB', BIG.length > 50000, `(${Math.round(BIG.length / 1024)} KB)`);
+  const up = await http('POST', 'driver/selfie', D.token, { image: BIG });
+  check('el conductor sube su selfie (foto de tamaño real)', up.ok === true && up.id > 0, `(${up.status} ${up.error || ''})`);
   const [[row]] = await pool.query('SELECT file FROM driver_selfies WHERE id = ?', [up.id]);
   check('la selfie se guarda cifrada en el disco', row.file.endsWith('.enc') && !fs.readFileSync(path.join(UPLOADS, row.file)).includes(Buffer.from('JFIF')));
   check('con la selfie ya puede ponerse disponible', (await tryOnline(ds)) === null);
@@ -80,15 +84,18 @@ try {
   const D2 = await registerUser({ name: 'C32 Otro', phone: `92${rnd}2`.slice(0, 8), password: 'Cielo-azul-77', role: 'driver', vehicle: 'Yaris', plate: `HG3${rnd.slice(0, 4)}` });
   await uploadDocs(D2.token);
   await http('POST', `admin/users/${D2.user.id}/status`, SA, { status: 'active' });
-  await http('PUT', 'admin/settings', SA, { driver_selfie_hours: 0 });
+  await http('PUT', 'admin/settings', SA, { driver_selfie_required: false });
   const d2 = await connect(D2.token);
   sockets.push(d2);
-  check('con 0 horas en Ajustes no se pide selfie', (await tryOnline(d2)) === null);
+  check('con el interruptor apagado en Ajustes se conecta sin selfie', (await tryOnline(d2)) === null);
+  d2.emit('driver:offline');
+  await http('PUT', 'admin/settings', SA, { driver_selfie_required: true });
+  check('al encenderlo otra vez, se la pide', (await tryOnline(d2))?.status === 'selfie');
   d2.emit('driver:offline');
 } catch (e) {
   check('la prueba terminó sin errores', false, e.stack);
 } finally {
-  await http('PUT', 'admin/settings', SA, { driver_selfie_hours: Number(before.driver_selfie_hours) });
+  await http('PUT', 'admin/settings', SA, { driver_selfie_required: before.driver_selfie_required !== '0', driver_selfie_hours: Number(before.driver_selfie_hours) });
   sockets.forEach((s) => s.close());
 }
 
