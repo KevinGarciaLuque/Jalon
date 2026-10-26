@@ -3,6 +3,17 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-26-modulo-solicitudes',
+    date: '2026-10-26',
+    title: 'Nuevo módulo «Solicitudes»',
+    for: ['staff'],
+    items: [
+      'Los conductores por aprobar y las recargas que esperan ya no se repiten arriba de cada sección: ahora están juntos en «Solicitudes» (menú → Principal), con el número de pendientes.',
+      'Ahí mismo están «Activar avisos sonoros de emergencia» y las notificaciones de este dispositivo. Mientras el sonido esté apagado, el menú lo indica junto a «Solicitudes».',
+      'Las emergencias 🆘 siguen apareciendo arriba en todas las secciones.',
+    ],
+  },
+  {
     id: '2026-10-23-pedir-mejor',
     date: '2026-10-23',
     title: 'Pide a tu manera',

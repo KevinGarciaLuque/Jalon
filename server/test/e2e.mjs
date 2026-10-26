@@ -185,7 +185,8 @@ try {
   await shot(driver, '0b-conductor-documentos');
   check('conductor ve el aviso de revisión', await see(driver, 'Listo: un administrador revisará'));
 
-  // La solicitud aparece arriba, sin buscarla en ninguna pestaña
+  // La solicitud aparece en el módulo Solicitudes
+  await admin.evaluate(() => window.dispatchEvent(new CustomEvent('ktracho:go', { detail: 'requests' })));
   check('el admin ve la solicitud del conductor en el panel de pendientes', await see(admin, 'Solicitudes de conductores por aprobar', 20000));
   await shot(admin, '0b2-admin-pendientes');
   await click(admin, 'Revisar documentos', 20000);
@@ -336,7 +337,8 @@ try {
   await driver.type('input[placeholder^="Monto a recargar"]', '200');
   await click(driver, 'Solicitar recarga');
   check('el conductor queda esperando su cuenta', await see(driver, 'Esperando tu cuenta para transferir'));
-  check('el personal ve que un conductor espera una cuenta', await see(admin, 'esperando una cuenta para recargar', 20000));
+  await section(admin, 'Solicitudes');
+  check('el personal ve en Solicitudes que un conductor espera una cuenta', await see(admin, 'esperando una cuenta para recargar', 20000));
   await click(admin, 'Atender');
   await click(admin, 'Enviar cuenta');
   check('la solicitud sale de la lista al enviar la cuenta', await admin.waitForFunction(() => !document.body.innerText.includes('Enviar cuenta'), { timeout: 15000 }).then(() => true, () => false));
@@ -353,7 +355,8 @@ try {
   check('y lo ve "En revisión"', await see(driver, 'En revisión'));
   await click(driver, 'Cerrar ✕');
 
-  check('el personal ve el aviso de una recarga esperando aprobación', await see(admin, 'esperando tu aprobación', 20000));
+  await section(admin, 'Solicitudes');
+  check('el personal ve en Solicitudes el aviso de una recarga esperando aprobación', await see(admin, 'esperando tu aprobación', 20000));
   await click(admin, 'Revisar');
   check('y el comprobante con los datos de la transferencia', (await see(admin, `E2E-${rnd}`)) && !!(await admin.waitForSelector('.docimg', { timeout: 15000 }).catch(() => null)));
   await shot(admin, '0p-admin-recarga');
@@ -446,7 +449,7 @@ try {
   await staffPage.waitForSelector('.admin', { timeout: 15000 });
   check('después de activarla entra al panel', true);
   const tabs = await sectionsOf(staffPage);
-  check('soporte ve primero Notificaciones y luego Usuarios, Reportes y Viajes, pero no Personal, Registro, Recargas ni Ajustes', tabs[0] === 'Notificaciones' && tabs[1] === 'Usuarios' && tabs.some((t) => t.startsWith('Reportes')) && tabs.includes('Viajes') && !tabs.some((t) => /Personal|Registro|Recargas|Ajustes/.test(t)), `(${tabs})`);
+  check('soporte ve primero Solicitudes y Notificaciones y luego Usuarios, Reportes y Viajes, pero no Personal, Registro, Recargas ni Ajustes', tabs[0]?.startsWith('Solicitudes') && tabs[1] === 'Notificaciones' && tabs[2] === 'Usuarios' && tabs.some((t) => t.startsWith('Reportes')) && tabs.includes('Viajes') && !tabs.some((t) => /Personal|Registro|Recargas|Ajustes/.test(t)), `(${tabs})`);
   await section(staffPage, 'Usuarios');
   await staffPage.waitForSelector('.ucard.click', { timeout: 15000 });
   await staffPage.click('.ucard.click');

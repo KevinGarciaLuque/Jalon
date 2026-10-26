@@ -603,8 +603,9 @@ header .bell-count { top: -3px; right: -3px; box-shadow: 0 0 0 2px var(--card); 
 .notice-bar.tools button { min-height: 36px; padding: 7px 12px; font-size: 14px; }
 .notice-bar.tools .push p { order: 2; flex-basis: 100%; }
 /* Saldo del conductor junto a «Mi saldo y recargas» (en rojo si está por debajo del mínimo) */
-.drawer-amount { font-style: normal; font-size: 14px; font-weight: 700; color: var(--brand); font-variant-numeric: tabular-nums; }
+.drawer-amount { white-space: nowrap; font-style: normal; font-size: 14px; font-weight: 700; color: var(--brand); font-variant-numeric: tabular-nums; }
 .drawer-amount.low { color: var(--danger); }
+.drawer-amount.low:not([aria-label^="saldo"]) { font-size: 12px; }
 
 /* Barra «Actualizar»: flota debajo del encabezado cuando se publicó una versión nueva */
 .update-bar { position: fixed; z-index: 2900; left: 50%; transform: translateX(-50%); top: calc(max(10px, env(safe-area-inset-top)) + 66px); width: min(560px, calc(100% - 24px)); display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 14px; background: var(--card); color: var(--text); border: 1px solid var(--brand); border-radius: var(--r-2); box-shadow: var(--shadow); animation: fade-in var(--slow) ease-out; }
@@ -724,3 +725,7 @@ header { gap: 8px; background: linear-gradient(135deg, var(--card), var(--bg)); 
 .scheduled-list { display: flex; flex-direction: column; gap: 8px; }
 .rider-box { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r-1); }
 .rider-box .whatsapp { background: #25d366; color: #05300f; border-color: #25d366; }
+
+/* Módulo Solicitudes: avisos de este dispositivo */
+.device-alerts { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-2); background: var(--card); }
+.device-alerts > b { flex-basis: 100%; }

@@ -22,6 +22,7 @@ const CANCELLED_BY = { passenger: 'pasajero', driver: 'conductor', admin: 'perso
 // Secciones del panel: se eligen en el menú ☰ (o en la barra fija de la izquierda en computadora)
 export const SECTIONS = {
   metrics: { label: 'Indicadores', icon: 'earnings', group: 'Principal', hint: 'Cómo va Ktracho GO: viajes, dinero y conductores en el período que elijas.' },
+  requests: { label: 'Solicitudes', icon: 'inbox', group: 'Principal', hint: 'Conductores por aprobar, recargas que esperan y los avisos de este dispositivo.' },
   rides: { label: 'Viajes', icon: 'car', group: 'Operación', hint: 'Todos los viajes: en curso, terminados y cancelados.' },
   monitor: { label: 'Mapa en vivo', icon: 'map', group: 'Operación', hint: 'Dónde están ahora los conductores y los viajes.' },
   users: { label: 'Usuarios', icon: 'users', group: 'Operación', hint: 'Pasajeros y conductores: busca, revisa y aprueba.' },
@@ -123,9 +124,10 @@ export default function Admin({ token, onGate, onSections }) {
   const can = (p) => perms.includes(p);
 
   // Las secciones que esta persona puede ver, en el orden del menú, con lo que tienen pendiente
-  const badge = { users: can('users.manage') ? stats?.pendingDrivers : 0, selfies: stats?.waitingSelfies, reports: stats?.openReports, topups: (stats?.pendingTopups || 0) + (stats?.waitingRequests || 0) };
+  const rechargeCount = can('wallet') ? (stats?.pendingTopups || 0) + (stats?.waitingRequests || 0) : 0;
+  const badge = { requests: (can('users.manage') ? stats?.pendingDrivers || 0 : 0) + rechargeCount, selfies: stats?.waitingSelfies, reports: stats?.openReports, topups: rechargeCount };
   const tabs = [
-    can('metrics') && 'metrics',
+    can('metrics') && 'metrics', 'requests',
     'users', can('users.manage') && 'selfies', can('wallet') && 'topups', 'reports', 'rides', can('monitor') && 'monitor', can('rentals') && 'rentals',
     can('share') && 'share',
     can('settings') && 'settings', can('staff.manage') && 'staff', can('staff.manage') && 'perms', can('audit') && 'audit', can('settings') && 'system',
@@ -268,10 +270,14 @@ export default function Admin({ token, onGate, onSections }) {
   }
 
   // Lo que ve el menú; se avisa solo cuando cambia algo
-  const navKey = loaded ? JSON.stringify([current, tabs.map((k) => [k, badge[k] || 0])]) : '';
+  const navKey = loaded ? JSON.stringify([current, alertsOn, tabs.map((k) => [k, badge[k] || 0])]) : '';
   useEffect(() => {
     if (!navKey) return;
-    onSections?.(tabs.map((k) => ({ key: k, ...SECTIONS[k], badge: badge[k] || 0 })), current);
+    onSections?.(tabs.map((k) => ({
+      key: k, ...SECTIONS[k], badge: badge[k] || 0,
+      dup: k === 'topups', // ya se cuenta en Solicitudes
+      ...(k === 'requests' && !alertsOn ? { note: 'sonido apagado', low: true } : {}),
+    })), current);
   }, [navKey]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => onSections?.(null, null), []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -291,16 +297,12 @@ export default function Admin({ token, onGate, onSections }) {
       {error && <div className="error">{error}</div>}
 
       {/* Avisos de configuración: una barra delgada; el detalle está en Sistema */}
-      {stats && stats.sosPhones === 0 && can('staff.manage') && (
+      {stats && stats.sosPhones === 0 && can('staff.manage') && ['metrics', 'requests', 'system'].includes(current) && (
         <div className="notice-bar warn" role="status">
           <span>⚠ Las emergencias no le llegan por SMS a nadie: configura <b>SOS_ALERT_PHONES</b> en Railway.</span>
           {can('settings') && current !== 'system' && <button className="link" onClick={() => openTab('system')}>Ver en Sistema</button>}
         </div>
       )}
-      <div className="notice-bar tools">
-        {!alertsOn && <button className="sm" onClick={enableAlerts}>🔔 Activar avisos sonoros de emergencia</button>}
-        <PushToggle token={token} why="Recibe las emergencias y las solicitudes de conductores en este dispositivo, aunque no tengas el panel abierto." />
-      </div>
 
       {alerts.map((a) => (
         <div className="sos-alert" key={a.id}>
@@ -327,8 +329,26 @@ export default function Admin({ token, onGate, onSections }) {
         </div>
       ))}
 
-      {/* Solicitudes de conductores: siempre a la vista, sin buscarlas en una tabla */}
-      {can('users.manage') && pending.length > 0 && (
+      {/* Título de la sección elegida en el menú */}
+      {loaded && section && (
+        <div className="section-head">
+          <h2>{section.label}</h2>
+          <p className="muted">{section.hint}</p>
+        </div>
+      )}
+
+      {/* Solicitudes: los avisos de este dispositivo, conductores por aprobar y recargas */}
+      {current === 'requests' && (
+        <section className="device-alerts">
+          <b>Avisos en este dispositivo</b>
+          {alertsOn
+            ? <span className="ok small">✓ Sonido de emergencias activado (se apaga al cerrar o recargar el panel)</span>
+            : <button className="sm" onClick={enableAlerts}>🔔 Activar avisos sonoros de emergencia</button>}
+          <PushToggle token={token} why="Recibe las emergencias y las solicitudes de conductores en este dispositivo, aunque no tengas el panel abierto." />
+        </section>
+      )}
+      {current === 'requests' && loaded && stats && !badge.requests && <p className="muted">✓ No hay solicitudes pendientes.</p>}
+      {current === 'requests' && can('users.manage') && pending.length > 0 && (
         <section className="pending">
           <b>🔔 Solicitudes de conductores por aprobar ({pending.length})</b>
           {pending.map((u) => (
@@ -349,7 +369,7 @@ export default function Admin({ token, onGate, onSections }) {
         </section>
       )}
 
-      {can('wallet') && stats?.waitingRequests > 0 && current !== 'topups' && (
+      {can('wallet') && stats?.waitingRequests > 0 && current === 'requests' && (
         <section className="pending">
           <div className="row between wrap">
             <b>🙋 {stats.waitingRequests} conductor{stats.waitingRequests === 1 ? '' : 'es'} esperando una cuenta para recargar</b>
@@ -357,21 +377,13 @@ export default function Admin({ token, onGate, onSections }) {
           </div>
         </section>
       )}
-      {can('wallet') && stats?.pendingTopups > 0 && current !== 'topups' && (
+      {can('wallet') && stats?.pendingTopups > 0 && current === 'requests' && (
         <section className="pending">
           <div className="row between wrap">
             <b>💰 {stats.pendingTopups} recarga{stats.pendingTopups === 1 ? '' : 's'} esperando tu aprobación</b>
             <button className="primary sm" onClick={() => { setTopStatus('pending'); openTab('topups'); }}>Revisar</button>
           </div>
         </section>
-      )}
-
-      {/* Título de la sección elegida en el menú */}
-      {loaded && section && (
-        <div className="section-head">
-          <h2>{section.label}</h2>
-          <p className="muted">{section.hint}</p>
-        </div>
       )}
 
       {home && stats && (

@@ -33,6 +33,7 @@ const PATHS = {
   mail: 'M4 6h16v12H4zM4 7l8 6 8-6',
   chat: 'M5 19l1.5-3.5A7.5 7.5 0 1 1 9 18.6L5 19z',
   doc: 'M7 3h7l4 4v14H7zM14 3v4h4M10 12h5M10 16h5',
+  inbox: 'M4 13l2.5-8h11L20 13v6H4zM4 13h4.5l1 2.5h5l1-2.5H20',
 };
 export function Icon({ name, size = 22 }) {
   return (
@@ -126,14 +127,14 @@ export default function Menu({ user, hasBell, go, sections, current, wallet, pin
   if (staff && bellItem) {
     if (groups[0]?.name === 'Principal') groups[0].list.push(bellItem); else groups.unshift({ name: 'Principal', list: [bellItem] });
   }
-  const pendingTotal = (sections || []).reduce((n, sct) => n + (sct.badge || 0), 0);
+  const pendingTotal = (sections || []).reduce((n, sct) => n + (sct.dup ? 0 : sct.badge || 0), 0);
 
   const row = (it, active = false) => (
     <li key={it.key}>
       <button className={active ? 'on' : ''} aria-current={active ? 'page' : undefined} onClick={pick(it.target || it.key)}>
         <Icon name={it.icon} />
         <span>{it.label}</span>
-        {it.note && <em className={`drawer-amount${it.low ? ' low' : ''}`} aria-label={`saldo ${it.note}${it.low ? ', por debajo del mínimo' : ''}`}>{it.note}</em>}
+        {it.note && <em className={`drawer-amount${it.low ? ' low' : ''}`} aria-label={it.key === 'wallet' ? `saldo ${it.note}${it.low ? ', por debajo del mínimo' : ''}` : it.note}>{it.note}</em>}
         {!!it.badge && <em className={`drawer-badge${typeof it.badge === 'number' ? ' count' : ''}`} aria-label={typeof it.badge === 'number' ? `${it.badge} pendiente(s)` : undefined}>{it.badge}</em>}
       </button>
     </li>
