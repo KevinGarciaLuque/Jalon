@@ -13,7 +13,7 @@ import { drivers, passengers, openRides, declined, room } from './live.js';
 import { isPoint, isPrice, serial, clean } from './util.js';
 import { push, pushStaff, hasPushSub, unreadCount } from './notify.js';
 import { getRide, activeRideFor, ratingsOf, rideView, nearbyDrivers, openRidesNear, closeOpenRide, releaseDriver, sendEta, cancelRide, PIN_TRIES, canTake, announceRide } from './services/rides.js';
-import { walletGate, chargeCommission } from './services/balance.js';
+import { walletGate, chargeCommission, dropForLowBalance } from './services/balance.js';
 import { shareWithContacts } from './services/accounts.js';
 import { notifySos } from './services/sos.js';
 import { rentingNow } from './services/rentals.js';
@@ -148,6 +148,9 @@ io.on('connection', async (socket) => {
       const ride = openRides.get(rideId);
       price = Number(price);
       if (!d || !d.available || !ride || !isPrice(price) || !canTake(d, ride)) return;
+      // El saldo puede haber bajado estando en línea (ajuste del personal, mínimo más alto): sin saldo no oferta y se le avisa que recargue
+      const gate = await walletGate(user.id);
+      if (gate.blocked) return dropForLowBalance(user.id, gate.balance, gate.min);
       await serial(`offer:${user.id}:${rideId}`, async () => {
       // Si el conductor ya ofertó en este viaje, se actualiza su oferta en lugar de duplicarla
       const [prev] = await pool.query('SELECT id FROM offers WHERE ride_id = ? AND driver_id = ? AND status = "pending"', [rideId, user.id]);
@@ -309,6 +312,13 @@ io.on('connection', async (socket) => {
       if (!ride || ride.passenger_id !== user.id || ride.status !== 'requested') return;
       if (!d?.available || d.disconnected) {
         await pool.query('UPDATE offers SET status = "rejected" WHERE id = ?', [offer.id]);
+        return socket.emit('offer:invalid', { offerId: offer.id });
+      }
+      // Segunda barrera: si su saldo bajó después de ofertar, la oferta ya no sirve
+      const gate = await walletGate(offer.driver_id);
+      if (gate.blocked) {
+        await pool.query('UPDATE offers SET status = "rejected" WHERE id = ?', [offer.id]);
+        dropForLowBalance(offer.driver_id, gate.balance, gate.min);
         return socket.emit('offer:invalid', { offerId: offer.id });
       }
       // El conductor se reserva antes de cualquier espera: si dos pasajeros aceptan a la vez ofertas suyas, solo uno se lo lleva

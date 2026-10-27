@@ -26,12 +26,14 @@ export async function chargeCommission(ride) {
   const balance = await postEntry(pool, { userId: ride.driver_id, amount: -amount, kind: 'commission', rideId: ride.id, note: `Comisión ${Number(s.commission_percent)}% del viaje #${ride.id}` });
   if (balance === null) return; // esa comisión ya estaba cobrada
   tellWallet(ride.driver_id, balance, { change: -amount, kind: 'commission', rideId: ride.id });
-  if (balance < Number(s.min_balance)) {
-    // Sin saldo suficiente deja de estar disponible hasta que recargue
-    drivers.delete(ride.driver_id);
-    io.to(room(ride.driver_id)).emit('wallet:low', { balance, min: Number(s.min_balance) });
-    push(ride.driver_id, { title: 'Recarga tu saldo para seguir recibiendo viajes', body: `Tu saldo es L ${balance.toFixed(2)}`, tag: 'wallet-low', url: '/' });
-  }
+  if (balance < Number(s.min_balance)) dropForLowBalance(ride.driver_id, balance, Number(s.min_balance));
+}
+
+// Sin saldo suficiente deja de estar disponible hasta que recargue, y se le avisa en la app y con una notificación
+export function dropForLowBalance(userId, balance, min) {
+  drivers.delete(userId);
+  io.to(room(userId)).emit('wallet:low', { balance, min });
+  push(userId, { title: 'Recarga tu saldo para seguir recibiendo viajes', body: `Tu saldo es L ${Number(balance).toFixed(2)}`, tag: 'wallet-low', url: '/' });
 }
 
 // Crédito de bienvenida: una sola vez, al aprobar al conductor, si la comisión está activa

@@ -3,6 +3,16 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-10-27-saldo-al-ofertar',
+    date: '2026-10-27',
+    title: 'Sin saldo no se oferta',
+    for: ['driver'],
+    items: [
+      'Si tu saldo baja del mínimo estando en línea (por un ajuste o porque cambió el mínimo), ya no puedes ofertar ni te pueden aceptar un viaje.',
+      'Te avisamos en la app y con una notificación para que recargues; en cuanto tengas saldo vuelves a ponerte disponible.',
+    ],
+  },
+  {
     id: '2026-10-26-modulo-solicitudes',
     date: '2026-10-26',
     title: 'Nuevo módulo «Solicitudes»',

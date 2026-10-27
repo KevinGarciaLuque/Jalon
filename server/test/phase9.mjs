@@ -206,6 +206,27 @@ check('el conductor ve el estado de cada recarga y el motivo del rechazo', after
 check('el conductor vuelve a poder ponerse disponible con el saldo nuevo', (await tryOnline(ds)) === null);
 check('una recarga rechazada libera la referencia para volver a enviarla', (await topup(D.token, { amount: 300, bank: 'Ficohsa', reference: 'FIC-100200', image: variant(7) })).ok === true);
 
+// ================= El saldo baja estando en línea: tampoco puede ofertar =================
+{
+  const reqd = next(ps, 'ride:state', (r) => r.status === 'requested');
+  ps.emit('ride:request', { origin, dest, price: 70 }, () => {});
+  const rd = await reqd;
+  await wait(300);
+  await http('PUT', 'admin/settings', SA, { min_balance: 500 }); // sube el mínimo con el conductor ya en línea
+  const lowNow = next(ds, 'wallet:low');
+  let offered = false;
+  ps.once('offer:new', () => { offered = true; });
+  ds.emit('offer:make', { rideId: rd.id, price: 70 });
+  const w = await lowNow;
+  await wait(300);
+  check('en línea con saldo bajo el mínimo no puede ofertar y recibe el aviso de recarga', w.balance === 172 && w.min === 500 && !offered);
+  check('y sale de los disponibles', (await tryOnline(ds))?.status === 'balance');
+  await http('PUT', 'admin/settings', SA, { min_balance: 30 });
+  check('con el mínimo de antes vuelve a poder ponerse disponible', (await tryOnline(ds)) === null);
+  ps.emit('ride:cancel', { rideId: rd.id });
+  await wait(300);
+}
+
 // ================= Ajustes manuales =================
 check('solo el superadmin ajusta saldos', (await http('POST', `admin/wallet/${D.user.id}/adjust`, ADM, { amount: 25, note: 'bono por buen servicio' })).status === 403);
 check('un ajuste exige explicar el motivo', (await http('POST', `admin/wallet/${D.user.id}/adjust`, SA, { amount: 25, note: 'ok' })).status === 400);
