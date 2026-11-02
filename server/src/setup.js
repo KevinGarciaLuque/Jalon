@@ -642,6 +642,9 @@ await addColumn('rides', 'rider_name', 'VARCHAR(80) NULL');
 await addColumn('rides', 'rider_phone', 'VARCHAR(20) NULL');
 await addColumn('rides', 'pickup_note', 'VARCHAR(160) NULL');
 
+// ---- Modo pasajero: un conductor puede pedir viajes con su misma cuenta
+await addColumn('users', 'passenger_mode', 'TINYINT(1) NOT NULL DEFAULT 0');
+
 // ---- Recargas por solicitud: el conductor pide, el personal le asigna una de las cuentas por 24 horas ----
 // (la cuenta ya no se muestra a todos: solo a quien la pidió, mientras le sirve)
 await conn.query(`

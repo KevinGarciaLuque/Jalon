@@ -107,7 +107,7 @@ app.post('/api/admin/users/:id/gender', staffOnly('users.manage'), async (req, r
 app.get('/api/admin/users/:id', staffOnly('view'), async (req, res) => {
   const id = Number(req.params.id);
   const [[u]] = await pool.query(
-    `SELECT id, name, phone, email, role, status, vehicle, plate, gender, gender_verified, created_at, terms_accepted_at, terms_version, must_change_password, deleted_at, totp_enabled, can_monitor
+    `SELECT id, name, phone, email, role, status, vehicle, plate, gender, gender_verified, passenger_mode, created_at, terms_accepted_at, terms_version, must_change_password, deleted_at, totp_enabled, can_monitor
      FROM users WHERE id = ?`, [id]
   );
   if (!u) return res.status(404).json({ error: 'Usuario no existe' });

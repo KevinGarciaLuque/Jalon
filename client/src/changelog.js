@@ -3,6 +3,23 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-02-modo-pasajero',
+    date: '2026-11-02',
+    title: 'Modo pasajero',
+    for: ['driver'],
+    items: [
+      '¿Necesitas un viaje? En el menú toca «Cambiar a modo pasajero» y pide con tu misma cuenta. Para volver, «Cambiar a modo conductor».',
+      'Tu saldo, tu carro y tu aprobación no cambian. No puedes cambiar de modo con un viaje en curso, y mientras estés en modo pasajero no te llegan solicitudes.',
+    ],
+  },
+  {
+    id: '2026-11-02-modo-pasajero-panel',
+    date: '2026-11-02',
+    title: 'Conductores en modo pasajero',
+    for: ['staff'],
+    items: ['Los conductores pueden pedir viajes con su misma cuenta. En Usuarios siguen como conductores; su ficha indica «Ahora en modo pasajero» y cada cambio queda en el Registro.'],
+  },
+  {
     id: '2026-10-27-saldo-al-ofertar',
     date: '2026-10-27',
     title: 'Sin saldo no se oferta',

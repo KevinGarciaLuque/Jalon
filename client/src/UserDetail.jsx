@@ -39,6 +39,7 @@ export const ACTION_LABEL = {
   'fleet.edit': 'Cambió un carro de la flota',
   'user.reset_password': 'Restableció la contraseña',
   'user.delete': 'Eliminó la cuenta',
+  'user.mode': 'Cambió de modo (conductor / pasajero)',
   'doc.reject': 'Rechazó un documento',
   'doc.view': 'Abrió los documentos',
   'chat.view': 'Leyó el chat de un viaje con emergencia o reporte',
@@ -231,7 +232,7 @@ export default function UserDetail({ userId, me, perms, call, token, onClose, on
 
         <div className="req">
           <div className="row between">
-            <span><span className={`pill ${u.status}`}>{u.deleted_at ? 'Eliminada' : STATUS_LABEL[u.status]}</span> <b>{ROLE_LABEL[u.role]}</b></span>
+            <span><span className={`pill ${u.status}`}>{u.deleted_at ? 'Eliminada' : STATUS_LABEL[u.status]}</span> <b>{ROLE_LABEL[u.role]}</b>{u.role === 'driver' && !!u.passenger_mode && <span className="muted"> · Ahora en modo pasajero</span>}</span>
             <Stars rating={rating} />
           </div>
           <div>📞 {u.phone}{u.online && ' · 🟢 en línea'}</div>

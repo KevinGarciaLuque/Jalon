@@ -82,7 +82,8 @@ io.on('connection', async (socket) => {
   if (user.role === 'driver') {
     on('driver:online', async (pos) => {
       if (!isPoint(pos)) return;
-      const [[u]] = await pool.query('SELECT status FROM users WHERE id = ?', [user.id]);
+      const [[u]] = await pool.query('SELECT status, passenger_mode FROM users WHERE id = ?', [user.id]);
+      if (u?.passenger_mode) return; // ya cambió a modo pasajero: esta conexión se está cerrando
       if (u?.status !== 'active') return socket.emit('driver:denied', { status: u?.status });
       const { lat, lng } = pos;
       const busy = await activeRideFor(user); // si se reconecta en pleno viaje, sigue ocupado

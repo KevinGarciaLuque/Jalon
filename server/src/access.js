@@ -47,11 +47,13 @@ function requestToken(req) {
   if (cookie && !SAFE.has(req.method) && !wantsCookie(req)) throw fail(403, 'Petición no permitida');
   return cookie;
 }
+// Un conductor en modo pasajero se comporta como pasajero en toda la app (en la base de datos sigue siendo conductor)
+export const effectiveUser = (u) => (u.role === 'driver' && u.passenger_mode ? { ...u, role: 'passenger' } : u);
 // La persona dueña del token, si sigue valiendo (no se cerró la sesión ni se cambió la contraseña)
 export async function userFromToken(token) {
   const payload = jwt.verify(token, JWT_SECRET);
   const [rows] = await pool.query('SELECT * FROM users WHERE id = ?', [payload.id]);
-  return rows[0] && (payload.tv ?? 0) === rows[0].token_version ? rows[0] : null;
+  return rows[0] && (payload.tv ?? 0) === rows[0].token_version ? effectiveUser(rows[0]) : null;
 }
 
 // Reglas de contraseña: 8 caracteres (10 para el personal), no solo números, nada obvio y que no contenga el teléfono
@@ -69,7 +71,7 @@ export function checkPassword(password, { phone = '', role = 'passenger' } = {})
 // El superadmin puede apagar la verificación en dos pasos del personal desde Ajustes (por defecto es obligatoria)
 export const twoFactorRequired = async () => (await getSettings(pool)).staff_2fa_required !== '0';
 // `perms`: los módulos que puede usar (la app muestra u oculta, por ejemplo, el alquiler)
-export const publicUser = (u, require2fa = true, perms = []) => ({ id: u.id, name: u.name, phone: u.phone, email: u.email || null, role: u.role, status: u.status, vehicle: u.vehicle, plate: u.plate, gender: u.gender || null, genderVerified: !!u.gender_verified, ridePin: !!u.ride_pin, mustChangePassword: !!u.must_change_password, perms,
+export const publicUser = (u, require2fa = true, perms = []) => ({ id: u.id, name: u.name, phone: u.phone, email: u.email || null, role: effectiveUser(u).role, canDrive: u.role === 'driver' || !!u.passenger_mode, passengerMode: !!u.passenger_mode, status: u.status, vehicle: u.vehicle, plate: u.plate, gender: u.gender || null, genderVerified: !!u.gender_verified, ridePin: !!u.ride_pin, mustChangePassword: !!u.must_change_password, perms,
   // Pasajeros y conductores que aceptaron una versión anterior de los términos los vuelven a ver al abrir la app
   mustAcceptTerms: ['passenger', 'driver'].includes(u.role) && u.terms_version !== TERMS_VERSION, termsVersion: TERMS_VERSION,
   // El personal debe tener la verificación en dos pasos activa para usar el panel (si está exigida)

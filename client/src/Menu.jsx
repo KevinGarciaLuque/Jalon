@@ -114,6 +114,7 @@ export default function Menu({ user, hasBell, go, sections, current, wallet, pin
     user.role === 'driver' && wallet && { key: 'wallet', icon: 'wallet', label: 'Mi saldo y recargas', note: money2(wallet.balance), low: wallet.low },
     user.role === 'driver' && user.status === 'active' && { key: 'earnings', icon: 'earnings', label: 'Mis ganancias' },
     { key: 'history', icon: 'history', label: 'Historial de viajes' },
+    user.canDrive && (user.role === 'driver' ? { key: 'mode', icon: 'user', label: 'Cambiar a modo pasajero' } : { key: 'mode', icon: 'car', label: 'Cambiar a modo conductor' }),
     user.role === 'driver' && user.status === 'active' && perms.includes('rent.offer') && { key: 'rental', icon: 'key', label: 'Alquiler de mi carro' },
     user.role === 'passenger' && perms.includes('rent') && { key: 'rentals', icon: 'car', label: 'Alquilar un carro' },
   ].filter(Boolean);

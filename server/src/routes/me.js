@@ -13,7 +13,8 @@ import { TERMS_VERSION } from '../legal.js';
 import { app, io, loginLimiter, mapsLimiter, trackLimiter } from '../app.js';
 import { drivers, room } from '../live.js';
 import { isPoint, clean, num, parsePoint } from '../util.js';
-import { startSession, authUser, passengerOnly, isStaff, audit, publicUser, twoFactorRequired } from '../access.js';
+import { startSession, authUser, passengerOnly, isStaff, audit, publicUser, twoFactorRequired, effectiveUser } from '../access.js';
+import { closeSession } from '../services/activity.js';
 import { permsFor } from '../perms.js';
 import { push, pushStaff } from '../notify.js';
 import { getRide, activeRideFor } from '../services/rides.js';
@@ -225,6 +226,38 @@ app.get('/api/me', authUser, async (req, res) => {
     const [[r]] = await pool.query('SELECT AVG(stars) AS avg, COUNT(*) AS n FROM ratings WHERE ratee_id = ?', [req.user.id]);
     user.rating = { avg: Number(r.avg) || 0, count: Number(r.n) || 0 };
   }
+  res.json({ user });
+});
+
+// Un conductor cambia entre modo conductor y modo pasajero (misma cuenta, saldo y documentos)
+app.post('/api/me/mode', authUser, async (req, res) => {
+  const u = req.user;
+  const mode = req.body?.mode;
+  if (!['driver', 'passenger'].includes(mode)) return res.status(400).json({ error: 'Modo inválido' });
+  if (!u.passenger_mode && u.role !== 'driver') return res.status(403).json({ error: 'Solo para conductores' });
+  const [[ride]] = await pool.query("SELECT id FROM rides WHERE (passenger_id = ? OR driver_id = ?) AND status IN ('requested','accepted','arrived','started') LIMIT 1", [u.id, u.id]);
+  if (ride) return res.status(409).json({ error: 'Tienes un viaje en curso. Termínalo o cancélalo antes de cambiar de modo.' });
+  if (mode === 'driver') {
+    const [[sch]] = await pool.query("SELECT COUNT(*) AS n FROM rides WHERE passenger_id = ? AND status = 'scheduled'", [u.id]);
+    if (sch.n) return res.status(409).json({ error: 'Tienes un viaje programado. Cancélalo antes de volver a modo conductor.' });
+  } else {
+    // Deja de estar disponible: sale del mapa y se retiran las ofertas que tenía sin responder
+    drivers.delete(u.id);
+    await closeSession(u.id).catch(() => {});
+    const [offers] = await pool.query('SELECT o.id, o.ride_id, r.passenger_id FROM offers o JOIN rides r ON r.id = o.ride_id WHERE o.driver_id = ? AND o.status = "pending"', [u.id]);
+    for (const o of offers) {
+      await pool.query('UPDATE offers SET status = "rejected" WHERE id = ? AND status = "pending"', [o.id]);
+      io.to(room(o.passenger_id)).emit('offer:expired', { offerId: o.id, rideId: o.ride_id });
+    }
+  }
+  await pool.query('UPDATE users SET passenger_mode = ? WHERE id = ?', [mode === 'passenger' ? 1 : 0, u.id]);
+  await audit(u, 'user.mode', { target: u.id, details: { mode } });
+  const [[row]] = await pool.query('SELECT * FROM users WHERE id = ?', [u.id]);
+  const user = publicUser(row, false, await permsFor(effectiveUser(row)));
+  // Sus conexiones se hicieron con el modo anterior: se avisa a sus otros aparatos y se cierran (la app se reconecta con el modo nuevo)
+  const old = await io.in(room(u.id)).fetchSockets();
+  for (const s of old) s.emit('account:mode', { role: user.role, canDrive: user.canDrive, passengerMode: user.passengerMode, perms: user.perms });
+  setTimeout(() => old.forEach((s) => s.disconnect(true)), 250);
   res.json({ user });
 });
 

@@ -73,7 +73,7 @@ export default function App() {
     apiGet('me')
       .then(({ user }) => setSession((cur) => {
         if (!cur || cur.user.id !== user.id) return cur;
-        const next = { ...cur, user: { ...cur.user, perms: user.perms, mustAcceptTerms: user.mustAcceptTerms, termsVersion: user.termsVersion, rating: user.rating, mapRotation: user.mapRotation, gender: user.gender, genderVerified: user.genderVerified, ridePin: user.ridePin } };
+        const next = { ...cur, user: { ...cur.user, perms: user.perms, mustAcceptTerms: user.mustAcceptTerms, termsVersion: user.termsVersion, rating: user.rating, mapRotation: user.mapRotation, gender: user.gender, genderVerified: user.genderVerified, ridePin: user.ridePin, role: user.role, canDrive: user.canDrive, passengerMode: user.passengerMode } };
         localStorage.setItem('jalon', JSON.stringify(next));
         return next;
       }))
@@ -104,6 +104,7 @@ export default function App() {
       setAccountStatus(status);
       if (status === 'blocked') logout('Tu cuenta fue bloqueada. Contacta a soporte.');
     });
+    s.on('account:mode', applyMode); // cambió de modo desde otro aparato
     s.on('connect_error', (e) => {
       if (e.message === 'Cuenta bloqueada') logout('Tu cuenta fue bloqueada. Contacta a soporte.');
       else if (e.message === 'No autorizado' || e.message === 'Usuario no existe') logout();
@@ -149,6 +150,7 @@ export default function App() {
   // Lo que se toca en el menú: aquí se abren historial, cuenta, novedades y la campanita; lo demás lo atiende su pantalla
   function openFromMenu(target) {
     if (target === 'account') return setShowAccount(true);
+    if (target === 'mode') return switchMode();
     if (target === 'help') return setShowHelp(true);
     if (target === 'news') { setShowNews(true); markSeen(); return; }
     if (target === 'bell') return window.dispatchEvent(new Event('ktracho:bell'));
@@ -164,6 +166,23 @@ export default function App() {
     if (target === 'history') return setShowHistory(true);
     setShowHistory(false);
     if (target) window.dispatchEvent(new CustomEvent('ktracho:go', { detail: target }));
+  }
+
+  // Conductor: cambia entre modo conductor y modo pasajero. Al cambiar el rol, la app se reconecta y muestra la otra pantalla
+  const applyMode = (m) => setSession((cur) => {
+    if (!cur || (cur.user.role === m.role && cur.user.passengerMode === m.passengerMode)) return cur;
+    const next = { ...cur, user: { ...cur.user, role: m.role, canDrive: m.canDrive, passengerMode: m.passengerMode, perms: m.perms } };
+    localStorage.setItem('jalon', JSON.stringify(next));
+    return next;
+  });
+  async function switchMode() {
+    try {
+      const { user } = await apiPost('me/mode', session.token, { mode: session.user.role === 'driver' ? 'passenger' : 'driver' });
+      setWallet(null);
+      applyMode(user);
+    } catch (e) {
+      window.alert(e.message);
+    }
   }
 
   function logout(message = '') {
