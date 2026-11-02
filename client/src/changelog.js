@@ -3,6 +3,13 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-02-solicitudes-al-terminar',
+    date: '2026-11-02',
+    title: 'Solicitudes apenas quedas libre',
+    for: ['driver'],
+    items: ['Al terminar un viaje, o si te lo cancelan, ahora ves de inmediato las solicitudes cercanas que ya estaban esperando. Ya no tienes que esperar a que llegue una nueva ni desconectarte y volver.'],
+  },
+  {
     id: '2026-11-02-modo-pasajero',
     date: '2026-11-02',
     title: 'Modo pasajero',

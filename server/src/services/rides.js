@@ -94,8 +94,10 @@ export function closeOpenRide(rideId) {
 export function releaseDriver(driverId) {
   const d = drivers.get(driverId);
   if (!d) return;
-  if (d.disconnected) drivers.delete(driverId);
-  else d.available = true;
+  if (d.disconnected) return drivers.delete(driverId);
+  d.available = true;
+  // Las solicitudes que se pidieron mientras estaba ocupado no le llegaron: se le mandan ahora
+  io.to(room(driverId)).emit('rides:open', openRidesNear(d.lat, d.lng, driverId, d.category, d.woman));
 }
 
 // Tiempo estimado de llegada: del conductor al pasajero (viaje aceptado) o al destino (viaje en curso).
