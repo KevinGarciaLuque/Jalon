@@ -387,6 +387,21 @@ header span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-spa
 .map-icon.car.aura-on .car-aura i:nth-child(3) { display: block; animation-delay: 1.2s; }
 @keyframes car-aura-on { 0% { transform: scale(.45); opacity: .9; } 60% { opacity: .3; } 100% { transform: scale(2.2); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .car-aura i { display: none !important; } }
+/* Aura del pasajero (mango): centrada en la punta del pin, que es el punto exacto */
+.me-aura { position: absolute; left: 50%; top: 43px; width: 0; height: 0; z-index: -1; pointer-events: none; }
+.me-aura::before { content: ''; position: absolute; left: -26px; top: -26px; width: 52px; height: 52px; border-radius: 50%; background: radial-gradient(closest-side, rgba(240, 160, 32, .38), rgba(240, 160, 32, .14) 60%, rgba(240, 160, 32, 0)); }
+.me-aura i { position: absolute; left: -28px; top: -28px; width: 56px; height: 56px; border-radius: 50%; border: 2px solid rgba(240, 160, 32, .85); background: radial-gradient(closest-side, rgba(240, 160, 32, 0) 55%, rgba(240, 160, 32, .2)); box-shadow: 0 0 10px rgba(240, 160, 32, .35); opacity: 0; will-change: transform, opacity; animation: me-aura 3s cubic-bezier(.2, .6, .35, 1) infinite; }
+.me-aura i:nth-child(n+2) { display: none; }
+@keyframes me-aura { 0% { transform: scale(.4); opacity: .55; } 60% { opacity: .15; } 100% { transform: scale(1.7); opacity: 0; } }
+/* Buscando conductor: radar más rápido y brillante, con 3 anillos */
+.pin.me-search .me-aura::before { background: radial-gradient(closest-side, rgba(240, 160, 32, .55), rgba(240, 160, 32, .22) 60%, rgba(240, 160, 32, 0)); }
+.pin.me-search .me-aura i { display: block; border-width: 2.5px; border-color: rgba(245, 170, 40, .95); box-shadow: 0 0 14px rgba(245, 170, 40, .55); animation: me-aura-search 1.6s cubic-bezier(.2, .6, .35, 1) infinite; }
+.pin.me-search .me-aura i:nth-child(2) { animation-delay: .53s; }
+.pin.me-search .me-aura i:nth-child(3) { animation-delay: 1.07s; }
+@keyframes me-aura-search { 0% { transform: scale(.4); opacity: .95; } 60% { opacity: .3; } 100% { transform: scale(2.6); opacity: 0; } }
+/* Ya con conductor: solo el halo (lo que se mueve en el mapa es su carro) */
+.pin.me-still .me-aura i { display: none; }
+@media (prefers-reduced-motion: reduce) { .me-aura i { display: none !important; } }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }

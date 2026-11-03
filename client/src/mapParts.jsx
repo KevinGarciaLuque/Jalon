@@ -32,6 +32,8 @@ export const icons = {
   // El carro del propio conductor: con un aura verde que pulsa alrededor (más intensa cuando está en línea)
   carMine: svgIcon(`<div class="car-aura" aria-hidden="true"><i></i><i></i><i></i></div><div class="car-rot">${CAR_HTML}</div>`, [48, 48], [24, 24], 'car mine'),
   me: svgIcon(pin('#14802f', '<circle cx="17" cy="17.5" r="4" fill="#14802f"/>'), [34, 44], [17, 43], 'pin'),
+  // El pin del pasajero con su aura mango, según el momento: 'soft' (eligiendo), 'search' (buscando conductor, como radar) o 'still' (ya con conductor: solo el halo)
+  meAura: (mode) => svgIcon(`<div class="me-aura" aria-hidden="true"><i></i><i></i><i></i></div>${pin('#14802f', '<circle cx="17" cy="17.5" r="4" fill="#14802f"/>')}`, [34, 44], [17, 43], `pin me-${mode}`),
   dest: svgIcon(pin('#14171c', FLAG), [34, 44], [17, 43], 'pin'),
   // Paradas en el camino, con su número
   stop: (n) => svgIcon(pin('#f59e0b', `<text x="17" y="21.5" text-anchor="middle" font-size="11" font-weight="800" font-family="sans-serif" fill="#7a4a00">${n}</text>`), [34, 44], [17, 43], 'pin'),

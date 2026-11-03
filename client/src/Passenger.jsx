@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import { useGeo, apiGet, apiPost, lempiras, minutes, useChat, useNow, CATEGORIES, CATEGORY_LABEL, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
@@ -294,6 +294,9 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
   const routeLine = active ? ride.route : preview?.coords;
   const fitPoints = routeLine?.length > 1 ? routeLine : from && dest && !active ? [[from.lat, from.lng], [dest.lat, dest.lng]] : [];
   const ended = ride && !active;
+  // Aura del pin: suave mientras elige, radar mientras busca conductor y quieta cuando ya tiene uno (entonces resalta su carro)
+  const auraMode = !active ? 'soft' : ride.status === 'requested' ? 'search' : 'still';
+  const meIcon = useMemo(() => icons.meAura(auraMode), [auraMode]);
   // Lo que ya eligió dentro de «Más opciones», para que se vea aunque esté cerrado
   const extrasSummary = [
     stops.length && `${stops.length} parada${stops.length === 1 ? '' : 's'}`,
@@ -315,7 +318,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
             {from && (
               <Marker
                 position={[from.lat, from.lng]}
-                icon={icons.me}
+                icon={meIcon}
                 draggable={denied && !origin && !active}
                 eventHandlers={{ dragend: (e) => setPos({ lat: e.target.getLatLng().lat, lng: e.target.getLatLng().lng }) }}
               />
@@ -326,7 +329,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
             )}
             {routeLine && <RouteLine positions={routeLine} />}
             {(active ? ride.stops || [] : stops).map((p, i) => <Marker key={`stop-${i}`} position={[p.lat, p.lng]} icon={icons.stop(i + 1)} />)}
-            {active && driverPos && ride.status !== 'requested' && <CarMarker position={driverPos} />}
+            {active && driverPos && ride.status !== 'requested' && <CarMarker position={driverPos} aura="offline" />}
           </MapContainer>
         )}
       </div>
