@@ -181,9 +181,8 @@ export default function Menu({ user, hasBell, go, sections, current, wallet, pin
       </div>
       {/* Qué versión tiene este aparato (la fecha en que se publicó) */}
       <div className="drawer-foot">
-        <Icon name="shield" size={16} />
         <span className="drawer-version">
-          <span>{VERSION_TEXT}</span>
+          <span><Icon name="shield" size={16} /> {VERSION_TEXT}</span>
           <span>{DEVELOPER}</span>
         </span>
       </div>

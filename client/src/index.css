@@ -751,7 +751,10 @@ header { gap: 8px; background: linear-gradient(135deg, var(--card), var(--bg)); 
 .drawer-list button.on { box-shadow: inset 4px 0 0 var(--brand); }
 .drawer-foot { flex-direction: row; justify-content: flex-start; gap: 8px; padding: 14px 20px 6px; color: var(--muted); font-size: 13px; }
 .drawer-foot .icon { color: var(--brand); flex-shrink: 0; }
-.drawer-version { display: flex; flex-direction: column; gap: 2px; line-height: 1.35; }
+/* Versión y desarrollador, centrados al pie del menú */
+.drawer-foot:has(.drawer-version) { justify-content: center; }
+.drawer-version { display: flex; flex-direction: column; align-items: center; gap: 2px; line-height: 1.35; text-align: center; width: 100%; }
+.drawer-version > span:first-child { display: inline-flex; align-items: center; gap: 6px; }
 .drawer-version > span + span { font-size: 12px; }
 
 /* Ayuda y soporte */
