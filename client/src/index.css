@@ -576,6 +576,28 @@ header .bell-count { top: -3px; right: -3px; box-shadow: 0 0 0 2px var(--card); 
   .panel-scrim { display: block; }
   .overlay.slide { left: auto; width: min(520px, 100%); border-left: 1px solid var(--line); box-shadow: -16px 0 40px rgba(0, 0, 0, .3); }
 }
+/* Animación al activar el modo conductor (driveIn.js): el carro sale del aviso y aterriza en el mapa */
+.drive-in { position: fixed; inset: 0; z-index: 5000; overflow: hidden; }
+.drive-in-scrim { position: absolute; inset: 0; background: rgba(4, 10, 7, .55); }
+.drive-in-smoke { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
+.drive-in-cardwrap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.drive-in-card { animation: none; overflow: visible; }
+.drive-in-hero { width: 100%; height: 150px; }
+button.drive-in-mute { position: absolute; top: 8px; right: 8px; width: auto; min-height: 0; padding: 6px 8px; border: 0; background: transparent; font-size: 18px; line-height: 1; }
+.drive-in-car { position: absolute; left: 0; top: 0; width: 240px; height: 240px; z-index: 2; will-change: transform, opacity; pointer-events: none; }
+.drive-in-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.drive-in-img.l1, .drive-in-img.l2 { opacity: 0; }
+.drive-in-shadow { position: absolute; width: 96px; height: 170px; border-radius: 50%; background: radial-gradient(closest-side, rgba(0, 0, 0, .5), rgba(0, 0, 0, 0)); opacity: 0; pointer-events: none; }
+.drive-in-ring { position: absolute; width: 96px; height: 96px; border-radius: 50%; border: 3px solid #3ccf68; box-shadow: 0 0 18px #3ccf68, inset 0 0 14px rgba(60, 207, 104, .5); opacity: 0; pointer-events: none; z-index: 1; }
+.drive-in-streaks { position: absolute; left: 50%; top: 50%; width: 180px; height: 360px; opacity: 0; z-index: -1; }
+.drive-in-streaks i { position: absolute; top: 0; width: 2px; height: 120px; border-radius: 2px; background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(210, 255, 225, .9)); }
+.drive-in-streaks i:nth-child(1) { left: 20%; height: 90px; top: 30px; }
+.drive-in-streaks i:nth-child(2) { left: 38%; height: 140px; }
+.drive-in-streaks i:nth-child(3) { left: 52%; height: 110px; top: 18px; }
+.drive-in-streaks i:nth-child(4) { left: 66%; height: 150px; top: 6px; }
+.drive-in-streaks i:nth-child(5) { left: 82%; height: 80px; top: 44px; }
+.leaflet-marker-icon.drive-in-hide { opacity: 0 !important; }
+
 /* Aviso al cambiar entre modo conductor y modo pasajero */
 .mode-notice { position: fixed; inset: 0; z-index: 5000; background: rgba(4, 10, 7, .55); display: flex; align-items: center; justify-content: center; padding: 16px; animation: fade-in var(--slow) ease-out; }
 .mode-card { position: relative; overflow: hidden; width: min(320px, 100%); background: var(--card); border-radius: var(--r-3); padding: 28px 22px 22px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; box-shadow: var(--shadow-sheet); animation: rate-pop 320ms cubic-bezier(.2, .8, .2, 1); }

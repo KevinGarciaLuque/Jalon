@@ -3,6 +3,16 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-03-animacion-modo-conductor',
+    date: '2026-11-03',
+    title: 'Tu carro llega al mapa',
+    for: ['driver'],
+    items: [
+      'Al volver a modo conductor, tu carro sale del aviso, cae sobre el mapa y aterriza justo en tu ubicación. Toca la pantalla para saltarla.',
+      'Tiene sonido: puedes silenciarlo con 🔊 en el aviso y la app lo recuerda. Si tu teléfono tiene «reducir movimiento», solo verás el aviso.',
+    ],
+  },
+  {
     id: '2026-11-03-pantalla-conductor',
     date: '2026-11-03',
     title: 'Tu pantalla, más clara',

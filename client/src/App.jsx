@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import News, { useNews } from './News.jsx';
 import Bell from './Bell.jsx';
 import Menu, { HelpPanel, NewsButton, ProfileMenu, Icon } from './Menu.jsx';
@@ -39,6 +39,17 @@ function useWide() {
   return wide;
 }
 
+// El audio del teléfono solo arranca dentro de un toque: la animación del modo conductor recibe el que se crea aquí
+function newAudio() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    const ctx = Ctx && new Ctx();
+    ctx?.resume?.();
+    return ctx || null;
+  } catch { return null; }
+}
+const reducedMotion = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
 // Aviso al cambiar de modo: confirma el cambio y se cierra solo a los 3 segundos (o al tocar fuera)
 function ModeNotice({ mode, user, wallet, onClose }) {
   useEffect(() => {
@@ -77,6 +88,8 @@ export default function App() {
   const [pkOffer, setPkOffer] = useState(false); // tras entrar con la contraseña se ofrece Face ID / huella
   const [wallet, setWallet] = useState(null); // saldo del conductor para el menú (si la comisión está activa)
   const [modeNotice, setModeNotice] = useState(null); // 'driver' | 'passenger' justo después de cambiar de modo
+  const [driveIn, setDriveIn] = useState(null); // animación del carro al activar el modo conductor
+  const animating = useRef(false); // mientras corre, el aviso de «otro aparato» no se repite aquí
   const wide = useWide();
   const { news, unseen, markSeen } = useNews(session?.user.role);
   const [accountStatus, setAccountStatus] = useState(() => loadSession()?.user.status);
@@ -130,7 +143,7 @@ export default function App() {
       setAccountStatus(status);
       if (status === 'blocked') logout('Tu cuenta fue bloqueada. Contacta a soporte.');
     });
-    s.on('account:mode', (m) => { applyMode(m); setModeNotice(m.role); }); // cambió de modo desde otro aparato
+    s.on('account:mode', (m) => { applyMode(m); if (!animating.current) setModeNotice(m.role); }); // cambió de modo desde otro aparato
     s.on('connect_error', (e) => {
       if (e.message === 'Cuenta bloqueada') logout('Tu cuenta fue bloqueada. Contacta a soporte.');
       else if (e.message === 'No autorizado' || e.message === 'Usuario no existe') logout();
@@ -202,15 +215,33 @@ export default function App() {
     return next;
   });
   async function switchMode() {
+    // Al pasar a conductor: la animación se empieza a descargar en el mismo toque (mientras responde el servidor)
+    const toDriver = session.user.role !== 'driver';
+    const fx = toDriver && !reducedMotion() ? import('./driveIn.js').then((m) => { m.preload().catch(() => {}); return m; }) : null;
+    fx?.catch(() => {});
+    const audio = fx ? newAudio() : null;
+    if (fx) animating.current = true;
     try {
-      const { user } = await apiPost('me/mode', session.token, { mode: session.user.role === 'driver' ? 'passenger' : 'driver' });
+      const { user } = await apiPost('me/mode', session.token, { mode: toDriver ? 'driver' : 'passenger' });
       setWallet(null);
       applyMode(user);
-      setModeNotice(user.role);
+      // Solo cuando el servidor confirmó el modo conductor
+      if (fx && user.role === 'driver') setDriveIn({ fx, audio, info: { vehicle: user.vehicle, plate: user.plate } });
+      else { animating.current = false; audio?.close?.(); setModeNotice(user.role); }
     } catch (e) {
+      animating.current = false;
+      audio?.close?.();
       window.alert(e.message);
     }
   }
+  // Si la animación no se puede mostrar (sin conexión para bajarla, etc.), sale el aviso de siempre
+  useEffect(() => {
+    if (!driveIn) return;
+    driveIn.fx
+      .then((m) => m.playDriveIn({ audio: driveIn.audio, info: driveIn.info }))
+      .catch(() => { driveIn.audio?.close?.(); setModeNotice('driver'); })
+      .finally(() => { animating.current = false; setDriveIn(null); });
+  }, [driveIn]);
 
   function logout(message = '') {
     apiPost('logout').catch(() => {}); // el servidor borra la cookie

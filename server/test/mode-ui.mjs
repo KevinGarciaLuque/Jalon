@@ -60,13 +60,45 @@ try {
   check('al recargar sigue en modo pasajero', await see('conductores de carro cerca'));
   check('al recargar no repite el aviso', !(await page.$('.mode-notice')));
   await wait(800);
+  const gone = (sel, timeout) => page.waitForFunction((s) => !document.querySelector(s), { timeout }, sel).then(() => true, () => false);
   await pickMenu('Cambiar a modo conductor');
   check('al volver ve la pantalla de conductor', await see('Ponerme disponible'));
-  check('un aviso confirma el modo conductor, con su carro', await see('Modo conductor activado', 5000) && await see('Yaris', 2000));
-  await wait(600);
+  // Modo conductor: el carro sale del aviso y aterriza en el mapa
+  check('empieza la animación del carro', await page.waitForSelector('.drive-in', { timeout: 5000 }).then(() => true, () => false));
+  check('el aviso de la animación dice el modo y su carro', await see('Modo conductor activado', 2000) && await see('Yaris', 2000));
+  await (await page.waitForSelector('.drive-in-mute')).click();
+  check('el botón de sonido lo silencia (y no salta la animación)', (await page.evaluate(() => localStorage.getItem('ktracho:sfx'))) === 'off' && !!(await page.$('.drive-in')));
+  await wait(400);
+  await shot(page, 'modo-animacion');
+  check('la animación termina sola', await gone('.drive-in', 5000));
+  check('el carro del mapa queda visible', await page.$eval('.leaflet-marker-icon.car', (m) => !m.classList.contains('drive-in-hide')).catch(() => false));
+  check('no sale además el aviso normal', !(await page.$('.mode-notice')));
+
+  // Con «reducir movimiento» en el teléfono: solo el aviso de siempre
+  await pickMenu('Cambiar a modo pasajero');
+  await see('Modo pasajero activado', 5000);
+  await gone('.mode-notice', 5000);
+  await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
+  await pickMenu('Cambiar a modo conductor');
+  check('con movimiento reducido no hay animación', await see('Modo conductor activado', 5000) && !(await page.$('.drive-in')));
   await shot(page, 'modo-aviso-conductor');
   await (await page.waitForSelector('.mode-card button.primary')).click();
-  check('«Entendido» lo cierra', await page.waitForFunction(() => !document.querySelector('.mode-notice'), { timeout: 1500 }).then(() => true, () => false));
+  check('«Entendido» lo cierra', await gone('.mode-notice', 1500));
+  await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'no-preference' }]);
+
+  // Si la animación no se puede descargar: el aviso de siempre y la app sigue
+  await pickMenu('Cambiar a modo pasajero');
+  await see('Modo pasajero activado', 5000);
+  await gone('.mode-notice', 5000);
+  await page.setBypassServiceWorker(true); // si no, la app instalada la saca de su copia guardada
+  await page.setRequestInterception(true);
+  page.on('request', (r) => (r.url().includes('/driveIn-') ? r.abort() : r.continue()));
+  await page.reload({ waitUntil: 'domcontentloaded' }); // la animación ya estaba descargada: se empieza de cero
+  await see('conductores de carro cerca');
+  await wait(800);
+  await pickMenu('Cambiar a modo conductor');
+  check('si la animación falla sale el aviso normal', await page.waitForSelector('.mode-notice', { timeout: 5000 }).then(() => true, () => false) && !(await page.$('.drive-in')));
+  check('y la pantalla de conductor funciona', await see('Ponerme disponible'));
 } catch (e) {
   check('la prueba terminó sin errores', false, e.stack);
 } finally {
