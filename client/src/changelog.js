@@ -3,6 +3,13 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-03-mapa-al-cambiar-de-modo',
+    date: '2026-11-03',
+    title: 'El mapa aparece al instante al cambiar de modo',
+    for: ['driver'],
+    items: ['Al pasar de pasajero a conductor (o al revés), el mapa y tu carro aparecen enseguida en tu última ubicación, sin esperar a que el GPS vuelva a responder. La animación aterriza justo en tu carro.'],
+  },
+  {
     id: '2026-11-03-numero-de-version',
     date: '2026-11-03',
     title: 'Número de versión en el menú',

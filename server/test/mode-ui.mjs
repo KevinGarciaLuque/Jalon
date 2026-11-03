@@ -26,6 +26,16 @@ try {
   await page.setViewport({ width: Number(process.env.VIEW_W) || 390, height: Number(process.env.VIEW_H) || 844 });
   if (process.env.THEME) await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: process.env.THEME }]);
   await page.setGeolocation({ latitude: 14.0723, longitude: -87.1921, accuracy: 5 });
+  // Para simular un GPS lento (como en un celular): con window.__slowGps la primera respuesta tarda 6 s
+  await page.evaluateOnNewDocument(() => {
+    const geo = navigator.geolocation;
+    const watch = geo.watchPosition.bind(geo);
+    geo.watchPosition = (ok, ...rest) => {
+      const t0 = Date.now();
+      const slow = window.__slowGps;
+      return watch((p) => { if (!slow) return ok(p); setTimeout(() => ok(p), Math.max(0, 6000 - (Date.now() - t0))); }, ...rest);
+    };
+  });
   await page.goto(CLIENT, { waitUntil: 'domcontentloaded' });
   // Entra por la pantalla normal, con cookie de sesión como cualquier usuario
   await page.waitForSelector('input[placeholder^="Teléfono"]', { timeout: 20000 });
@@ -61,8 +71,13 @@ try {
   check('al recargar no repite el aviso', !(await page.$('.mode-notice')));
   await wait(800);
   const gone = (sel, timeout) => page.waitForFunction((s) => !document.querySelector(s), { timeout }, sel).then(() => true, () => false);
+  await page.evaluate(() => { window.__slowGps = true; });
+  const switchedAt = Date.now();
   await pickMenu('Cambiar a modo conductor');
   check('al volver ve la pantalla de conductor', await see('Ponerme disponible'));
+  // Aunque el GPS tarde en responder, el mapa y su carro aparecen al instante (con la última posición conocida)
+  const mapReady = await page.waitForFunction(() => !!document.querySelector('.leaflet-marker-icon.car.mine'), { timeout: 5000 }).then(() => Date.now() - switchedAt, () => null);
+  check('con el GPS lento, el mapa y su carro aparecen enseguida', mapReady !== null && mapReady < 2500, `(${mapReady} ms)`);
   // Modo conductor: el carro sale del aviso y aterriza en el mapa
   check('empieza la animación del carro', await page.waitForSelector('.drive-in', { timeout: 5000 }).then(() => true, () => false));
   check('el aviso de la animación dice el modo y su carro', await see('Modo conductor activado', 2000) && await see('Yaris', 2000));

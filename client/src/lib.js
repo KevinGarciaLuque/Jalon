@@ -81,8 +81,12 @@ export const minutes = (n) => (n < 1 ? '<1 min' : `${Math.round(n)} min`);
 export const lempiras = (n) => `L ${Number(n).toFixed(0)}`;
 
 // Posición GPS del dispositivo; si no hay permiso usa Tegucigalpa
+// Última posición del GPS en esta sesión de la app (solo en memoria): al cambiar de pantalla (p. ej. de pasajero a conductor)
+// el mapa aparece al instante ahí, sin esperar a que el GPS vuelva a responder
+let lastFix = null;
+
 export function useGeo() {
-  const [pos, setPos] = useState(null);
+  const [pos, setPos] = useState(lastFix);
   const [denied, setDenied] = useState(false);
   // Rumbo (grados desde el norte) y velocidad (m/s) que da el GPS al moverse; null si no los da (quieto o en computadora)
   const [course, setCourse] = useState({ heading: null, speed: null });
@@ -90,7 +94,8 @@ export function useGeo() {
     if (!navigator.geolocation) { setPos(DEFAULT_POS); setDenied(true); return; }
     const id = navigator.geolocation.watchPosition(
       (p) => {
-        setPos({ lat: p.coords.latitude, lng: p.coords.longitude });
+        lastFix = { lat: p.coords.latitude, lng: p.coords.longitude };
+        setPos(lastFix);
         const { heading, speed } = p.coords;
         setCourse({ heading: Number.isFinite(heading) ? heading : null, speed: Number.isFinite(speed) ? speed : null });
       },
