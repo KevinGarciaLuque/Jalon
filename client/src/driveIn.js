@@ -1,6 +1,8 @@
 // Animación al activar el modo conductor: el carro sale del aviso, cae sobre el mapa y aterriza en tu ubicación,
 // donde se convierte en el carro del mapa. Va aparte (se descarga solo al cambiar de modo).
 // Si algo falla, la promesa se rechaza y la app muestra el aviso normal. Nada de esto toca el mapa ni el GPS.
+// Para que vaya fluida en cualquier celular: solo se animan transform y opacity (los mueve la tarjeta gráfica),
+// y toda la secuencia se programa de una vez, así no se traba aunque el teléfono esté ocupado cargando el mapa.
 import imgSide from './assets/drive-34.webp';
 import imgFall from './assets/drive-fall.webp';
 import imgTop from './assets/drive-top.webp';
@@ -9,27 +11,18 @@ const SFX_KEY = 'ktracho:sfx';
 export const sfxOn = () => { try { return localStorage.getItem(SFX_KEY) !== 'off'; } catch { return true; } };
 const setSfx = (on) => { try { localStorage.setItem(SFX_KEY, on ? 'on' : 'off'); } catch { /* sin almacenamiento */ } };
 
-// El audio del teléfono solo arranca dentro de un toque: se crea en el toque del menú y se pasa aquí
-export function makeAudio() {
-  try {
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!Ctx) return null;
-    const ctx = new Ctx();
-    ctx.resume?.();
-    return ctx;
-  } catch { return null; }
-}
-
 // Las imágenes se bajan y se preparan antes de empezar (así no aparecen a medias)
 export function preload() {
   return Promise.all([imgSide, imgFall, imgTop].map((src) => {
     const img = new Image();
+    img.decoding = 'async';
     img.src = src;
     return img.decode().then(() => img);
   }));
 }
 
 // ---- Sonidos hechos en el momento (sin archivos): aire, golpe suave y un acelerón corto ----
+// Cada uno se programa con el reloj del audio (`at` segundos desde ahora): suenan a tiempo aunque el teléfono esté ocupado
 function sounds(ctx) {
   if (!ctx) return { whoosh() {}, thump() {}, rev() {}, mute() {}, close() {} };
   const master = ctx.createGain();
@@ -49,8 +42,8 @@ function sounds(ctx) {
     g.gain.exponentialRampToValueAtTime(0.0001, t + attack + release);
   };
   return {
-    whoosh(dur = 1.1) {
-      const t = ctx.currentTime;
+    whoosh(at, dur = 1.1) {
+      const t = ctx.currentTime + at;
       const src = noise(dur);
       const bp = ctx.createBiquadFilter();
       bp.type = 'bandpass';
@@ -64,8 +57,8 @@ function sounds(ctx) {
       src.start(t);
       src.stop(t + dur);
     },
-    thump() {
-      const t = ctx.currentTime;
+    thump(at) {
+      const t = ctx.currentTime + at;
       const o = ctx.createOscillator();
       o.type = 'sine';
       o.frequency.setValueAtTime(95, t);
@@ -86,8 +79,8 @@ function sounds(ctx) {
       n.start(t);
       n.stop(t + 0.3);
     },
-    rev() {
-      const t = ctx.currentTime;
+    rev(at) {
+      const t = ctx.currentTime + at;
       const lp = ctx.createBiquadFilter();
       lp.type = 'lowpass';
       lp.frequency.setValueAtTime(500, t);
@@ -111,7 +104,7 @@ function sounds(ctx) {
       }
     },
     mute(off) { master.gain.setTargetAtTime(off ? 0 : 0.9, ctx.currentTime, 0.03); },
-    close() { setTimeout(() => ctx.close?.().catch?.(() => {}), 1200); },
+    close() { setTimeout(() => ctx.close?.().catch?.(() => {}), 1500); },
   };
 }
 
@@ -146,13 +139,33 @@ const waitFor = (fn, ms) => new Promise((res) => {
 const el = (tag, cls, parent, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; parent?.appendChild(e); return e; };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// Humo de las llantas: partículas blancas que crecen y se desvanecen (en un canvas, liviano para el celular)
-function smoke(canvas, points, angleDeg) {
-  const ctx = canvas.getContext('2d');
+// Una bocanada de humo dibujada una sola vez; después cada partícula es solo copiar esa imagen (rápido en el celular)
+function puffSprite() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d');
+  const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  // Blanco con un borde gris: así se ve también sobre las calles claras del mapa
+  grad.addColorStop(0, 'rgba(255,255,255,0.95)');
+  grad.addColorStop(0.55, 'rgba(232,236,234,0.7)');
+  grad.addColorStop(0.85, 'rgba(170,178,174,0.28)');
+  grad.addColorStop(1, 'rgba(170,178,174,0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 64, 64);
+  return c;
+}
+
+// Humo de las llantas en un canvas chico alrededor del carro (no de toda la pantalla)
+function smoke(canvas, center, points, angleDeg, startAt) {
+  const SIZE = 360;
   const dpr = Math.min(2, window.devicePixelRatio || 1);
-  canvas.width = innerWidth * dpr;
-  canvas.height = innerHeight * dpr;
+  canvas.style.left = `${center.x - SIZE / 2}px`;
+  canvas.style.top = `${center.y - SIZE / 2}px`;
+  canvas.style.width = canvas.style.height = `${SIZE}px`;
+  canvas.width = canvas.height = SIZE * dpr;
+  const ctx = canvas.getContext('2d');
   ctx.scale(dpr, dpr);
+  const puff = puffSprite();
   const rad = (angleDeg * Math.PI) / 180;
   const parts = [];
   for (const p of points) {
@@ -160,44 +173,40 @@ function smoke(canvas, points, angleDeg) {
       // Hacia afuera del carro, con un poco de azar
       const out = Math.atan2(p.dy, p.dx) + rad + (Math.random() - 0.5) * 1.4;
       const speed = 22 + Math.random() * 40;
-      parts.push({ x: p.x, y: p.y, vx: Math.cos(out) * speed, vy: Math.sin(out) * speed - 6, r0: 5 + Math.random() * 6, r1: 24 + Math.random() * 20, delay: Math.random() * 120, life: 700 + Math.random() * 400 });
+      parts.push({
+        x: p.x - center.x + SIZE / 2, y: p.y - center.y + SIZE / 2,
+        vx: Math.cos(out) * speed, vy: Math.sin(out) * speed - 6,
+        r0: 5 + Math.random() * 6, r1: 24 + Math.random() * 20, delay: Math.random() * 120, life: 700 + Math.random() * 400,
+      });
     }
   }
-  const t0 = performance.now();
-  return new Promise((done) => {
-    const frame = (now) => {
-      const t = now - t0;
-      ctx.clearRect(0, 0, innerWidth, innerHeight);
-      let alive = false;
-      for (const s of parts) {
-        const k = (t - s.delay) / s.life;
-        if (k < 0) { alive = true; continue; }
-        if (k >= 1) continue;
-        alive = true;
-        const ease = 1 - (1 - k) ** 2;
-        const x = s.x + s.vx * ease;
-        const y = s.y + s.vy * ease;
-        const r = s.r0 + (s.r1 - s.r0) * ease;
-        const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-        // Blanco con un borde gris: así se ve también sobre las calles claras del mapa
-        const a = 0.85 * (1 - k);
-        g.addColorStop(0, `rgba(255,255,255,${a})`);
-        g.addColorStop(0.55, `rgba(232,236,234,${a * 0.75})`);
-        g.addColorStop(0.85, `rgba(170,178,174,${a * 0.3})`);
-        g.addColorStop(1, 'rgba(170,178,174,0)');
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      if (alive) requestAnimationFrame(frame); else done();
-    };
-    requestAnimationFrame(frame);
-  });
+  let stop = false;
+  const frame = (now) => {
+    if (stop) return;
+    const t = now - startAt;
+    if (t < 0) { requestAnimationFrame(frame); return; }
+    ctx.clearRect(0, 0, SIZE, SIZE);
+    let alive = false;
+    for (const s of parts) {
+      const k = (t - s.delay) / s.life;
+      if (k < 0) { alive = true; continue; }
+      if (k >= 1) continue;
+      alive = true;
+      const ease = 1 - (1 - k) ** 2;
+      const r = s.r0 + (s.r1 - s.r0) * ease;
+      ctx.globalAlpha = 0.9 * (1 - k);
+      ctx.drawImage(puff, s.x + s.vx * ease - r, s.y + s.vy * ease - r, r * 2, r * 2);
+    }
+    if (alive) requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+  return () => { stop = true; };
 }
 
 // La caja del carro mide BOX × BOX px; cada imagen cabe dentro (contain). La vista de arriba ocupa todo el alto.
 const BOX = 240;
+const pos = (p, s, r = 0, sx = 1, sy = 1) => `translate3d(${p.x}px, ${p.y}px, 0) translate(-50%, -50%) rotate(${r}deg) scale(${s * sx}, ${s * sy})`;
+const lerp = (a, b, k) => a + (b - a) * k;
 
 /**
  * Corre la animación completa (unos 3,3 s). Resuelve al terminar (o si la persona toca para saltarla).
@@ -209,6 +218,7 @@ export async function playDriveIn({ audio, info = {} }) {
   const anims = [];
   let marker = null;
   let finished = false;
+  let stopSmoke = () => {};
   const root = el('div', 'drive-in', document.body);
   root.setAttribute('role', 'status');
   const scrim = el('div', 'drive-in-scrim', root);
@@ -226,13 +236,16 @@ export async function playDriveIn({ audio, info = {} }) {
   muteBtn.addEventListener('click', (e) => { e.stopPropagation(); setSfx(!sfxOn()); sfx.mute(!sfxOn()); paintMute(); });
 
   const car = el('div', 'drive-in-car', root);
-  const layers = [side, fall, top].map((img, i) => { const c = img.cloneNode(); c.alt = ''; c.className = `drive-in-img l${i}`; car.appendChild(c); return c; });
+  // Las mismas imágenes ya preparadas (sin copiarlas: así no se vuelven a decodificar)
+  const layers = [side, fall, top].map((img, i) => { img.alt = ''; img.className = `drive-in-img l${i}`; car.appendChild(img); return img; });
   const streaks = el('div', 'drive-in-streaks', car, '<i></i><i></i><i></i><i></i><i></i>');
+  const rings = [el('div', 'drive-in-ring', root), el('div', 'drive-in-ring', root)];
 
-  const play = (node, frames, opts) => { const a = node.animate(frames, { fill: 'forwards', ...opts }); anims.push(a); return a; };
+  const play = (node, frames, opts) => { const a = node.animate(frames, { fill: 'both', ...opts }); anims.push(a); return a; };
   const finish = () => {
     if (finished) return;
     finished = true;
+    stopSmoke();
     anims.forEach((a) => { try { a.cancel(); } catch { /* ya terminó */ } });
     marker?.classList.remove('drive-in-hide');
     root.remove();
@@ -244,75 +257,110 @@ export async function playDriveIn({ audio, info = {} }) {
   const guard = setTimeout(finish, 4500);
 
   try {
-    // 1) El aviso con el carro adentro
+    // 1) El aviso con el carro adentro (mientras tanto se busca el carro del mapa)
     const h = hero.getBoundingClientRect();
     const start = { x: h.left + h.width / 2, y: h.top + h.height / 2 };
-    const pos = (p, s, r = 0) => `translate(${p.x}px, ${p.y}px) translate(-50%, -50%) rotate(${r}deg) scale(${s})`;
     const s0 = (h.width * 0.95) / BOX;
     car.style.transform = pos(start, s0);
     play(card, [{ opacity: 0, transform: 'translateY(14px) scale(.92)' }, { opacity: 1, transform: 'none' }], { duration: 320, easing: 'cubic-bezier(.2,.8,.2,1)' });
     play(car, [{ opacity: 0, transform: pos({ ...start, y: start.y + 14 }, s0 * 0.9) }, { opacity: 1, transform: pos(start, s0) }], { duration: 380, easing: 'cubic-bezier(.2,.8,.2,1)' });
     play(scrim, [{ opacity: 0 }, { opacity: 1 }], { duration: 300 });
-    await sleep(380);
+    play(car, [{ transform: pos(start, s0) }, { transform: pos({ ...start, y: start.y - 5 }, s0 * 1.01) }, { transform: pos(start, s0) }], { duration: 620, delay: 380, easing: 'ease-in-out', fill: 'none', composite: 'replace' });
+    const t0 = performance.now();
+    marker = await waitFor(findMarker, 1700);
     if (finished) return;
-    // Flota un poco mientras se lee el aviso
-    play(car, [{ transform: pos(start, s0) }, { transform: pos({ ...start, y: start.y - 5 }, s0 * 1.01) }, { transform: pos(start, s0) }], { duration: 620, easing: 'ease-in-out' });
-    await sleep(620);
-    if (finished) return;
+    const target = marker ? markerSpot(marker) : mapCenter();
+    // Lo que falte para completar el segundo del aviso
+    const wait0 = Math.max(0, 1000 - (performance.now() - t0));
 
-    // 2) Sale del aviso hacia la cámara y empieza a caer
-    marker = await waitFor(findMarker, 1200);
-    let target = marker ? markerSpot(marker) : mapCenter();
+    // ---- Desde aquí todo se programa de una vez (cada parte con su retraso) ----
+    const D = wait0; // cuándo empieza a salir del aviso
+    const LIFT = 260;
+    const FALL = 880;
+    const IMPACT = D + LIFT + FALL; // toca el mapa
+    const SQUASH = 380;
+    const SHRINK_AT = IMPACT + 540;
+    const SHRINK = 620;
+    const END = SHRINK_AT + SHRINK;
+    const startAt = performance.now();
+    const ms = (x) => x / 1000;
     marker?.classList.add('drive-in-hide');
-    sfx.whoosh(1.15);
-    play(card, [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(.9)' }], { duration: 300, easing: 'ease-in' });
-    play(scrim, [{ opacity: 1 }, { opacity: 0 }], { duration: 700, easing: 'ease-out' });
+
+    // Sonidos con el reloj del audio
+    sfx.whoosh(ms(D), 1.15);
+    sfx.thump(ms(IMPACT));
+    sfx.rev(ms(IMPACT + 260));
+
+    // El aviso se va y el mapa queda a la vista
+    play(card, [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(.9)' }], { duration: 300, delay: D, easing: 'ease-in', fill: 'forwards' });
+    play(scrim, [{ opacity: 1 }, { opacity: 0 }], { duration: 700, delay: D, easing: 'ease-out', fill: 'forwards' });
+
+    // Salida + caída en un solo movimiento: sube hacia la cámara (frena arriba) y cae con gravedad en curva hasta tu ubicación,
+    // achicándose y girando hacia donde apunta el carro del mapa. Se calculan muchos puntos para que la curva sea suave.
     const lift = { x: start.x, y: start.y - 36 };
     const s1 = s0 * 1.12;
-    play(car, [{ transform: pos(start, s0) }, { transform: pos(lift, s1, -4) }], { duration: 260, easing: 'cubic-bezier(.3,.7,.4,1)' });
-    await sleep(260);
-    if (finished) return;
-
-    // 3) Caída con gravedad: se aleja de la cámara (se achica), cambia a la vista de arriba y gira hacia donde apunta el carro del mapa
     const landScale = 0.58;
-    const FALL = 880;
-    const mid = { x: lift.x + (target.x - lift.x) * 0.55, y: lift.y + (target.y - lift.y) * 0.5 };
-    play(car, [
-      { transform: pos(lift, s1, -4), filter: 'blur(0px)', offset: 0 },
-      { transform: pos(mid, (s1 + landScale) / 2, target.angle * 0.4), filter: 'blur(1.5px)', offset: 0.55 },
-      { transform: pos(target, landScale, target.angle), filter: 'blur(0px)', offset: 1 },
-    ], { duration: FALL, easing: 'cubic-bezier(.55,0,.85,.45)' });
-    play(layers[0], [{ opacity: 1 }, { opacity: 0 }], { duration: 260, delay: 60 });
-    // (cada lista termina en offset 1: si no, al final vuelve a la opacidad del CSS)
-    play(layers[1], [{ opacity: 0, offset: 0 }, { opacity: 1, offset: 0.25 }, { opacity: 1, offset: 0.6 }, { opacity: 0, offset: 0.9 }, { opacity: 0, offset: 1 }], { duration: FALL });
-    play(layers[2], [{ opacity: 0, offset: 0 }, { opacity: 0, offset: 0.5 }, { opacity: 1, offset: 0.85 }, { opacity: 1, offset: 1 }], { duration: FALL });
+    // La curva de caída: un punto de control a un lado le da un arco natural
+    const ctrl = { x: lerp(lift.x, target.x, 0.15) + (target.x < lift.x ? 40 : -40), y: lerp(lift.y, target.y, 0.2) };
+    const total = LIFT + FALL;
+    const frames = [];
+    const N = 24;
+    for (let i = 0; i <= N; i++) {
+      const tt = (i / N) * total;
+      let p; let s; let r;
+      if (tt <= LIFT) {
+        const k = tt / LIFT;
+        const e = 1 - (1 - k) ** 2; // sube y frena
+        p = { x: lerp(start.x, lift.x, e), y: lerp(start.y, lift.y, e) };
+        s = lerp(s0, s1, e);
+        r = -4 * e;
+      } else {
+        const k = (tt - LIFT) / FALL;
+        const e = k * k * (1.35 - 0.35 * k); // gravedad: arranca lento y llega rápido
+        const u = 1 - e;
+        p = { x: u * u * lift.x + 2 * u * e * ctrl.x + e * e * target.x, y: u * u * lift.y + 2 * u * e * ctrl.y + e * e * target.y };
+        s = lerp(s1, landScale, e);
+        const turn = Math.min(1, Math.max(0, (k - 0.45) / 0.5));
+        r = lerp(-4, target.angle, turn * turn * (3 - 2 * turn));
+      }
+      frames.push({ transform: pos(p, s, r), offset: i / N });
+    }
+    // (fill 'forwards': mientras espera su turno no tapa el flotar del aviso)
+    play(car, frames, { duration: total, delay: D, easing: 'linear', fill: 'forwards' });
+    // Las vistas del carro cambian solas mientras cae (cada lista termina en 1 para que no vuelva a la opacidad del CSS)
+    const F0 = D + LIFT;
+    play(layers[0], [{ opacity: 1 }, { opacity: 0 }], { duration: 280, delay: F0 + 40, fill: 'both' });
+    play(layers[1], [{ opacity: 0, offset: 0 }, { opacity: 1, offset: 0.28 }, { opacity: 1, offset: 0.6 }, { opacity: 0, offset: 0.88 }, { opacity: 0, offset: 1 }], { duration: FALL, delay: F0, fill: 'both' });
+    play(layers[2], [{ opacity: 0, offset: 0 }, { opacity: 0, offset: 0.5 }, { opacity: 1, offset: 0.85 }, { opacity: 1, offset: 1 }], { duration: FALL, delay: F0, fill: 'both' });
     // Estelas de velocidad, apuntando hacia atrás del movimiento
     const dir = (Math.atan2(target.y - lift.y, target.x - lift.x) * 180) / Math.PI;
     streaks.style.transform = `translate(-50%, -50%) rotate(${dir - 90 - target.angle * 0.5}deg)`;
-    play(streaks, [{ opacity: 0 }, { opacity: 0.9, offset: 0.3 }, { opacity: 0.9, offset: 0.7 }, { opacity: 0 }], { duration: FALL });
+    play(streaks, [{ opacity: 0 }, { opacity: 0.9, offset: 0.3 }, { opacity: 0.9, offset: 0.7 }, { opacity: 0 }], { duration: FALL, delay: F0, fill: 'both' });
+    // La sombra se forma en el suelo mientras se acerca
     shadow.style.left = `${target.x}px`;
     shadow.style.top = `${target.y}px`;
-    play(shadow, [{ opacity: 0, transform: 'translate(-50%, -50%) scale(2.4)' }, { opacity: 0.55, transform: `translate(-50%, -50%) rotate(${target.angle}deg) scale(1)` }], { duration: FALL, easing: 'cubic-bezier(.55,0,.85,.45)' });
-    await sleep(FALL);
-    if (finished) return;
+    play(shadow, [
+      { opacity: 0, transform: `translate(-50%, -50%) rotate(${target.angle}deg) scale(2.4)` },
+      { opacity: 0.55, transform: `translate(-50%, -50%) rotate(${target.angle}deg) scale(1)`, offset: 0.62 },
+      { opacity: 0.55, transform: `translate(-50%, -50%) rotate(${target.angle}deg) scale(1)`, offset: 0.78 },
+      { opacity: 0, transform: `translate(-50%, -50%) rotate(${target.angle}deg) scale(.35)` },
+    ], { duration: END - F0, delay: F0, easing: 'linear', fill: 'both' });
 
-    // 4) Aterriza: golpe suave, la suspensión rebota, humo en las llantas y una onda verde
-    sfx.thump();
-    const sq = (sx, sy) => `${pos(target, landScale, target.angle)} scale(${sx}, ${sy})`;
+    // Aterriza: la suspensión rebota (aplastarse y recuperarse) y dos ondas verdes
+    const at = (sx, sy) => pos(target, landScale, target.angle, sx, sy);
     play(car, [
-      { transform: sq(1, 1) },
-      { transform: sq(1.06, 0.9), offset: 0.25 },
-      { transform: sq(0.97, 1.04), offset: 0.55 },
-      { transform: sq(1.01, 0.99), offset: 0.8 },
-      { transform: sq(1, 1) },
-    ], { duration: 380, easing: 'ease-out' });
-    for (const [delay, size] of [[0, 3.2], [140, 2.4]]) {
-      const ring = el('div', 'drive-in-ring', root);
+      { transform: at(1, 1) },
+      { transform: at(1.06, 0.9), offset: 0.22 },
+      { transform: at(0.97, 1.04), offset: 0.5 },
+      { transform: at(1.01, 0.99), offset: 0.78 },
+      { transform: at(1, 1) },
+    ], { duration: SQUASH, delay: IMPACT, easing: 'ease-out', fill: 'forwards' });
+    rings.forEach((ring, i) => {
       ring.style.left = `${target.x}px`;
       ring.style.top = `${target.y}px`;
-      play(ring, [{ opacity: 0.95, transform: 'translate(-50%, -50%) scale(.25)' }, { opacity: 0, transform: `translate(-50%, -50%) scale(${size})` }], { duration: 700, delay, easing: 'cubic-bezier(.2,.7,.3,1)' });
-    }
-    // Las 4 llantas, según hacia dónde apunta el carro (la vista de arriba llena el alto de la caja)
+      play(ring, [{ opacity: 0.95, transform: 'translate(-50%, -50%) scale(.25)' }, { opacity: 0, transform: `translate(-50%, -50%) scale(${i ? 2.4 : 3.2})` }], { duration: 700, delay: IMPACT + i * 140, easing: 'cubic-bezier(.2,.7,.3,1)', fill: 'forwards' });
+    });
+    // Humo de las 4 llantas, según hacia dónde apunta el carro (la vista de arriba llena el alto de la caja)
     const topAspect = top.naturalWidth / top.naturalHeight || 0.46;
     const half = { w: BOX * landScale * topAspect * 0.42, h: BOX * landScale * 0.31 };
     const rad = (target.angle * Math.PI) / 180;
@@ -321,23 +369,15 @@ export async function playDriveIn({ audio, info = {} }) {
       const dy = sy * half.h;
       return { x: target.x + dx * Math.cos(rad) - dy * Math.sin(rad), y: target.y + dx * Math.sin(rad) + dy * Math.cos(rad), dx, dy };
     });
-    smoke(canvas, wheels, target.angle);
-    await sleep(420);
-    if (finished) return;
+    stopSmoke = smoke(canvas, target, wheels, target.angle, startAt + IMPACT);
 
-    // 5) Acelerón corto y se encoge hasta ser el carro del mapa, justo en tu ubicación
-    sfx.rev();
-    const now = marker && document.contains(marker) ? markerSpot(marker) : target;
+    // Se encoge hasta ser el carro del mapa, justo en tu ubicación, y al final aparece el carro real
     const markerImg = marker?.querySelector('img');
     const endH = markerImg ? markerImg.getBoundingClientRect().height || 48 : 48;
     const endScale = endH / BOX;
-    play(car, [{ transform: pos(target, landScale, target.angle) }, { transform: pos(now, endScale, now.angle) }], { duration: 620, delay: 120, easing: 'cubic-bezier(.6,0,.3,1)' });
-    play(shadow, [{ opacity: 0.55 }, { opacity: 0 }], { duration: 500, delay: 160 });
-    await sleep(740);
-    if (finished) return;
-    marker?.classList.remove('drive-in-hide');
-    play(car, [{ opacity: 1 }, { opacity: 0 }], { duration: 200 });
-    await sleep(220);
+    play(car, [{ transform: at(1, 1), opacity: 1 }, { transform: pos(target, endScale, target.angle), opacity: 1, offset: 0.85 }, { transform: pos(target, endScale, target.angle), opacity: 0 }], { duration: SHRINK + 160, delay: SHRINK_AT, easing: 'cubic-bezier(.6,0,.3,1)', fill: 'forwards' });
+    setTimeout(() => marker?.classList.remove('drive-in-hide'), END - 40);
+    await sleep(END + 180);
   } finally {
     clearTimeout(guard);
     finish();

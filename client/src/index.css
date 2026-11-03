@@ -579,13 +579,13 @@ header .bell-count { top: -3px; right: -3px; box-shadow: 0 0 0 2px var(--card); 
 /* Animación al activar el modo conductor (driveIn.js): el carro sale del aviso y aterriza en el mapa */
 .drive-in { position: fixed; inset: 0; z-index: 5000; overflow: hidden; }
 .drive-in-scrim { position: absolute; inset: 0; background: rgba(4, 10, 7, .55); }
-.drive-in-smoke { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
+.drive-in-smoke { position: absolute; pointer-events: none; z-index: 3; }
 .drive-in-cardwrap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px; }
 .drive-in-card { animation: none; overflow: visible; }
 .drive-in-hero { width: 100%; height: 150px; }
 button.drive-in-mute { position: absolute; top: 8px; right: 8px; width: auto; min-height: 0; padding: 6px 8px; border: 0; background: transparent; font-size: 18px; line-height: 1; }
-.drive-in-car { position: absolute; left: 0; top: 0; width: 240px; height: 240px; z-index: 2; will-change: transform, opacity; pointer-events: none; }
-.drive-in-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.drive-in-car { position: absolute; left: 0; top: 0; width: 240px; height: 240px; z-index: 2; will-change: transform, opacity; pointer-events: none; backface-visibility: hidden; }
+.drive-in-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; will-change: opacity; }
 .drive-in-img.l1, .drive-in-img.l2 { opacity: 0; }
 .drive-in-shadow { position: absolute; width: 96px; height: 170px; border-radius: 50%; background: radial-gradient(closest-side, rgba(0, 0, 0, .5), rgba(0, 0, 0, 0)); opacity: 0; pointer-events: none; }
 .drive-in-ring { position: absolute; width: 96px; height: 96px; border-radius: 50%; border: 3px solid #3ccf68; box-shadow: 0 0 18px #3ccf68, inset 0 0 14px rgba(60, 207, 104, .5); opacity: 0; pointer-events: none; z-index: 1; }
