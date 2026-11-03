@@ -294,6 +294,13 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
   const routeLine = active ? ride.route : preview?.coords;
   const fitPoints = routeLine?.length > 1 ? routeLine : from && dest && !active ? [[from.lat, from.lng], [dest.lat, dest.lng]] : [];
   const ended = ride && !active;
+  // Lo que ya eligió dentro de «Más opciones», para que se vea aunque esté cerrado
+  const extrasSummary = [
+    stops.length && `${stops.length} parada${stops.length === 1 ? '' : 's'}`,
+    note.trim() && 'referencia',
+    forOther && 'para otra persona',
+    when && 'programado',
+  ].filter(Boolean).join(' · ');
 
   return (
     <div className="screen">
@@ -350,35 +357,6 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
               <button className="link left" onClick={saveFav}>⭐ Guardar este lugar</button>
             )}
 
-            {dest && (
-              <div className="trip-extras">
-                {stops.map((p, i) => (
-                  <div key={i} className="stop-row">
-                    <span className="stop-num">{i + 1}</span>
-                    <span className="grow">{p.text || 'Parada en el mapa'}</span>
-                    <button className="link" aria-label={`Quitar la parada ${i + 1}`} onClick={() => setStops(stops.filter((_, j) => j !== i))}>✕</button>
-                  </div>
-                ))}
-                {addingStop && <AddressSearch icon={<span className="stop-num">{stops.length + 1}</span>} token={token} near={from} placeholder="¿Dónde es la parada?" value="" onPick={(p) => { setStops([...stops, { ...p, text: p.text || 'Parada' }]); setAddingStop(false); priceEdited.current = false; }} />}
-                {stops.length < 2 && !addingStop && <button className="link left" onClick={() => setAddingStop(true)}>+ Agregar parada</button>}
-                <input aria-label="Punto de referencia para el conductor" placeholder="Punto de referencia (opcional): frente a la pulpería, portón verde…" maxLength={160} value={note} onChange={(e) => setNote(e.target.value)} />
-                <label className="check">
-                  <input type="checkbox" checked={forOther} onChange={(e) => setForOther(e.target.checked)} />
-                  <span>El viaje es <b>para otra persona</b></span>
-                </label>
-                {forOther && (
-                  <div className="row wrap">
-                    <input className="grow" aria-label="Nombre de quien viaja" placeholder="Nombre de quien viaja" maxLength={80} value={rider.name} onChange={(e) => setRider({ ...rider, name: e.target.value })} />
-                    <input className="grow" aria-label="Teléfono de quien viaja" placeholder="Su teléfono (8 dígitos)" inputMode="tel" maxLength={15} value={rider.phone} onChange={(e) => setRider({ ...rider, phone: e.target.value })} />
-                  </div>
-                )}
-                <div className="seg when-seg" role="radiogroup" aria-label="¿Cuándo?">
-                  <button type="button" role="radio" aria-checked={!when} className={!when ? 'on' : ''} onClick={() => setWhen('')}>Ahora</button>
-                  <button type="button" role="radio" aria-checked={!!when} className={when ? 'on' : ''} onClick={() => setWhen(when || minWhen)}>🗓 Programar</button>
-                </div>
-                {when && <input type="datetime-local" aria-label="Fecha y hora del viaje" min={minWhen} max={maxWhen} value={when} onChange={(e) => setWhen(e.target.value)} />}
-              </div>
-            )}
             {info && <div className="hint ok" role="status">{info}</div>}
             {scheduled.length > 0 && !dest && (
               <div className="req scheduled-list">
@@ -414,9 +392,42 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
                     <span><b>🚺 Solo conductoras</b> · {near.filter((d) => d.woman).length} cerca. Solo te ofrecerán viaje conductoras confirmadas por el equipo.</span>
                   </label>
                 )}
-                <PriceStepper value={price} label="Tu oferta en lempiras" onChange={(v) => { priceEdited.current = true; setPrice(v); }} />
-                {error && <div className="error">{error}</div>}
-                <button className="primary" disabled={!price} onClick={request}>{when ? 'Programar viaje por' : 'Pedir viaje por'} {lempiras(price || 0)}</button>
+                <details className="more-opts">
+                  <summary>⚙ Más opciones{extrasSummary && <span className="muted"> · {extrasSummary}</span>}</summary>
+                  <div className="trip-extras">
+                    {stops.map((p, i) => (
+                      <div key={i} className="stop-row">
+                        <span className="stop-num">{i + 1}</span>
+                        <span className="grow">{p.text || 'Parada en el mapa'}</span>
+                        <button className="link" aria-label={`Quitar la parada ${i + 1}`} onClick={() => setStops(stops.filter((_, j) => j !== i))}>✕</button>
+                      </div>
+                    ))}
+                    {addingStop && <AddressSearch icon={<span className="stop-num">{stops.length + 1}</span>} token={token} near={from} placeholder="¿Dónde es la parada?" value="" onPick={(p) => { setStops([...stops, { ...p, text: p.text || 'Parada' }]); setAddingStop(false); priceEdited.current = false; }} />}
+                    {stops.length < 2 && !addingStop && <button className="link left" onClick={() => setAddingStop(true)}>+ Agregar parada</button>}
+                    <input aria-label="Punto de referencia para el conductor" placeholder="Punto de referencia (opcional): frente a la pulpería, portón verde…" maxLength={160} value={note} onChange={(e) => setNote(e.target.value)} />
+                    <label className="check">
+                      <input type="checkbox" checked={forOther} onChange={(e) => setForOther(e.target.checked)} />
+                      <span>El viaje es <b>para otra persona</b></span>
+                    </label>
+                    {forOther && (
+                      <div className="row wrap">
+                        <input className="grow" aria-label="Nombre de quien viaja" placeholder="Nombre de quien viaja" maxLength={80} value={rider.name} onChange={(e) => setRider({ ...rider, name: e.target.value })} />
+                        <input className="grow" aria-label="Teléfono de quien viaja" placeholder="Su teléfono (8 dígitos)" inputMode="tel" maxLength={15} value={rider.phone} onChange={(e) => setRider({ ...rider, phone: e.target.value })} />
+                      </div>
+                    )}
+                    <div className="seg when-seg" role="radiogroup" aria-label="¿Cuándo?">
+                      <button type="button" role="radio" aria-checked={!when} className={!when ? 'on' : ''} onClick={() => setWhen('')}>Ahora</button>
+                      <button type="button" role="radio" aria-checked={!!when} className={when ? 'on' : ''} onClick={() => setWhen(when || minWhen)}>🗓 Programar</button>
+                    </div>
+                    {when && <input type="datetime-local" aria-label="Fecha y hora del viaje" min={minWhen} max={maxWhen} value={when} onChange={(e) => setWhen(e.target.value)} />}
+                  </div>
+                </details>
+                {/* Precio y botón fijos abajo del panel: se ven sin bajar */}
+                <div className="ask-bar">
+                  <PriceStepper value={price} label="Tu oferta en lempiras" onChange={(v) => { priceEdited.current = true; setPrice(v); }} />
+                  {error && <div className="error">{error}</div>}
+                  <button className="primary" disabled={!price} onClick={request}>{when ? 'Programar viaje por' : 'Pedir viaje por'} {lempiras(price || 0)}</button>
+                </div>
               </>
             )}
           </>

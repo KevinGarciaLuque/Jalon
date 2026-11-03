@@ -3,6 +3,16 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-03-pedir-a-la-vista',
+    date: '2026-11-03',
+    title: 'El botón para pedir, siempre a la vista',
+    for: ['passenger'],
+    items: [
+      'Al elegir tu destino, el precio y el botón «Pedir viaje» quedan fijos abajo: ya no tienes que bajar para encontrarlos.',
+      'Parada, punto de referencia, viaje para otra persona y programar están ahora en «Más opciones».',
+    ],
+  },
+  {
     id: '2026-11-02-solicitudes-al-terminar',
     date: '2026-11-02',
     title: 'Solicitudes apenas quedas libre',
