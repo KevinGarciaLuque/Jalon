@@ -262,6 +262,23 @@ app.post('/api/admin/users/:id/status', staffOnly('users.manage'), async (req, r
   res.json({ ok: true });
 });
 
+// Rechazar la solicitud de un conductor (solo superadmin): queda bloqueado, se le avisa el motivo y se anota en el registro.
+// Si fue un error, se desbloquea desde Usuarios → Bloqueados.
+app.post('/api/admin/users/:id/reject', staffOnly('staff.manage'), async (req, res) => {
+  const note = clean(req.body?.note);
+  if (!note) return res.status(400).json({ error: 'Escribe el motivo del rechazo' });
+  const t = await actOn(req, res);
+  if (!t) return;
+  if (t.role !== 'driver' || t.status !== 'pending') return res.status(409).json({ error: 'Esa cuenta ya no es una solicitud por aprobar' });
+  await pool.query("UPDATE users SET status = 'blocked' WHERE id = ?", [t.id]);
+  push(t.id, { title: 'Tu solicitud no fue aprobada', body: `Motivo: ${note}`, tag: 'account', url: '/' }, { always: true });
+  io.to(room(t.id)).emit('account:status', { status: 'blocked' });
+  await kickUser(t.id);
+  await pool.query('DELETE FROM passkeys WHERE user_id = ?', [t.id]);
+  await audit(req.staff, 'user.reject', { target: t.id, details: { note } });
+  res.json({ ok: true });
+});
+
 // --- Gestión del personal (solo superadmin) ---
 app.post('/api/admin/users/:id/reset-2fa', staffOnly('staff.manage'), async (req, res) => {
   const t = await actOn(req, res);

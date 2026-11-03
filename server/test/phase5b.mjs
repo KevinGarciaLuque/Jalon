@@ -108,6 +108,17 @@ check('el superadmin puede bloquear a un administrador', (await http('POST', `ad
 check('un administrador bloqueado pierde el acceso al panel', (await http('GET', 'admin/stats', AD)).status === 403);
 check('un administrador bloqueado no puede iniciar sesión', (await http('POST', 'login', null, { phone: adminPhone, password: 'admin-clave-1' })).status === 403);
 
+// ---------------- Rechazar la solicitud de un conductor (solo superadmin) ----------------
+const rej = await registerUser({ name: 'P5B Rechazado', phone: phone('71'), password: 'secreto1', role: 'driver', vehicle: 'Fit', plate: 'HEE0003' });
+check('un administrador no puede rechazar solicitudes', (await http('POST', `admin/users/${rej.user.id}/reject`, SU, { note: 'No' })).status === 403);
+check('rechazar pide el motivo', (await http('POST', `admin/users/${rej.user.id}/reject`, SA, { note: '  ' })).status === 400);
+check('el superadmin rechaza la solicitud', (await http('POST', `admin/users/${rej.user.id}/reject`, SA, { note: 'Documentos falsos' })).ok === true);
+check('el conductor rechazado sale de las solicitudes y queda bloqueado', (await pool.query('SELECT status FROM users WHERE id = ?', [rej.user.id]))[0][0].status === 'blocked'
+  && !(await http('GET', 'admin/users?filter=pending', SA)).users?.some((u) => u.id === rej.user.id));
+check('el conductor rechazado ya no puede usar la app', (await http('GET', 'rides/mine', rej.token)).status === 401);
+check('no se rechaza una cuenta que ya no está por aprobar', (await http('POST', `admin/users/${rej.user.id}/reject`, SA, { note: 'Otra vez' })).status === 409);
+check('el motivo queda en su ficha', (await http('GET', `admin/users/${rej.user.id}`, SA)).history?.some((h) => h.action === 'user.reject' && JSON.stringify(h.details || '').includes('Documentos falsos')));
+
 // ---------------- Eliminar (anonimizar) una cuenta ----------------
 const delFiles = fs.readdirSync(path.join(process.cwd(), 'uploads')).filter((f) => f.startsWith(`${drv.user.id}-`));
 check('el conductor tiene documentos guardados antes de borrar', delFiles.length === 3);

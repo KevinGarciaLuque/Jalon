@@ -191,6 +191,10 @@ try {
   await admin.evaluate(() => window.dispatchEvent(new CustomEvent('ktracho:go', { detail: 'requests' })));
   check('el admin ve la solicitud del conductor en el panel de pendientes', await see(admin, 'Solicitudes de conductores por aprobar', 20000));
   await shot(admin, '0b2-admin-pendientes');
+  check('el superadmin puede rechazar o eliminar la solicitud', await admin.evaluate(() => {
+    const labels = [...document.querySelectorAll('.pending .ucard button')].map((b) => b.textContent.trim());
+    return labels.includes('Rechazar') && labels.includes('Eliminar');
+  }));
   await click(admin, 'Revisar documentos', 20000);
   check('admin ve las imágenes de los documentos', await admin.waitForSelector('.docimg', { timeout: 15000 }).then(() => true, () => false));
   await shot(admin, '0c-admin-documentos');

@@ -3,6 +3,16 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-03-rechazar-solicitudes',
+    date: '2026-11-03',
+    title: 'Rechazar o eliminar solicitudes de conductores',
+    for: ['staff'],
+    items: [
+      'En Solicitudes, el superadmin puede rechazar a un conductor con un motivo: queda bloqueado, le llega el aviso y el motivo queda en su ficha. Si fue un error, se desbloquea desde Usuarios → Bloqueados.',
+      'También puede eliminar la solicitud (por ejemplo una cuenta falsa o repetida): se borran sus datos y documentos, y su teléfono queda libre.',
+    ],
+  },
+  {
     id: '2026-11-03-mapa-al-cambiar-de-modo',
     date: '2026-11-03',
     title: 'El mapa aparece al instante al cambiar de modo',

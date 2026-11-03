@@ -213,6 +213,12 @@ export default function Admin({ token, onGate, onSections }) {
     }
   }
 
+  // Rechazar la solicitud de un conductor (solo superadmin): queda bloqueado y se le avisa el motivo
+  function rejectDriver(u) {
+    const note = window.prompt(`¿Por qué rechazas a ${u.name}? (el conductor verá este motivo)`, 'Los documentos no son válidos');
+    if (note?.trim()) act(`users/${u.id}/reject`, { note: note.trim() });
+  }
+
   async function openChat(rideId) {
     try {
       setChatView({ rideId, ...(await call(`rides/${rideId}/chat`)) });
@@ -363,6 +369,10 @@ export default function Admin({ token, onGate, onSections }) {
               <div className="row wrap">
                 <button className="sm" onClick={() => setDocsUser(u)}>Revisar documentos</button>
                 <button className="primary sm" disabled={u.docs < 3} title={u.docs < 3 ? 'Faltan documentos' : ''} onClick={() => act(`users/${u.id}/status`, { status: 'active' })}>Aprobar</button>
+                {can('staff.manage') && <>
+                  <button className="sm" onClick={() => rejectDriver(u)}>Rechazar</button>
+                  <button className="danger sm" onClick={() => act(`users/${u.id}/delete`, {}, `¿Eliminar la cuenta de ${u.name}? Se borran sus datos y documentos, y no se puede deshacer.`)}>Eliminar</button>
+                </>}
               </div>
             </div>
           ))}

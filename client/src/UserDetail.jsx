@@ -24,6 +24,7 @@ export const ACTION_LABEL = {
   'staff.role': 'Cambió el rol',
   'user.approve': 'Aprobó al conductor',
   'user.block': 'Bloqueó la cuenta',
+  'user.reject': 'Rechazó la solicitud del conductor',
   'user.unblock': 'Desbloqueó la cuenta',
   'user.edit': 'Editó los datos',
   'user.vehicle': 'Editó el vehículo',
@@ -80,6 +81,7 @@ export function detailText(action, d) {
   if (action === 'settings.update') return (d.changed || []).join(', ');
   if (action === 'alert.resolve') return `alerta #${d.alert}`;
   if (action === 'user.delete') return ROLE_LABEL[d.role] || '';
+  if (action === 'user.reject') return d.note || '';
   return '';
 }
 
