@@ -11,10 +11,11 @@ import { app, io } from '../app.js';
 import { drivers, room } from '../live.js';
 import { push } from '../notify.js';
 import { clean, tempPassword, pageOf } from '../util.js';
-import { isStaff, staffOnly, audit, auditOnce, actOn } from '../access.js';
+import { isStaff, staffOnly, audit, auditOnce, actOn, publicUser } from '../access.js';
+import { permsFor } from '../perms.js';
 import { ratingsOf, kickUser } from '../services/rides.js';
 import { grantWelcome } from '../services/balance.js';
-import { anonymizeUser } from '../services/accounts.js';
+import { anonymizeUser, revertToPassenger } from '../services/accounts.js';
 import { readVehicle, saveVehicle, vehicleOf, vehicleLabel, isPlateDup } from '../services/vehicles.js';
 
 app.get('/api/admin/stats', staffOnly('view'), async (_req, res) => {
@@ -262,14 +263,26 @@ app.post('/api/admin/users/:id/status', staffOnly('users.manage'), async (req, r
   res.json({ ok: true });
 });
 
-// Rechazar la solicitud de un conductor (solo superadmin): queda bloqueado, se le avisa el motivo y se anota en el registro.
-// Si fue un error, se desbloquea desde Usuarios → Bloqueados.
+// Rechazar la solicitud de un conductor (solo superadmin): se le avisa el motivo y se anota en el registro.
+// Si antes era pasajero, vuelve a ser pasajero; si se registró como conductor, queda bloqueado (se desbloquea desde Usuarios → Bloqueados).
 app.post('/api/admin/users/:id/reject', staffOnly('staff.manage'), async (req, res) => {
   const note = clean(req.body?.note);
   if (!note) return res.status(400).json({ error: 'Escribe el motivo del rechazo' });
   const t = await actOn(req, res);
   if (!t) return;
   if (t.role !== 'driver' || t.status !== 'pending') return res.status(409).json({ error: 'Esa cuenta ya no es una solicitud por aprobar' });
+  if (t.driver_applied_at) {
+    await revertToPassenger(t);
+    push(t.id, { title: 'Tu solicitud de conductor no fue aprobada', body: `Motivo: ${note}. Puedes seguir pidiendo viajes como pasajero.`, tag: 'account', url: '/' }, { always: true });
+    // Sus conexiones se hicieron como conductor: la app cambia a pasajero y se reconecta
+    const [[row]] = await pool.query('SELECT * FROM users WHERE id = ?', [t.id]);
+    const user = publicUser(row, false, await permsFor(row));
+    const old = await io.in(room(t.id)).fetchSockets();
+    for (const s of old) s.emit('account:mode', { role: user.role, canDrive: user.canDrive, passengerMode: user.passengerMode, perms: user.perms, status: user.status });
+    setTimeout(() => old.forEach((s) => s.disconnect(true)), 250);
+    await audit(req.staff, 'user.reject', { target: t.id, details: { note, backToPassenger: true } });
+    return res.json({ ok: true, backToPassenger: true });
+  }
   await pool.query("UPDATE users SET status = 'blocked' WHERE id = ?", [t.id]);
   push(t.id, { title: 'Tu solicitud no fue aprobada', body: `Motivo: ${note}`, tag: 'account', url: '/' }, { always: true });
   io.to(room(t.id)).emit('account:status', { status: 'blocked' });

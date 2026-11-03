@@ -56,6 +56,21 @@ export async function anonymizeUser(t) {
   );
 }
 
+// Se rechaza a un pasajero que pidió ser conductor: vuelve a ser pasajero (no se bloquea). Se borran su vehículo y sus documentos,
+// así la placa queda libre y puede volver a pedirlo más adelante.
+export async function revertToPassenger(t) {
+  const [docs] = await pool.query('SELECT file FROM documents WHERE user_id = ?', [t.id]);
+  for (const d of docs) await fs.rm(path.join(UPLOADS, d.file), { force: true });
+  await pool.query('DELETE FROM documents WHERE user_id = ?', [t.id]);
+  const [selfies] = await pool.query('SELECT file FROM driver_selfies WHERE driver_id = ?', [t.id]);
+  for (const s of selfies) await fs.rm(path.join(UPLOADS, s.file), { force: true });
+  await pool.query('DELETE FROM driver_selfies WHERE driver_id = ?', [t.id]);
+  await pool.query('DELETE FROM vehicles WHERE driver_id = ?', [t.id]);
+  await pool.query(
+    "UPDATE users SET role = 'passenger', status = 'active', passenger_mode = 0, driver_applied_at = NULL, vehicle = NULL, plate = NULL WHERE id = ?", [t.id]
+  );
+}
+
 // Al empezar el viaje, cada contacto de confianza recibe un SMS con el enlace para seguirlo en vivo
 export async function shareWithContacts(ride) {
   const [contacts] = await pool.query('SELECT name, phone FROM trusted_contacts WHERE user_id = ?', [ride.passenger_id]);

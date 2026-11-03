@@ -3,6 +3,17 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-03-quiero-ser-conductor',
+    date: '2026-11-03',
+    title: '¿Quieres manejar? Pídelo desde el menú',
+    for: ['passenger', 'staff'],
+    items: [
+      'Pasajeros: en el menú toca «Quiero ser conductor», registra tu vehículo y sube tu foto, licencia y matrícula. Usas tu misma cuenta y sigues pidiendo viajes mientras revisamos.',
+      'Cuando te aprueben, en el menú aparece «Cambiar a modo conductor». Si no te aprueban, sigues siendo pasajero y te decimos el motivo.',
+      'Personal: la solicitud llega a Solicitudes como cualquier conductor nuevo. Si rechazas a alguien que ya era pasajero, vuelve a ser pasajero en vez de quedar bloqueado.',
+    ],
+  },
+  {
     id: '2026-11-03-rechazar-solicitudes',
     date: '2026-11-03',
     title: 'Rechazar o eliminar solicitudes de conductores',

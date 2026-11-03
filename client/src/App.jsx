@@ -15,6 +15,7 @@ const Account = lazyPage(() => import('./Account.jsx'));
 const TwoFactorSetup = lazyPage(() => import('./TwoFactorSetup.jsx'));
 const TermsUpdate = lazyPage(() => import('./TermsUpdate.jsx'));
 const PasskeyOffer = lazyPage(() => import('./PasskeyParts.jsx').then((m) => ({ default: m.PasskeyOffer })));
+const DriverApply = lazyPage(() => import('./DriverApply.jsx'));
 
 const STAFF = ['superadmin', 'admin', 'support'];
 
@@ -51,12 +52,25 @@ function newAudio() {
 const reducedMotion = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
 // Aviso al cambiar de modo: confirma el cambio y se cierra solo a los 3 segundos (o al tocar fuera)
-function ModeNotice({ mode, user, wallet, onClose }) {
+function ModeNotice({ mode, user, wallet, pending, onClose }) {
   useEffect(() => {
     const t = setTimeout(onClose, 3000);
     return () => clearTimeout(t);
   }, [mode]); // eslint-disable-line react-hooks/exhaustive-deps
   const driver = mode === 'driver';
+  // Cuenta de conductor en revisión: lo que toca es subir los documentos, todavía no puede ponerse disponible
+  if (driver && pending) return (
+    <div className="mode-notice" onClick={onClose}>
+      <div className="mode-card driver" role="dialog" aria-modal="true" aria-labelledby="mode-notice-title" onClick={(e) => e.stopPropagation()}>
+        <span className="mode-icon"><Icon name="car" size={34} /></span>
+        <h2 id="mode-notice-title">Tu solicitud de conductor</h2>
+        <p className="muted">Sube tu foto, licencia y matrícula. Cuando revisemos tu cuenta te avisamos y ya podrás recibir viajes.</p>
+        <div className="mode-chips"><span>Vuelve a pedir viajes desde el menú</span></div>
+        <button className="primary" autoFocus onClick={onClose}>Entendido</button>
+        <span className="mode-timer" key={mode} />
+      </div>
+    </div>
+  );
   return (
     <div className="mode-notice" onClick={onClose}>
       <div className={`mode-card ${driver ? 'driver' : 'passenger'}`} role="dialog" aria-modal="true" aria-labelledby="mode-notice-title" onClick={(e) => e.stopPropagation()}>
@@ -89,6 +103,7 @@ export default function App() {
   const [wallet, setWallet] = useState(null); // saldo del conductor para el menú (si la comisión está activa)
   const [modeNotice, setModeNotice] = useState(null); // 'driver' | 'passenger' justo después de cambiar de modo
   const [driveIn, setDriveIn] = useState(null); // animación del carro al activar el modo conductor
+  const [showApply, setShowApply] = useState(false); // un pasajero pide ser conductor
   const animating = useRef(false); // mientras corre, el aviso de «otro aparato» no se repite aquí
   const wide = useWide();
   const { news, unseen, markSeen } = useNews(session?.user.role);
@@ -112,6 +127,7 @@ export default function App() {
     apiGet('me')
       .then(({ user }) => setSession((cur) => {
         if (!cur || cur.user.id !== user.id) return cur;
+        setAccountStatus(user.status); // p. ej. lo aprobaron mientras la app estaba cerrada
         const next = { ...cur, user: { ...cur.user, perms: user.perms, mustAcceptTerms: user.mustAcceptTerms, termsVersion: user.termsVersion, rating: user.rating, mapRotation: user.mapRotation, gender: user.gender, genderVerified: user.genderVerified, ridePin: user.ridePin, role: user.role, canDrive: user.canDrive, passengerMode: user.passengerMode } };
         localStorage.setItem('jalon', JSON.stringify(next));
         return next;
@@ -143,7 +159,11 @@ export default function App() {
       setAccountStatus(status);
       if (status === 'blocked') logout('Tu cuenta fue bloqueada. Contacta a soporte.');
     });
-    s.on('account:mode', (m) => { applyMode(m); if (!animating.current) setModeNotice(m.role); }); // cambió de modo desde otro aparato
+    s.on('account:mode', (m) => {
+      applyMode(m);
+      if (m.status) setAccountStatus(m.status); // p. ej. se rechazó su solicitud de conductor y vuelve a ser pasajero
+      if (!animating.current) setModeNotice(m.role);
+    }); // cambió de modo desde otro aparato
     s.on('connect_error', (e) => {
       if (e.message === 'Cuenta bloqueada') logout('Tu cuenta fue bloqueada. Contacta a soporte.');
       else if (e.message === 'No autorizado' || e.message === 'Usuario no existe') logout();
@@ -190,6 +210,7 @@ export default function App() {
   function openFromMenu(target) {
     if (target === 'account') return setShowAccount(true);
     if (target === 'mode') return switchMode();
+    if (target === 'apply') return setShowApply(true);
     if (target === 'help') return setShowHelp(true);
     if (target === 'news') { setShowNews(true); markSeen(); return; }
     if (target === 'bell') return window.dispatchEvent(new Event('ktracho:bell'));
@@ -217,7 +238,8 @@ export default function App() {
   async function switchMode() {
     // Al pasar a conductor: la animación se empieza a descargar en el mismo toque (mientras responde el servidor)
     const toDriver = session.user.role !== 'driver';
-    const fx = toDriver && !reducedMotion() ? import('./driveIn.js').then((m) => { m.preload().catch(() => {}); return m; }) : null;
+    // La animación es para quien ya puede trabajar; con la cuenta en revisión sale el aviso de subir documentos
+    const fx = toDriver && accountStatus === 'active' && !reducedMotion() ? import('./driveIn.js').then((m) => { m.preload().catch(() => {}); return m; }) : null;
     fx?.catch(() => {});
     const audio = fx ? newAudio() : null;
     if (fx) animating.current = true;
@@ -234,6 +256,20 @@ export default function App() {
       window.alert(e.message);
     }
   }
+  // El pasajero envió su solicitud de conductor: pasa a la pantalla de conductor para subir sus documentos
+  async function applied(user) {
+    setShowApply(false);
+    applyMode(user);
+    setAccountStatus(user.status);
+    try {
+      const { user: now } = await apiPost('me/mode', session.token, { mode: 'driver' });
+      applyMode(now);
+      setModeNotice('driver');
+    } catch (e) {
+      window.alert(`Tu solicitud quedó enviada. ${e.message} Luego sube tus documentos en el menú → «Mi solicitud de conductor».`);
+    }
+  }
+
   // Si la animación no se puede mostrar (sin conexión para bajarla, etc.), sale el aviso de siempre
   useEffect(() => {
     if (!driveIn) return;
@@ -309,7 +345,8 @@ export default function App() {
       {pkOffer && !session.token && !session.user.mustChangePassword && !session.user.mustEnrollTwoFactor && !session.user.mustAcceptTerms && (
         <PasskeyOffer userId={session.user.id} onClose={() => setPkOffer(false)} />
       )}
-      {modeNotice && <ModeNotice mode={modeNotice} user={session.user} wallet={wallet} onClose={() => setModeNotice(null)} />}
+      {modeNotice && <ModeNotice mode={modeNotice} user={session.user} wallet={wallet} pending={accountStatus === 'pending'} onClose={() => setModeNotice(null)} />}
+      {showApply && <DriverApply token={session.token} onDone={applied} onClose={() => setShowApply(false)} />}
       {showNews && <News news={news} onClose={() => setShowNews(false)} />}
       {showHelp && <HelpPanel user={session.user} onClose={() => setShowHelp(false)} onHistory={() => goTo('history')} />}
       {showHistory && <History token={session.token} role={session.user.role} onClose={() => setShowHistory(false)} />}

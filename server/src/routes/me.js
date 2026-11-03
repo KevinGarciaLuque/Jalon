@@ -19,6 +19,7 @@ import { permsFor } from '../perms.js';
 import { push, pushStaff } from '../notify.js';
 import { getRide, activeRideFor } from '../services/rides.js';
 import { anonymizeUser } from '../services/accounts.js';
+import { readVehicle, plateTaken, saveVehicle, isPlateDup } from '../services/vehicles.js';
 import { trackOf, trackKm } from '../services/activity.js';
 
 // ---------- Derechos del usuario sobre sus datos ----------
@@ -259,6 +260,36 @@ app.post('/api/me/mode', authUser, async (req, res) => {
   for (const s of old) s.emit('account:mode', { role: user.role, canDrive: user.canDrive, passengerMode: user.passengerMode, perms: user.perms });
   setTimeout(() => old.forEach((s) => s.disconnect(true)), 250);
   res.json({ user });
+});
+
+// Un pasajero pide ser conductor: registra su vehículo y su cuenta queda en revisión. Sigue en modo pasajero;
+// para subir los documentos entra a «Mi solicitud de conductor» (modo conductor, sin poder ponerse disponible hasta que lo aprueben)
+app.post('/api/me/apply-driver', authUser, async (req, res) => {
+  const u = req.user;
+  if (u.role !== 'passenger' || u.passenger_mode) return res.status(403).json({ error: 'Solo los pasajeros pueden pedir ser conductores' });
+  const { vehicle: v, error } = readVehicle(req.body);
+  if (error) return res.status(400).json({ error });
+  if (await plateTaken(pool, v.plate)) return res.status(409).json({ error: 'Esa placa ya está registrada' });
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [r] = await conn.query(
+      "UPDATE users SET role = 'driver', status = 'pending', passenger_mode = 1, driver_applied_at = NOW() WHERE id = ? AND role = 'passenger' AND passenger_mode = 0", [u.id]
+    );
+    if (!r.affectedRows) throw Object.assign(new Error('Ya enviaste tu solicitud'), { status: 409 });
+    await saveVehicle(conn, u.id, v);
+    await conn.commit();
+  } catch (e) {
+    await conn.rollback().catch(() => {});
+    if (e.status) return res.status(e.status).json({ error: e.message });
+    if (isPlateDup(e)) return res.status(409).json({ error: 'Esa placa ya está registrada' });
+    throw e;
+  } finally {
+    conn.release();
+  }
+  await audit(u, 'driver.apply', { target: u.id, details: { plate: v.plate } });
+  const [[row]] = await pool.query('SELECT * FROM users WHERE id = ?', [u.id]);
+  res.json({ user: publicUser(row, false, await permsFor(effectiveUser(row))) });
 });
 
 // Aceptar la versión nueva de los términos y la política de privacidad (se guarda cuándo y cuál)
