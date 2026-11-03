@@ -166,6 +166,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
             <Recenter pos={pos} />
             <CarMarker
               position={pos}
+              aura={online ? 'online' : 'offline'}
               duration={900}
               draggable={denied}
               eventHandlers={{ dragend: (e) => setPos({ lat: e.target.getLatLng().lat, lng: e.target.getLatLng().lng }) }}

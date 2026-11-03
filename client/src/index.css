@@ -373,6 +373,20 @@ header span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-spa
 .map-icon svg, .map-icon img { display: block; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
 .map-icon.car .car-rot { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; transition: transform .6s ease-out; }
 @media (prefers-reduced-motion: reduce) { .map-icon.car .car-rot { transition: none; } }
+/* Aura del carro del conductor: un halo fijo y anillos que salen del carro (el mismo verde del carrito) */
+.car-aura { position: absolute; left: 50%; top: 50%; width: 0; height: 0; z-index: -1; pointer-events: none; }
+.car-aura::before { content: ''; position: absolute; left: -30px; top: -30px; width: 60px; height: 60px; border-radius: 50%; background: radial-gradient(closest-side, rgba(22, 150, 60, .32), rgba(22, 150, 60, .12) 60%, rgba(22, 150, 60, 0)); transition: opacity .6s; }
+.car-aura i { position: absolute; left: -32px; top: -32px; width: 64px; height: 64px; border-radius: 50%; border: 2px solid rgba(22, 150, 60, .8); background: radial-gradient(closest-side, rgba(22, 150, 60, 0) 55%, rgba(22, 150, 60, .2)); box-shadow: 0 0 10px rgba(22, 150, 60, .35); opacity: 0; will-change: transform, opacity; animation: car-aura 2.6s cubic-bezier(.2, .6, .35, 1) infinite; }
+.car-aura i:nth-child(2) { animation-delay: 1.3s; }
+.car-aura i:nth-child(3) { display: none; }
+@keyframes car-aura { 0% { transform: scale(.45); opacity: .5; } 60% { opacity: .14; } 100% { transform: scale(1.75); opacity: 0; } }
+/* En línea: como un radar buscando viajes — más rápido, más brillante y con un anillo más */
+.map-icon.car.aura-on .car-aura::before { background: radial-gradient(closest-side, rgba(22, 150, 60, .5), rgba(22, 150, 60, .2) 60%, rgba(22, 150, 60, 0)); }
+.map-icon.car.aura-on .car-aura i { border-width: 2.5px; border-color: rgba(26, 170, 68, .95); box-shadow: 0 0 14px rgba(26, 170, 68, .55); animation: car-aura-on 1.8s cubic-bezier(.2, .6, .35, 1) infinite; }
+.map-icon.car.aura-on .car-aura i:nth-child(2) { animation-delay: .6s; }
+.map-icon.car.aura-on .car-aura i:nth-child(3) { display: block; animation-delay: 1.2s; }
+@keyframes car-aura-on { 0% { transform: scale(.45); opacity: .9; } 60% { opacity: .3; } 100% { transform: scale(2.2); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .car-aura i { display: none !important; } }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }

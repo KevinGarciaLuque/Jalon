@@ -29,6 +29,8 @@ const FLAG = `<rect x="13.2" y="11.5" width="1.6" height="12" rx=".8" fill="#141
 
 export const icons = {
   car: svgIcon(`<div class="car-rot">${CAR_HTML}</div>`, [48, 48], [24, 24], 'car'),
+  // El carro del propio conductor: con un aura verde que pulsa alrededor (más intensa cuando está en línea)
+  carMine: svgIcon(`<div class="car-aura" aria-hidden="true"><i></i><i></i><i></i></div><div class="car-rot">${CAR_HTML}</div>`, [48, 48], [24, 24], 'car mine'),
   me: svgIcon(pin('#14802f', '<circle cx="17" cy="17.5" r="4" fill="#14802f"/>'), [34, 44], [17, 43], 'pin'),
   dest: svgIcon(pin('#14171c', FLAG), [34, 44], [17, 43], 'pin'),
   // Paradas en el camino, con su número
@@ -46,7 +48,8 @@ const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce
 
 // Carro en el mapa: cuando llega una posición nueva se desliza hasta ella (en vez de saltar) y gira hacia donde va.
 // `duration` es cada cuánto llegan las posiciones (así termina de moverse justo cuando llega la siguiente).
-export function CarMarker({ position, duration = 2800, draggable = false, eventHandlers }) {
+// `aura`: solo el carro del propio conductor — 'online' (pulso más intenso) u 'offline' (más suave)
+export function CarMarker({ position, duration = 2800, draggable = false, eventHandlers, aura = null }) {
   const map = useMap();
   const ref = useRef(null);
   const [start] = useState(() => [position.lat, position.lng]); // la posición inicial queda fija: después la mueve la animación
@@ -84,7 +87,9 @@ export function CarMarker({ position, duration = 2800, draggable = false, eventH
     return () => map.off('rotate', turnCar);
   }, [map]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => cancelAnimationFrame(anim.current.frame), []);
-  return <Marker ref={ref} position={start} icon={icons.car} draggable={draggable} eventHandlers={eventHandlers} zIndexOffset={500} />;
+  // En línea o no: solo cambia una clase (cambiar el ícono reiniciaría el giro del carro)
+  useEffect(() => { ref.current?.getElement()?.classList.toggle('aura-on', aura === 'online'); }, [aura]);
+  return <Marker ref={ref} position={start} icon={aura ? icons.carMine : icons.car} draggable={draggable} eventHandlers={eventHandlers} zIndexOffset={500} />;
 }
 
 // Ruta con borde blanco y sombra suave para que resalte sobre cualquier calle del mapa

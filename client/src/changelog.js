@@ -3,6 +3,13 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-03-aura-del-carro',
+    date: '2026-11-03',
+    title: 'Un aura verde en tu carro',
+    for: ['driver'],
+    items: ['Tu carro en el mapa tiene un aura verde que pulsa a su alrededor. Cuando estás en línea pulsa más fuerte, como un radar buscando viajes; desconectado, más suave.'],
+  },
+  {
     id: '2026-11-03-animacion-modo-conductor',
     date: '2026-11-03',
     title: 'Tu carro llega al mapa',
