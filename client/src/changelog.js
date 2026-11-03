@@ -3,6 +3,13 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-03-numero-de-version',
+    date: '2026-11-03',
+    title: 'Número de versión en el menú',
+    for: ['all'],
+    items: ['Al final del menú ves el número de versión de tu app y el mes en que se publicó.'],
+  },
+  {
     id: '2026-11-03-aura-del-pasajero',
     date: '2026-11-03',
     title: 'Tu punto en el mapa, con aura',

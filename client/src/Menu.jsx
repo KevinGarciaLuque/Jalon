@@ -46,7 +46,10 @@ export function Icon({ name, size = 22 }) {
 const ROLE_NAME = { passenger: 'Pasajero', driver: 'Conductor', superadmin: 'Superadministrador', admin: 'Administrador', support: 'Soporte' };
 const STAFF = ['superadmin', 'admin', 'support'];
 const CLOSE_MS = 220; // lo que dura la salida (igual que en el CSS)
-const BUILD_DATE = new Date(__BUILD_DATE__).toLocaleDateString('es-HN', { day: 'numeric', month: 'short', year: 'numeric' });
+// Versión y mes de publicación de esta app (se ponen al compilar), p. ej. «versión 1.74 · noviembre 2026»
+const BUILD_MONTH = new Date(__BUILD_DATE__).toLocaleDateString('es-HN', { month: 'long', year: 'numeric' }).replace(' de ', ' ');
+const VERSION_TEXT = `Ktracho GO · versión ${__APP_VERSION__} · ${BUILD_MONTH}`;
+const DEVELOPER = 'Desarrollado por Kevin Garcia';
 
 // El botón ☰ del encabezado y el menú que sale de la izquierda (como inDrive), con las secciones.
 // `go(target)`: abre lo que se tocó. Novedades, Mi perfil y Cerrar sesión están en el encabezado (✨ y el avatar).
@@ -179,7 +182,10 @@ export default function Menu({ user, hasBell, go, sections, current, wallet, pin
       {/* Qué versión tiene este aparato (la fecha en que se publicó) */}
       <div className="drawer-foot">
         <Icon name="shield" size={16} />
-        <span>Ktracho GO · versión del {BUILD_DATE}</span>
+        <span className="drawer-version">
+          <span>{VERSION_TEXT}</span>
+          <span>{DEVELOPER}</span>
+        </span>
       </div>
     </>
   );
@@ -317,7 +323,7 @@ export function HelpPanel({ user, onClose, onHistory }) {
           <a className="help-link" href="/terminos" target="_blank" rel="noreferrer"><Icon name="doc" /> Términos de uso</a>
           <a className="help-link" href="/privacidad" target="_blank" rel="noreferrer"><Icon name="shield" /> Política de privacidad</a>
         </div>
-        <p className="muted small">Ktracho GO · versión del {BUILD_DATE}</p>
+        <p className="muted small">{VERSION_TEXT}<br />{DEVELOPER}</p>
       </div>
     </Panel>
   );

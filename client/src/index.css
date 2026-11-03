@@ -750,7 +750,9 @@ header { gap: 8px; background: linear-gradient(135deg, var(--card), var(--bg)); 
 .drawer-list button, .sidebar .drawer-group .drawer-list button { margin: 1px 10px; width: calc(100% - 20px); border-radius: 12px; padding: 0 14px; }
 .drawer-list button.on { box-shadow: inset 4px 0 0 var(--brand); }
 .drawer-foot { flex-direction: row; justify-content: flex-start; gap: 8px; padding: 14px 20px 6px; color: var(--muted); font-size: 13px; }
-.drawer-foot .icon { color: var(--brand); }
+.drawer-foot .icon { color: var(--brand); flex-shrink: 0; }
+.drawer-version { display: flex; flex-direction: column; gap: 2px; line-height: 1.35; }
+.drawer-version > span + span { font-size: 12px; }
 
 /* Ayuda y soporte */
 .help-link { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-1); color: var(--text); text-decoration: none; font-weight: 600; }
