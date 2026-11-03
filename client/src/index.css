@@ -560,8 +560,22 @@ header .bell-count { top: -3px; right: -3px; box-shadow: 0 0 0 2px var(--card); 
   .panel-scrim { display: block; }
   .overlay.slide { left: auto; width: min(520px, 100%); border-left: 1px solid var(--line); box-shadow: -16px 0 40px rgba(0, 0, 0, .3); }
 }
+/* Aviso al cambiar entre modo conductor y modo pasajero */
+.mode-notice { position: fixed; inset: 0; z-index: 5000; background: rgba(4, 10, 7, .55); display: flex; align-items: center; justify-content: center; padding: 16px; animation: fade-in var(--slow) ease-out; }
+.mode-card { position: relative; overflow: hidden; width: min(320px, 100%); background: var(--card); border-radius: var(--r-3); padding: 28px 22px 22px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; box-shadow: var(--shadow-sheet); animation: rate-pop 320ms cubic-bezier(.2, .8, .2, 1); }
+.mode-card h2 { margin: 4px 0 0; font-size: 20px; }
+.mode-card p { margin: 0; line-height: 1.45; }
+.mode-icon { width: 72px; height: 72px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--brand-soft); color: var(--brand); }
+.mode-card.passenger .mode-icon { background: var(--mango-soft); color: var(--mango-ink); }
+.mode-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 2px 0 6px; }
+.mode-chips span { font-size: 13px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); font-variant-numeric: tabular-nums; }
+.mode-card button.primary { width: 100%; }
+.mode-timer { position: absolute; left: 0; bottom: 0; height: 4px; width: 100%; background: var(--brand); transform-origin: left; animation: mode-timer 3s linear forwards; }
+.mode-card.passenger .mode-timer { background: var(--mango); }
+@keyframes mode-timer { to { transform: scaleX(0); } }
 @media (prefers-reduced-motion: reduce) {
-  .drawer, .overlay.slide, .scrim { animation: none; }
+  .drawer, .overlay.slide, .scrim, .mode-notice, .mode-card { animation: none; }
+  .mode-timer { display: none; }
   .drawer, .drawer-wrap.closing .drawer, .drawer-wrap.closing .scrim { transition: none; }
 }
 /* La barrita de la hoja queda fija arriba aunque se desplace el contenido */

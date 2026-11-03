@@ -3,6 +3,13 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-03-aviso-de-modo',
+    date: '2026-11-03',
+    title: 'Aviso al cambiar de modo',
+    for: ['driver'],
+    items: ['Al pasar a modo pasajero o volver a modo conductor, un aviso te confirma el cambio y se cierra solo. Si cambias desde otro aparato, también te avisa aquí.'],
+  },
+  {
     id: '2026-11-03-pedir-a-la-vista',
     date: '2026-11-03',
     title: 'El botón para pedir, siempre a la vista',

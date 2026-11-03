@@ -23,7 +23,8 @@ try {
   const ctx = await browser.createBrowserContext();
   await ctx.overridePermissions(CLIENT, ['geolocation']);
   const page = await ctx.newPage();
-  await page.setViewport({ width: 390, height: 844 });
+  await page.setViewport({ width: Number(process.env.VIEW_W) || 390, height: Number(process.env.VIEW_H) || 844 });
+  if (process.env.THEME) await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: process.env.THEME }]);
   await page.setGeolocation({ latitude: 14.0723, longitude: -87.1921, accuracy: 5 });
   await page.goto(CLIENT, { waitUntil: 'domcontentloaded' });
   // Entra por la pantalla normal, con cookie de sesión como cualquier usuario
@@ -49,13 +50,23 @@ try {
   };
   await pickMenu('Cambiar a modo pasajero');
   check('al cambiar ve la pantalla de pasajero', await see('conductores de carro cerca'));
-  await wait(1500);
+  check('un aviso confirma el modo pasajero', await see('Modo pasajero activado', 5000));
+  await wait(600);
+  await shot(page, 'modo-aviso-pasajero');
+  check('el aviso se cierra solo', await page.waitForFunction(() => !document.querySelector('.mode-notice'), { timeout: 5000 }).then(() => true, () => false));
+  await wait(500);
   await shot(page, 'modo-pasajero');
   await page.reload({ waitUntil: 'domcontentloaded' });
   check('al recargar sigue en modo pasajero', await see('conductores de carro cerca'));
+  check('al recargar no repite el aviso', !(await page.$('.mode-notice')));
   await wait(800);
   await pickMenu('Cambiar a modo conductor');
   check('al volver ve la pantalla de conductor', await see('Ponerme disponible'));
+  check('un aviso confirma el modo conductor, con su carro', await see('Modo conductor activado', 5000) && await see('Yaris', 2000));
+  await wait(600);
+  await shot(page, 'modo-aviso-conductor');
+  await (await page.waitForSelector('.mode-card button.primary')).click();
+  check('«Entendido» lo cierra', await page.waitForFunction(() => !document.querySelector('.mode-notice'), { timeout: 1500 }).then(() => true, () => false));
 } catch (e) {
   check('la prueba terminó sin errores', false, e.stack);
 } finally {

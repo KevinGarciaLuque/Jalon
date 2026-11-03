@@ -1,9 +1,9 @@
 import { Suspense, useEffect, useState } from 'react';
 import News, { useNews } from './News.jsx';
 import Bell from './Bell.jsx';
-import Menu, { HelpPanel, NewsButton, ProfileMenu } from './Menu.jsx';
+import Menu, { HelpPanel, NewsButton, ProfileMenu, Icon } from './Menu.jsx';
 import { Brand, Loading } from './components.jsx';
-import { apiGet, apiPost, authFetch, API, lazyPage, mapPrefs } from './lib.js';
+import { apiGet, apiPost, authFetch, API, lazyPage, mapPrefs, money2 } from './lib.js';
 
 // Cada pantalla se descarga cuando se usa: el panel solo lo baja el personal; el mapa, pasajeros y conductores
 const Auth = lazyPage(() => import('./Auth.jsx')); // quien ya tiene sesión no la necesita
@@ -39,6 +39,31 @@ function useWide() {
   return wide;
 }
 
+// Aviso al cambiar de modo: confirma el cambio y se cierra solo a los 3 segundos (o al tocar fuera)
+function ModeNotice({ mode, user, wallet, onClose }) {
+  useEffect(() => {
+    const t = setTimeout(onClose, 3000);
+    return () => clearTimeout(t);
+  }, [mode]); // eslint-disable-line react-hooks/exhaustive-deps
+  const driver = mode === 'driver';
+  return (
+    <div className="mode-notice" onClick={onClose}>
+      <div className={`mode-card ${driver ? 'driver' : 'passenger'}`} role="dialog" aria-modal="true" aria-labelledby="mode-notice-title" onClick={(e) => e.stopPropagation()}>
+        <span className="mode-icon"><Icon name={driver ? 'car' : 'user'} size={34} /></span>
+        <h2 id="mode-notice-title">Modo {driver ? 'conductor' : 'pasajero'} activado</h2>
+        <p className="muted">{driver ? 'Ponte disponible para empezar a recibir solicitudes.' : 'Ya puedes pedir viajes. Mientras tanto no te llegan solicitudes.'}</p>
+        <div className="mode-chips">
+          {driver
+            ? <>{wallet && <span>Saldo {money2(wallet.balance)}</span>}{user.vehicle && <span>{user.vehicle}{user.plate && ` · ${user.plate}`}</span>}</>
+            : <span>Vuelve a conducir desde el menú</span>}
+        </div>
+        <button className="primary" autoFocus onClick={onClose}>Entendido</button>
+        <span className="mode-timer" key={mode} />
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [session, setSession] = useState(loadSession);
   const [socket, setSocket] = useState(null);
@@ -51,6 +76,7 @@ export default function App() {
   const [adminNav, setAdminNav] = useState({ sections: null, current: null }); // secciones del panel para el menú
   const [pkOffer, setPkOffer] = useState(false); // tras entrar con la contraseña se ofrece Face ID / huella
   const [wallet, setWallet] = useState(null); // saldo del conductor para el menú (si la comisión está activa)
+  const [modeNotice, setModeNotice] = useState(null); // 'driver' | 'passenger' justo después de cambiar de modo
   const wide = useWide();
   const { news, unseen, markSeen } = useNews(session?.user.role);
   const [accountStatus, setAccountStatus] = useState(() => loadSession()?.user.status);
@@ -104,7 +130,7 @@ export default function App() {
       setAccountStatus(status);
       if (status === 'blocked') logout('Tu cuenta fue bloqueada. Contacta a soporte.');
     });
-    s.on('account:mode', applyMode); // cambió de modo desde otro aparato
+    s.on('account:mode', (m) => { applyMode(m); setModeNotice(m.role); }); // cambió de modo desde otro aparato
     s.on('connect_error', (e) => {
       if (e.message === 'Cuenta bloqueada') logout('Tu cuenta fue bloqueada. Contacta a soporte.');
       else if (e.message === 'No autorizado' || e.message === 'Usuario no existe') logout();
@@ -180,6 +206,7 @@ export default function App() {
       const { user } = await apiPost('me/mode', session.token, { mode: session.user.role === 'driver' ? 'passenger' : 'driver' });
       setWallet(null);
       applyMode(user);
+      setModeNotice(user.role);
     } catch (e) {
       window.alert(e.message);
     }
@@ -251,6 +278,7 @@ export default function App() {
       {pkOffer && !session.token && !session.user.mustChangePassword && !session.user.mustEnrollTwoFactor && !session.user.mustAcceptTerms && (
         <PasskeyOffer userId={session.user.id} onClose={() => setPkOffer(false)} />
       )}
+      {modeNotice && <ModeNotice mode={modeNotice} user={session.user} wallet={wallet} onClose={() => setModeNotice(null)} />}
       {showNews && <News news={news} onClose={() => setShowNews(false)} />}
       {showHelp && <HelpPanel user={session.user} onClose={() => setShowHelp(false)} onHistory={() => goTo('history')} />}
       {showHistory && <History token={session.token} role={session.user.role} onClose={() => setShowHistory(false)} />}
