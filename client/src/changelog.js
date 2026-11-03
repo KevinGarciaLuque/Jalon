@@ -3,6 +3,17 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-03-pantalla-conductor',
+    date: '2026-11-03',
+    title: 'Tu pantalla, más clara',
+    for: ['driver'],
+    items: [
+      'Arriba ves si estás desconectado o en línea, y si los avisos de este aparato están activos.',
+      'Tu saldo y lo que te quedó hoy, con cuántos viajes, en dos tarjetas: toca una para recargar o para ver tus ganancias.',
+      '«Ponerme disponible» es más grande y queda siempre a la vista abajo.',
+    ],
+  },
+  {
     id: '2026-11-03-aviso-de-modo',
     date: '2026-11-03',
     title: 'Aviso al cambiar de modo',

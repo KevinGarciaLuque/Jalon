@@ -96,6 +96,8 @@ const entered = (page) => page.waitForSelector('button.menu-btn', { timeout: 150
 const see = (page, text, timeout = 15000) =>
   page.waitForSelector(`::-p-text(${text})`, { timeout }).then(() => true, () => false);
 const shot = (page, name) => page.screenshot({ path: path.join(SHOTS, `${name}.png`) });
+// El saldo en la tarjeta del conductor (desconectado) o en su línea de arriba (en línea)
+const walletShows = (page, amount, timeout = 15000) => page.waitForFunction((a) => [...document.querySelectorAll('.drv-card.wallet b, .drv-line b')].some((b) => b.textContent.trim() === a), { timeout }, amount).then(() => true, () => false);
 
 try {
   const driver = await openAs(D, { latitude: 14.073, longitude: -87.1925 }, 'conductor');
@@ -319,7 +321,7 @@ try {
   check('conductor puede calificar al pasajero', await see(driver, '¿Cómo estuvo E2E Pasajero?'));
   // ---- Saldo: se descontó la comisión del viaje y el conductor recarga con un comprobante ----
   const commission = ((basePrice + 5) * 0.1).toFixed(2);
-  check('al terminar el viaje se descuenta la comisión (10%) del saldo del conductor', await see(driver, `Saldo: L -${commission}`, 20000));
+  check('al terminar el viaje se descuenta la comisión (10%) del saldo del conductor', await walletShows(driver, `L -${commission}`, 20000));
   check('con el saldo bajo el mínimo, avisa que debe recargar', await see(driver, 'Tu saldo está por debajo del mínimo'));
   // El saldo también está en el menú (en rojo si está bajo el mínimo) y desde ahí se abre «Mi saldo»
   await (await driver.waitForSelector('button.menu-btn')).evaluate((b) => b.click());
@@ -364,7 +366,7 @@ try {
   await click(admin, 'Aprobar y acreditar');
   check('la recarga sale de la lista de pendientes al aprobarla', await admin.waitForFunction(() => !document.body.innerText.includes('Aprobar y acreditar'), { timeout: 15000 }).then(() => true, () => false));
   admin.promptText = '';
-  check('el conductor ve su saldo nuevo al instante (sin recargar la pantalla)', await see(driver, `Saldo: L ${(200 - Number(commission)).toFixed(2)}`, 15000));
+  check('el conductor ve su saldo nuevo al instante (sin recargar la pantalla)', await walletShows(driver, `L ${(200 - Number(commission)).toFixed(2)}`, 15000));
   await section(admin, 'Viajes');
 
   // El pasajero reporta un objeto olvidado

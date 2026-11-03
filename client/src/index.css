@@ -253,6 +253,22 @@ textarea { width: 100%; font: inherit; padding: 12px 14px; border: 1.5px solid v
 .req a:not(.primary):not(.sm), .overlay-body a:not(.primary):not(.sm) { color: var(--brand); }
 
 /* ---- Fase 9: saldo y recargas ---- */
+/* Conductor: estado, tarjetas de saldo y de hoy, y el botón para conectarse */
+.drv-status { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.drv-status > b { font-size: 16px; }
+.drv-status .push { flex-basis: 100%; }
+.drv-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+.drv-dot.on { background: var(--brand); box-shadow: 0 0 0 4px var(--brand-soft); }
+button.push-chip { width: auto; min-height: 0; padding: 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.drv-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+.drv-card { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px 12px; border-radius: var(--r-2); text-align: left; font-weight: 400; }
+.drv-card span { font-size: 13px; color: var(--muted); font-weight: 600; }
+.drv-card b { font-family: var(--font-display); font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--text); }
+.drv-card em { font-style: normal; font-size: 13px; font-weight: 600; color: var(--brand); }
+.drv-card.low { border-color: var(--danger); }
+.drv-card.low b, .drv-card.low em { color: var(--danger); }
+.drv-line { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+button.go { min-height: 54px; font-size: 17px; display: flex; align-items: center; justify-content: center; gap: 8px; }
 .wallet-chip { display: flex; justify-content: space-between; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: var(--r-2); padding: 10px 12px; }
 .balance { display: flex; flex-direction: column; gap: 4px; align-items: center; text-align: center; border: 2px solid var(--brand); border-radius: 14px; padding: 16px; }
 .balance b { font-family: var(--font-display); font-weight: 800; font-size: 36px; color: var(--brand); font-variant-numeric: tabular-nums; }

@@ -30,6 +30,8 @@ const STATUS = {
   cancelled: 'El viaje fue cancelado',
 };
 
+const POWER = <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M12 3v8M6.3 6.8a8 8 0 1 0 11.4 0" /></svg>;
+
 const QUICK = ['Ya llegué', 'Estoy afuera', 'Voy en camino', 'Llego en 5 minutos', 'No te encuentro'];
 
 export default function Driver({ socket, token, status, userId, perms = [], onWallet }) {
@@ -55,6 +57,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
   const [selfie, setSelfie] = useState(false); // le toca tomarse una selfie para conectarse
   const [pinError, setPinError] = useState('');
   const [renting, setRenting] = useState(false); // tiene un alquiler en curso: no recibe viajes
+  const [today, setToday] = useState(null); // lo que le quedó hoy y cuántos viajes (tarjeta «Hoy»)
   const posRef = useRef(pos);
   posRef.current = pos;
 
@@ -66,6 +69,12 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
   }, [showsWallet, wallet?.balance, wallet?.minBalance]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => onWallet?.(null), []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (status !== 'pending') loadWallet(); }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
+  const lowBalance = showsWallet && wallet.balance < wallet.minBalance;
+  // Ganancias de hoy: al abrir y cada vez que termina un viaje
+  const doneRideId = ride?.status === 'completed' ? ride.id : 0;
+  useEffect(() => {
+    if (status === 'active') apiGet('driver/earnings?period=day', token).then(setToday).catch(() => {});
+  }, [status, doneRideId]); // eslint-disable-line react-hooks/exhaustive-deps
   // La campanita: un aviso de recarga o de saldo abre «Mi saldo»
   useEffect(() => {
     const go = (e) => {
@@ -216,23 +225,50 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
                 <DriverDocs token={token} socket={socket} />
               </>
             )}
-            {wallet?.enabled && status !== 'pending' && (
-              <div className="wallet-chip">
-                <div>
-                  <b>💰 Saldo: {money2(wallet.balance)}</b>
-                  <div className="muted small">Comisión {wallet.percent}% por viaje · mínimo {money2(wallet.minBalance)} para recibir viajes</div>
-                </div>
-                <button className={wallet.balance < wallet.minBalance ? 'primary sm' : 'sm'} onClick={() => setShowWallet(true)}>Recargar</button>
+            {/* Estado en una línea: desconectado / en línea, y los avisos de este aparato */}
+            {status !== 'pending' && (
+              <div className="drv-status">
+                <span className={`drv-dot${online ? ' on' : ''}`} aria-hidden="true" />
+                <b className="grow">{online ? 'En línea · buscando viajes' : 'Estás desconectado'}</b>
+                {!online && <PushToggle token={token} compact why="Activa las notificaciones para recibir viajes cercanos y avisos aunque cierres la app." />}
               </div>
             )}
-            {wallet?.enabled && wallet.balance < wallet.minBalance && <div className="hint danger">Tu saldo está por debajo del mínimo: recarga para volver a recibir viajes.</div>}
-            {status === 'active' && !online && <button className="sm left" onClick={() => setShowEarnings(true)}>Mis ganancias</button>}
+            {/* Desconectado: saldo y lo de hoy en dos tarjetas; en línea, en una sola línea para dejar espacio a las solicitudes */}
+            {!online && (showsWallet || status === 'active') && (
+              <div className="drv-cards">
+                {showsWallet && (
+                  <button type="button" className={`drv-card wallet${lowBalance ? ' low' : ''}`} onClick={() => setShowWallet(true)}>
+                    <span>Saldo</span>
+                    <b>{money2(wallet.balance)}</b>
+                    <em>{lowBalance ? 'Recargar ahora' : 'Recargar'}</em>
+                  </button>
+                )}
+                {status === 'active' && (
+                  <button type="button" className="drv-card" onClick={() => setShowEarnings(true)}>
+                    <span>Te quedó hoy</span>
+                    <b>{today ? money2(today.net) : '—'}</b>
+                    <em>{today ? `${today.rides} viaje${today.rides === 1 ? '' : 's'} · Ver más` : 'Mis ganancias'}</em>
+                  </button>
+                )}
+              </div>
+            )}
+            {!online && showsWallet && <div className="muted small">Comisión {wallet.percent}% por viaje · mínimo {money2(wallet.minBalance)} para recibir viajes</div>}
+            {online && (showsWallet || today) && (
+              <div className="muted small drv-line">
+                {showsWallet && <span>Saldo <b>{money2(wallet.balance)}</b></span>}
+                {today && <span>Hoy <b>{money2(today.net)}</b></span>}
+              </div>
+            )}
+            {lowBalance && <div className="hint danger">Tu saldo está por debajo del mínimo: recarga para volver a recibir viajes.</div>}
             {showEarnings && <Earnings token={token} onClose={() => setShowEarnings(false)} />}
             {status === 'active' && !online && perms.includes('rent.offer') && <button className="sm left" onClick={() => setShowRental(true)}>Alquiler de mi carro por días</button>}
-            {!online && status !== 'pending' && <PushToggle token={token} why="Activa las notificaciones para recibir viajes cercanos y avisos aunque cierres la app." />}
-            <button className={online ? 'danger' : 'primary'} onClick={toggle} disabled={!pos || status === 'pending'}>
-              {online ? 'Desconectarme' : 'Ponerme disponible'}
-            </button>
+            {online ? (
+              <button className="danger" onClick={toggle}>Desconectarme</button>
+            ) : (
+              <div className="ask-bar">
+                <button className="primary go" onClick={toggle} disabled={!pos || status === 'pending'}>{POWER} Ponerme disponible</button>
+              </div>
+            )}
 
             {online && (
               <>

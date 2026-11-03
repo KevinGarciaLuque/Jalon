@@ -290,7 +290,8 @@ export function SafetyBar({ token, rideId, socket, getPos }) {
 }
 
 // Botón para activar o desactivar las notificaciones en este dispositivo
-export function PushToggle({ token, why }) {
+// `compact`: activadas, se muestra solo «🔔 Avisos activos» (para apagarlas pide confirmación)
+export function PushToggle({ token, why, compact = false }) {
   const [state, setState] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -311,6 +312,10 @@ export function PushToggle({ token, why }) {
   }
 
   if (state === null) return null;
+  if (compact && state === 'on') {
+    const off = () => window.confirm('¿Desactivar las notificaciones en este aparato? Dejarás de recibir viajes con la app cerrada.') && toggle();
+    return <button type="button" className="sm push-chip" disabled={busy} onClick={off} title="Notificaciones activadas en este aparato. Tocar para desactivarlas">🔔 Avisos activos</button>;
+  }
   if (state === 'unsupported') return <p className="muted small">Las notificaciones funcionan en la app instalada o en el sitio publicado (en iPhone, primero agrégala a la pantalla de inicio).</p>;
   return (
     <div className="push">
