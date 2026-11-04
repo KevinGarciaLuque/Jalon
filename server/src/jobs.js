@@ -13,6 +13,7 @@ import { reconcileSessions, purgeTracks } from './services/activity.js';
 import { expireRequests } from './routes/recharges.js';
 import { escalateSafety } from './services/safety.js';
 import { purgeSelfies } from './routes/selfies.js';
+import { scheduleBackups } from './services/backups.js';
 
 // Las ofertas vencidas se revisan cada OFFER_SWEEP_MS (5 s por defecto)
 setInterval(() => expireOffers().catch(reportError), Number(process.env.OFFER_SWEEP_MS || 5000)).unref();
@@ -106,3 +107,6 @@ setInterval(() => escalateSafety().catch(reportError), Number(process.env.SAFETY
 
 // Selfies de los conductores: se borran a los 30 días
 setInterval(() => purgeSelfies().catch(reportError), 6 * 3600 * 1000).unref();
+
+// Respaldo de la base y los documentos cada noche, cifrado y fuera de Railway (si están BACKUP_* y BACKUP_KEY)
+scheduleBackups();

@@ -4,7 +4,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { pool } from '../db.js';
 import { app } from '../app.js';
-import { staffOnly } from '../access.js';
+import { staffOnly, audit } from '../access.js';
 import { getSettings } from '../wallet.js';
 import { activeAccounts } from '../services/bankAccounts.js';
 import { keyIsDerived } from '../secure.js';
@@ -14,6 +14,7 @@ import { pushEnabled } from '../push.js';
 import { smsConfigured } from '../sms.js';
 import { mailConfigured } from '../mail.js';
 import { TERMS_VERSION } from '../legal.js';
+import { backupConfigured, backupMissing, recentBackups, runBackup, BACKUP_HOUR, KEEP_DAYS } from '../services/backups.js';
 import { isProd, echoCode, OTP_CHANNELS, SOS_PHONES, UPLOADS, TILE_URL, PUBLIC_URL, Sentry } from '../config.js';
 
 const STARTED_AT = new Date().toISOString();
@@ -33,6 +34,24 @@ async function uploadsCheck() {
   }
   if (!persistent && isProd) return item('datos', 'Carpeta de documentos', 'bad', 'Sin UPLOADS_DIR: los documentos y comprobantes se borran en cada despliegue. Monta un Volume en /data y pon UPLOADS_DIR=/data/uploads.');
   return item('datos', 'Carpeta de documentos', persistent ? 'ok' : 'info', persistent ? 'Guardando en el Volume (UPLOADS_DIR).' : 'Carpeta local (desarrollo).');
+}
+
+// Respaldo automático: si está configurado y cuándo salió bien el último (más de 2 días sin uno bueno es un problema)
+async function backupsCheck() {
+  if (!backupConfigured()) {
+    return item('datos', 'Respaldos automáticos', isProd ? 'bad' : 'info',
+      `Apagados. Faltan en Railway: ${backupMissing().join(', ')}. Crea un espacio en Cloudflare R2 (README, «Respaldos automáticos»).`);
+  }
+  const [last] = await recentBackups(1);
+  const [[good]] = await pool.query("SELECT finished_at, bytes, files_total FROM backups WHERE status = 'ok' ORDER BY id DESC LIMIT 1");
+  const when = `cada noche a las ${BACKUP_HOUR}:00 (hora de Honduras), se guardan ${KEEP_DAYS} días`;
+  if (!good) return item('datos', 'Respaldos automáticos', last?.status === 'failed' ? 'bad' : 'warn',
+    last?.status === 'failed' ? `El último intento falló: ${last.error}` : `Configurados (${when}). Todavía no hay ninguno: haz el primero con «Respaldar ahora».`);
+  const age = (Date.now() - new Date(good.finished_at)) / 3600e3;
+  const mb = (Number(good.bytes) / 1048576).toFixed(1);
+  const failed = last?.status === 'failed' ? ` El último intento falló: ${last.error}` : '';
+  return item('datos', 'Respaldos automáticos', age > 48 ? 'bad' : failed ? 'warn' : 'ok',
+    `Último bueno: ${new Date(good.finished_at).toLocaleString('es-HN', { timeZone: 'America/Tegucigalpa', dateStyle: 'medium', timeStyle: 'short' })} · base ${mb} MB · ${good.files_total} documento(s). Se hacen ${when}.${failed}`);
 }
 
 export async function systemStatus() {
@@ -65,7 +84,7 @@ export async function systemStatus() {
     item('avisos', 'Notificaciones', pushEnabled ? 'ok' : 'warn', pushEnabled ? 'Llaves VAPID configuradas.' : 'Sin VAPID_*: no hay notificaciones.'),
     // Datos
     await uploadsCheck(),
-    item('datos', 'Respaldos', 'info', 'Actívalos en Railway (MySQL y Volume) y haz uno propio cada semana con «npm run backup» (README, Etapa 7.2).'),
+    await backupsCheck(),
     item('datos', 'Correo de soporte en los términos', process.env.VITE_CONTACT_EMAIL ? 'ok' : isProd ? 'bad' : 'info',
       process.env.VITE_CONTACT_EMAIL ? `Los términos y la privacidad muestran ${process.env.VITE_CONTACT_EMAIL}.` : 'Sin VITE_CONTACT_EMAIL: los términos dicen «falta definir» donde va el correo de contacto. Agrégala y vuelve a desplegar.'),
     // Recargas: con la comisión activa (o alquileres pagados por transferencia) hace falta la cuenta para transferir
@@ -102,4 +121,17 @@ export async function systemStatus() {
 
 app.get('/api/admin/system', staffOnly('settings'), async (_req, res) => {
   res.json(await systemStatus());
+});
+
+// Respaldos: los últimos intentos, y hacer uno ahora (se hace en segundo plano: la lista muestra cuando termina)
+app.get('/api/admin/backups', staffOnly('settings'), async (_req, res) => {
+  res.json({ configured: backupConfigured(), missing: backupMissing(), hour: BACKUP_HOUR, keepDays: KEEP_DAYS, backups: await recentBackups(10) });
+});
+app.post('/api/admin/backups/run', staffOnly('settings'), async (req, res) => {
+  if (!backupConfigured()) return res.status(409).json({ error: `Faltan variables en Railway: ${backupMissing().join(', ')}` });
+  const [[busy]] = await pool.query("SELECT id FROM backups WHERE status = 'running' AND started_at > NOW() - INTERVAL 2 HOUR LIMIT 1");
+  if (busy) return res.status(409).json({ error: 'Ya se está haciendo un respaldo' });
+  await audit(req.staff, 'system.backup');
+  runBackup({ trigger: 'manual', actor: req.staff.id }).catch(() => {}); // si falla queda anotado y se avisa
+  res.status(202).json({ ok: true });
 });

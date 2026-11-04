@@ -68,7 +68,66 @@ export default function System({ call, onError }) {
           </section>
         );
       })}
+      <Backups call={call} onDone={load} />
       <button onClick={load}>Volver a revisar</button>
     </>
+  );
+}
+
+const BACKUP_STATUS = { ok: ['active', '✓ Listo'], failed: ['blocked', '✕ Falló'], running: ['pending', '… Haciéndose'] };
+const size = (b) => (b >= 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} kB`);
+
+// Los últimos respaldos y el botón para hacer uno ahora (mientras se hace, se revisa cada 5 segundos)
+function Backups({ call, onDone }) {
+  const [data, setData] = useState(null);
+  const [error, setError] = useState('');
+  const load = useCallback(async () => {
+    try { setData(await call('backups')); } catch (e) { setError(e.message); }
+  }, [call]);
+  useEffect(() => { load(); }, [load]);
+  const running = data?.backups.some((b) => b.status === 'running');
+  useEffect(() => {
+    if (!running) return undefined;
+    const t = setInterval(async () => {
+      const next = await call('backups').catch(() => null);
+      if (!next) return;
+      setData(next);
+      if (!next.backups.some((b) => b.status === 'running')) onDone();
+    }, 5000);
+    return () => clearInterval(t);
+  }, [running, call, onDone]);
+  async function now() {
+    setError('');
+    try {
+      await call('backups/run', {});
+      await load();
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+  if (!data) return null;
+  return (
+    <section className="req" aria-label="Respaldos">
+      <b>Respaldos</b>
+      <span className="muted small">
+        {data.configured
+          ? `Cada noche a las ${data.hour}:00 se respaldan la base y los documentos, cifrados y fuera de Railway. Se guardan ${data.keepDays} días.`
+          : `Apagados: faltan ${data.missing.join(', ')} en Railway.`}
+      </span>
+      {data.backups.slice(0, 5).map((b) => (
+        <div key={b.id} className="row between">
+          <span>
+            <span>{when(b.started_at)}{b.trigger === 'manual' ? ' · a mano' : ''}</span>
+            <br />
+            <span className="small muted">
+              {b.status === 'ok' ? `Base ${size(b.bytes)} · ${b.rows_count} filas · ${b.files_uploaded} documento(s) nuevos de ${b.files_total}` : b.status === 'failed' ? `Motivo: ${b.error}` : 'Respaldando la base y los documentos…'}
+            </span>
+          </span>
+          <span className={`pill ${BACKUP_STATUS[b.status][0]}`}>{BACKUP_STATUS[b.status][1]}</span>
+        </div>
+      ))}
+      {data.configured && <button onClick={now} disabled={running}>{running ? 'Respaldando…' : 'Respaldar ahora'}</button>}
+      {error && <p className="error" role="alert">{error}</p>}
+    </section>
   );
 }

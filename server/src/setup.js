@@ -695,5 +695,27 @@ await addColumn('topups', 'request_id', 'INT NULL');
   }
 }
 
+// Respaldos automáticos: cada intento queda anotado (cuándo, si salió bien, cuánto pesó) para verlo en Sistema
+await conn.query(`
+  CREATE TABLE IF NOT EXISTS backups (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    status ENUM('running','ok','failed') NOT NULL,
+    \`trigger\` ENUM('auto','manual') NOT NULL DEFAULT 'auto',
+    created_by INT NULL,
+    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    finished_at TIMESTAMP NULL,
+    object_key VARCHAR(200) NULL,
+    bytes BIGINT NULL,
+    tables_count INT NULL,
+    rows_count INT NULL,
+    files_total INT NULL,
+    files_uploaded INT NULL,
+    files_deleted INT NULL,
+    pruned INT NULL,
+    error VARCHAR(500) NULL,
+    KEY by_started (started_at)
+  )
+`);
+
 console.log(`Base de datos "${DB_NAME}" lista.`);
 await conn.end();

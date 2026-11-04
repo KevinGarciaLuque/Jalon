@@ -3,6 +3,16 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-04-respaldos-automaticos',
+    date: '2026-11-04',
+    title: 'Respaldos automáticos cada noche',
+    for: ['staff'],
+    items: [
+      'Cada noche a las 3:00 se respaldan la base de datos y los documentos, cifrados y fuera de Railway. Se guardan 30 días.',
+      'En Sistema → Respaldos se ven los últimos y el superadmin puede tocar «Respaldar ahora». Si uno falla, le llega un aviso.',
+    ],
+  },
+  {
     id: '2026-11-04-errores-de-la-app',
     date: '2026-11-04',
     title: 'Nos enteramos de los errores sin que nos los reporten',

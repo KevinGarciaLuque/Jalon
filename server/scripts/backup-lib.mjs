@@ -1,5 +1,7 @@
 // Lo que comparten el respaldo y la restauración: cómo se leen las tablas y su «huella» para comprobar que nada cambió.
 import crypto from 'crypto';
+import fs from 'fs';
+import zlib from 'zlib';
 import mysql from 'mysql2/promise';
 import { dbConfig, DB_NAME } from '../src/db.js';
 
@@ -80,6 +82,55 @@ export async function fingerprint(conn, database) {
     out[t] = d.done();
   }
   return out;
+}
+
+// Escribe el respaldo completo de la base en «file» (.sql.gz). Lo usan «npm run backup» y el respaldo automático del servidor.
+// Todo se lee dentro de una misma transacción: es una foto consistente aunque la app siga funcionando.
+// El archivo solo aparece cuando está completo. Devuelve el resumen (tablas, filas y huella de cada una).
+export async function dumpDatabase(file, { log = () => {} } = {}) {
+  const tmp = `${file}.partial`;
+  const conn = await connect(DB_NAME);
+  const gz = zlib.createGzip({ level: 9 });
+  const out = fs.createWriteStream(tmp, { mode: 0o600 }); // datos personales: solo lo lee quien lo creó
+  gz.pipe(out);
+  const write = (s) => (gz.write(s) ? null : new Promise((r) => gz.once('drain', r)));
+  try {
+    await conn.query('SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+    await conn.query('START TRANSACTION WITH CONSISTENT SNAPSHOT');
+    const startedAt = new Date().toISOString();
+    await write(`-- Respaldo de Ktracho GO · base ${DB_NAME} · ${startedAt} (UTC)\n-- Restaurar: npm run restore -- <este archivo>   (o: gunzip -c archivo | mysql <base vacía>)\n`);
+    await write("SET NAMES utf8mb4;\nSET time_zone = '+00:00';\nSET FOREIGN_KEY_CHECKS = 0;\nSET UNIQUE_CHECKS = 0;\n");
+    const manifest = { format: FORMAT, database: DB_NAME, at: startedAt, tables: {} };
+    for (const t of await tablesOf(conn, DB_NAME)) {
+      const [[create]] = await conn.query(`SHOW CREATE TABLE ${q(t)}`);
+      // Cada sentencia en una sola línea (así se restaura leyendo línea por línea)
+      await write(`DROP TABLE IF EXISTS ${q(t)};\n${create['Create Table'].replace(/\s*\n\s*/g, ' ')};\n`);
+      const shape = await shapeOf(conn, DB_NAME, t);
+      const d = digest();
+      for await (const rows of rowsOf(conn, t, shape)) {
+        rows.forEach((r) => d.add(r));
+        for (let i = 0; i < rows.length; i += 500) {
+          const values = rows.slice(i, i + 500).map((r) => `(${r.map((v) => conn.escape(v)).join(',')})`).join(',');
+          await write(`INSERT INTO ${q(t)} (${shape.columns.map(q).join(',')}) VALUES ${values};\n`);
+        }
+      }
+      manifest.tables[t] = d.done();
+      log(`  ${t.padEnd(22)} ${String(manifest.tables[t].rows).padStart(7)} filas`);
+    }
+    await conn.query('COMMIT');
+    await write(`SET FOREIGN_KEY_CHECKS = 1;\nSET UNIQUE_CHECKS = 1;\n-- jalon-manifest ${JSON.stringify(manifest)}\n`);
+    gz.end();
+    await new Promise((resolve, reject) => out.on('finish', resolve).on('error', reject));
+    fs.renameSync(tmp, file);
+    return manifest;
+  } catch (e) {
+    gz.destroy();
+    out.destroy();
+    fs.rmSync(tmp, { force: true });
+    throw e;
+  } finally {
+    await conn.end();
+  }
 }
 
 // Revisión del negocio: el saldo de cada conductor debe ser la suma de sus movimientos

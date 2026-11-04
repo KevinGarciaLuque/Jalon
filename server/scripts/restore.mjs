@@ -4,24 +4,40 @@
 //   npm run restore -- <archivo> --into=<base>  recuperación de verdad: lo restaura en <base>, que debe estar vacía o no existir.
 //                                               Nunca escribe encima de una base con datos.
 // Opción --keep: en el simulacro, deja la base de prueba para revisarla.
+// También acepta un respaldo automático cifrado (.sql.gz.enc, de «npm run backup:pull» o bajado de R2): lo descifra con BACKUP_KEY.
 import fs from 'fs';
 import zlib from 'zlib';
 import readline from 'readline';
 import { connect, fingerprint, balanceIssues, tablesOf, q, DB_NAME, FORMAT } from './backup-lib.mjs';
+import { decryptFile } from '../src/backupCrypto.js';
 
 const SAFE_LINE = /^(SET (NAMES utf8mb4|time_zone = '\+00:00'|FOREIGN_KEY_CHECKS = [01]|UNIQUE_CHECKS = [01]);$|DROP TABLE IF EXISTS `[^`.]+`;$|CREATE TABLE `[^`.]+` \(|INSERT INTO `[^`.]+` \()/;
 const args = process.argv.slice(2);
-const file = args.find((a) => !a.startsWith('--'));
+let file = args.find((a) => !a.startsWith('--'));
 const into = args.find((a) => a.startsWith('--into='))?.slice(7);
 const keep = args.includes('--keep');
 if (!file || !fs.existsSync(file)) {
-  console.error('Uso: npm run restore -- <archivo .sql.gz> [--into=<base vacía>] [--keep]');
+  console.error('Uso: npm run restore -- <archivo .sql.gz o .sql.gz.enc> [--into=<base vacía>] [--keep]');
   process.exit(2);
 }
 const target = into || `${DB_NAME}_restore_check`;
 if (!/^[\w$]{1,64}$/.test(target)) {
   console.error(`Nombre de base inválido: ${target}`);
   process.exit(2);
+}
+
+// Cifrado: se descifra a un archivo de al lado que se borra al terminar
+let decrypted = null;
+if (file.endsWith('.enc')) {
+  decrypted = file.replace(/\.enc$/, '');
+  if (fs.existsSync(decrypted)) decrypted = `${decrypted}.${process.pid}`;
+  try {
+    await decryptFile(file, decrypted);
+  } catch (e) {
+    console.error(`✗ ${e.message}`);
+    process.exit(1);
+  }
+  file = decrypted;
 }
 
 const conn = await connect();
@@ -87,5 +103,6 @@ try {
   if (!into && !keep) await conn.query(`DROP DATABASE IF EXISTS ${q(target)}`).catch(() => {});
   else if (!into && keep) console.log(`(se dejó la base de prueba «${target}» para revisarla)`);
   await conn.end();
+  if (decrypted) fs.rmSync(decrypted, { force: true });
 }
 process.exit(ok ? 0 : 1);

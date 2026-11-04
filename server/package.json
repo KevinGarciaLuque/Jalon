@@ -7,6 +7,7 @@
     "setup": "node src/setup.js",
     "backup": "node scripts/backup.mjs",
     "restore": "node scripts/restore.mjs",
+    "backup:pull": "node scripts/backup-pull.mjs",
     "admin": "node src/seed-admin.js",
     "vapid": "node src/vapid.js",
     "start": "node src/index.js",

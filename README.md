@@ -354,6 +354,37 @@ Hay dos copias que se complementan:
 1. **Las de Railway** (automáticas). En Railway abre el servicio **MySQL** → su volumen → **Backups** y programa copias (diarias o semanales, según tu plan).
    Haz lo mismo con el **Volume del servicio de la app** (`/data`), donde están las fotos de documentos y comprobantes: la base no las incluye.
 2. **La tuya** (`npm run backup`), fuera de Railway: si se pierde la cuenta o el proyecto, sigue existiendo. Recomendado: una vez por semana.
+3. **La automática del servidor** (la de abajo): cada noche, cifrada y fuera de Railway, con la base **y** los documentos. Con esta ya no
+   hace falta acordarse de la semanal.
+
+### Respaldos automáticos (cada noche, fuera de Railway)
+
+Cada noche a las 3:00 (hora de Honduras) el servidor respalda la base completa y copia los documentos, selfies y comprobantes nuevos o
+cambiados a un almacenamiento compatible con S3. Todo va **cifrado con `BACKUP_KEY`**: quien tenga acceso al almacenamiento sin la llave
+no puede leer nada. Se guardan 30 días (`BACKUP_KEEP_DAYS`); de la base siempre quedan al menos los 3 últimos. Un documento que se
+borra en la app se quita de la copia 30 días después. Si un respaldo falla se reintenta a la hora (hasta 3 veces por día) y al
+superadmin le llega un aviso. En **Panel → Sistema → Respaldos** se ven los últimos y está **«Respaldar ahora»**.
+
+**Configurarlo con Cloudflare R2** (gratis hasta 10 GB, sin cobro por descargar):
+1. En dash.cloudflare.com → **R2** → **Create bucket**, por ejemplo `ktracho-respaldos`. No lo hagas público.
+2. R2 → **Manage API tokens** → **Create API token** con permiso **Object Read & Write** solo para ese bucket. Copia el
+   *Access Key ID*, el *Secret Access Key* y el *endpoint* (`https://<cuenta>.r2.cloudflarestorage.com`).
+3. Genera la llave de cifrado en tu computadora: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`.
+4. En Railway → servicio de la app → **Variables**: `BACKUP_S3_ENDPOINT`, `BACKUP_S3_BUCKET`, `BACKUP_S3_ACCESS_KEY`,
+   `BACKUP_S3_SECRET_KEY` y `BACKUP_KEY`. (Sirve igual Backblaze B2 o AWS S3; con AWS agrega `BACKUP_S3_REGION`.)
+5. **Guarda `BACKUP_KEY` y `DATA_KEY` en tu gestor de contraseñas, fuera de Railway.** Sin `BACKUP_KEY` los respaldos no se pueden
+   abrir, y sin `DATA_KEY` los documentos tampoco (ya van cifrados con ella).
+6. Cuando se publique, en Panel → Sistema toca **«Respaldar ahora»** y espera el ✓.
+
+**Bajar y restaurar** (desde tu computadora, con esas mismas variables puestas en PowerShell):
+```
+npm --prefix server run backup:pull -- --list        # los que hay
+npm --prefix server run backup:pull                  # baja el último ya descifrado a server/backups
+npm --prefix server run restore -- server/backups/<archivo>.sql.gz   # simulacro (o --into=<base vacía>, como abajo)
+npm --prefix server run backup:pull -- --uploads --to=<carpeta>      # los documentos (nunca escribe encima de uno que exista)
+```
+`npm run restore` también acepta directo el archivo `.sql.gz.enc` bajado a mano de R2. Prueba: `test/phase39.mjs`
+(con un almacenamiento falso: respalda, baja, restaura idéntico, borra lo viejo, avisa si falla).
 
 ### Hacer un respaldo desde tu computadora
 
@@ -484,6 +515,8 @@ Lo que falta antes de abrir Ktracho GO al público. Casi todo es configuración 
 - [ ] **Mapas:** con poco tráfico bastan los gratuitos; cuando haya cientos de viajes al día, LocationIQ (Etapa 7.3).
 
 ### 3. Respaldos
+- [ ] **Respaldos automáticos** con Cloudflare R2 (`BACKUP_S3_*` y `BACKUP_KEY`, Etapa 7.2) y el primero con «Respaldar ahora».
+- [ ] `BACKUP_KEY` y `DATA_KEY` guardadas en un gestor de contraseñas, fuera de Railway.
 - [ ] Railway → Backups programados para el **MySQL** y para el **Volume** de la app.
 - [ ] Primer respaldo propio (`npm --prefix server run backup` con `MYSQL_PUBLIC_URL`) y su simulacro (`npm --prefix server run restore -- archivo`).
 - [ ] Recordatorio semanal para repetirlo.
