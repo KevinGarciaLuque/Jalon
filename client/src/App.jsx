@@ -64,7 +64,7 @@ function ModeNotice({ mode, user, wallet, pending, onClose }) {
       <div className="mode-card driver" role="dialog" aria-modal="true" aria-labelledby="mode-notice-title" onClick={(e) => e.stopPropagation()}>
         <span className="mode-icon"><Icon name="car" size={34} /></span>
         <h2 id="mode-notice-title">Tu solicitud de conductor</h2>
-        <p className="muted">Sube tu foto, licencia y matrícula. Cuando revisemos tu cuenta te avisamos y ya podrás recibir viajes.</p>
+        <p className="muted">Sube tu foto, licencia y matrícula. Cuando te aprobemos te avisamos; para ponerte disponible y recibir viajes recarga tu saldo.</p>
         <div className="mode-chips"><span>Vuelve a pedir viajes desde el menú</span></div>
         <button className="primary" autoFocus onClick={onClose}>Entendido</button>
         <span className="mode-timer" key={mode} />

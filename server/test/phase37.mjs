@@ -86,7 +86,7 @@ try {
   const ok = track(await connect(P.token));
   const no = got(ok, 'driver:denied', () => true, 800);
   ok.emit('driver:online', at);
-  check('y puede ponerse disponible', (await no) === null);
+  check('y puede ponerse disponible (aquí sin comisión; con comisión antes recarga saldo, lo prueba phase9)',(await no) === null);
   check('cambia a pasajera cuando quiera', (await http('POST', 'me/mode', P.token, { mode: 'passenger' })).user?.role === 'passenger');
 
   // ---------- Quien se registró como conductor sigue quedando bloqueado al rechazarlo ----------
