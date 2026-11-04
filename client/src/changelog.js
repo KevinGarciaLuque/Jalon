@@ -3,6 +3,15 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-04-librerias-seguras',
+    date: '2026-11-04',
+    title: 'Actualización de seguridad',
+    for: ['staff'],
+    items: [
+      'Se actualizaron piezas internas del servidor (la que lee lo que mandan los celulares y la del correo) a versiones sin las fallas que se publicaron.',
+    ],
+  },
+  {
     id: '2026-11-04-respaldos-automaticos',
     date: '2026-11-04',
     title: 'Respaldos automáticos cada noche',
