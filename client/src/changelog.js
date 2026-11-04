@@ -3,6 +3,17 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-04-errores-de-la-app',
+    date: '2026-11-04',
+    title: 'Nos enteramos de los errores sin que nos los reporten',
+    for: ['staff'],
+    items: [
+      'Los errores que les salen a los usuarios en la app ahora llegan a Sentry junto con los del servidor, sin datos personales.',
+      'Si una pantalla falla, en vez de quedar en blanco aparece «Algo salió mal» con un botón para recargar.',
+      'En Sistema, el superadmin tiene el botón «Probar Sentry» para confirmar que los avisos llegan.',
+    ],
+  },
+  {
     id: '2026-11-03-quiero-ser-conductor',
     date: '2026-11-03',
     title: '¿Quieres manejar? Pídelo desde el menú',

@@ -25,6 +25,7 @@ export const ACTION_LABEL = {
   'user.approve': 'Aprobó al conductor',
   'user.block': 'Bloqueó la cuenta',
   'user.reject': 'Rechazó la solicitud del conductor',
+  'system.sentry_test': 'Envió un error de prueba a Sentry',
   'user.unblock': 'Desbloqueó la cuenta',
   'user.edit': 'Editó los datos',
   'user.vehicle': 'Editó el vehículo',

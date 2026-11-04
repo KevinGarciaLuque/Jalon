@@ -40,7 +40,7 @@ const SAFE = new Set(['GET', 'HEAD', 'OPTIONS']);
 const fail = (status, error) => Object.assign(new Error(error), { status });
 // El token de la petición: primero la cabecera Authorization; si no hay, la cookie.
 // Con la cookie, lo que cambia algo exige la cabecera de la app: otro sitio no puede ponerla (CSRF).
-function requestToken(req) {
+export function requestToken(req) {
   const bearer = (req.headers.authorization || '').replace(/^Bearer /, '');
   if (bearer) return bearer;
   const cookie = readCookie(req.headers.cookie, SESSION_COOKIE);

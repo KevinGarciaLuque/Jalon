@@ -134,7 +134,7 @@ Precios vistos el 21 de octubre de 2026 en la página de cada proveedor; confír
 
 **Integración continua.** `.github/workflows/ci.yml` corre las pruebas en cada subida a `main`: crea la base de datos desde cero, arranca el servidor y ejecuta `npm test`. En Railway activa **Settings → Source → Wait for CI** para que un despliegue espere a que pasen. (No incluye el recorrido en Chrome ni la prueba de carga.)
 
-**Errores y registros.** Con `SENTRY_DSN` los errores inesperados se reportan a Sentry (sin datos personales). En producción cada petición a la API deja una línea JSON (método, ruta, estado, milisegundos) en los registros de Railway. Para saber si el servicio se cae, crea un monitor gratuito (UptimeRobot u otro) sobre `https://TU-DOMINIO/api/health` con aviso a tu correo o teléfono.
+**Errores y registros.** Con `SENTRY_DSN` los errores inesperados del servidor y los que les salen a los usuarios en la app se reportan a Sentry (sin datos personales: se quitan teléfonos, correos, tokens, la IP y lo que se envió en la petición). Crea el proyecto en sentry.io con la plataforma Node.js; en Panel → Sistema, «Probar Sentry» confirma que llegan. En producción cada petición a la API deja una línea JSON (método, ruta, estado, milisegundos) en los registros de Railway. Para saber si el servicio se cae, crea un monitor gratuito (UptimeRobot u otro) sobre `https://TU-DOMINIO/api/health` con aviso a tu correo o teléfono.
 
 **Prueba de carga.** `PORT=4200 OSRM_URL=http://127.0.0.1:9 node src/index.js` y luego `LOAD_URL=http://localhost:4200 npm run test:load` (solo contra un servidor local). Variables: `LOAD_DRIVERS`, `LOAD_PASSENGERS`, `LOAD_RIDES`.
 Resultados en una PC local (MySQL local, un solo proceso):

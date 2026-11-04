@@ -96,6 +96,7 @@ header span { flex: 1; color: var(--muted); font-size: 14px; }
 
 /* Cargando (líneas que brillan) y pantallas vacías */
 .loading { display: flex; flex-direction: column; gap: 8px; padding: 4px 0; }
+.crash { min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px 16px; text-align: center; background: var(--bg); color: var(--text); }
 .loading i { display: block; height: 14px; border-radius: 6px; background: linear-gradient(90deg, var(--line), var(--card), var(--line)); background-size: 200% 100%; animation: shimmer 1.4s infinite linear; }
 .loading i:nth-child(3) { width: 85%; }
 .loading i:nth-child(4) { width: 55%; }

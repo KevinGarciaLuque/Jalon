@@ -6,6 +6,14 @@ import { normalizePhone } from './phone.js';
 import { smsConfigured } from './sms.js';
 import { mailConfigured } from './mail.js';
 
+// Quita datos personales de un texto antes de mandarlo a Sentry: teléfonos, correos, tokens y lo que va después de «?» en las direcciones
+export const scrub = (s, max = 2000) => String(s ?? '')
+  .replace(/https?:\/\/[^\s)'"]+/g, (u) => u.replace(/[?#].*$/, '')) // direcciones sin parámetros (pueden llevar códigos)
+  .replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, '[correo]')
+  .replace(/\beyJ[\w-]+\.[\w-]+\.[\w-]+/g, '[token]')
+  .replace(/(?<![\w.])\+?\d[\d -]{6,}\d(?![\w.])/g, '[número]') // teléfonos y números largos
+  .slice(0, max);
+
 // Monitoreo de errores (opcional): con SENTRY_DSN los errores inesperados del servidor se reportan a Sentry (sin datos personales)
 export const Sentry = process.env.SENTRY_DSN ? await import('@sentry/node') : null;
 Sentry?.init({
@@ -14,6 +22,23 @@ Sentry?.init({
   release: process.env.RAILWAY_GIT_COMMIT_SHA,
   tracesSampleRate: 0,
   sendDefaultPii: false,
+  // Sentry adjunta por su cuenta lo que se envió en la petición (teléfonos, contraseñas), la cookie y la IP: se quita todo eso.
+  // Queda el método, la ruta sin parámetros y el navegador, que bastan para encontrar el error.
+  beforeSend(event) {
+    if (event.request) {
+      const { 'user-agent': ua } = event.request.headers || {};
+      event.request = { method: event.request.method, url: event.request.url?.replace(/[?#].*$/, ''), headers: ua ? { 'user-agent': ua } : {} };
+    }
+    delete event.user;
+    // Los mensajes y lo que se escribió en el registro antes del error (p. ej. «SMS a 9xxxxxxx») también pasan por el filtro
+    if (event.message) event.message = scrub(event.message);
+    event.exception?.values?.forEach((v) => { if (v.value) v.value = scrub(v.value); });
+    event.breadcrumbs?.forEach((b) => {
+      if (b.message) b.message = scrub(b.message);
+      if (b.data?.arguments) b.data.arguments = b.data.arguments.map((a) => scrub(typeof a === 'string' ? a : JSON.stringify(a), 500));
+    });
+    return event;
+  },
 });
 export const reportError = (e) => { console.error(e); Sentry?.captureException(e); };
 

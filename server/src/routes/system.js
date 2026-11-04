@@ -51,7 +51,7 @@ export async function systemStatus() {
       keyIsDerived ? 'Sin DATA_KEY: la llave sale de JWT_SECRET. Ponla siguiendo el README (Etapa 8.1).'
         : lastRekey.unreadable ? `${lastRekey.unreadable} elemento(s) cifrado(s) no se pudieron leer con ninguna llave (ver el registro del servidor).`
           : lastRekey.files || lastRekey.secrets ? `Lista. Al arrancar se pasaron ${lastRekey.files} archivo(s) y ${lastRekey.secrets} secreto(s) a la llave nueva.` : 'Lista.'),
-    item('seguridad', 'Monitoreo de errores (Sentry)', Sentry ? 'ok' : 'warn', Sentry ? 'Los errores del servidor se reportan a Sentry.' : 'Sin SENTRY_DSN: los errores solo quedan en el registro de Railway.'),
+    item('seguridad', 'Monitoreo de errores (Sentry)', Sentry ? 'ok' : 'warn', Sentry ? 'Los errores del servidor y los que les salen a los usuarios en la app se reportan a Sentry. Pruébalo con el botón de abajo.' : 'Sin SENTRY_DSN: los errores del servidor y de la app solo quedan en el registro de Railway. Crea un proyecto gratis en sentry.io (plataforma Node.js) y pon su DSN en Railway.'),
     // Registro y avisos
     item('avisos', 'Código de verificación al registrarse', codeChannel ? 'ok' : !isProd ? 'info' : 'bad',
       codeChannel ? `Se envía por ${OTP_CHANNELS.map((c) => (c === 'email' ? 'correo' : 'SMS')).join(' y ')}.`

@@ -17,6 +17,17 @@ export default function System({ call, onError }) {
     }
   }, [call, onError]);
   useEffect(() => { load(); }, [load]);
+  // Manda un error de prueba: si llega, en sentry.io aparece «Prueba de Sentry desde el panel»
+  const [sentry, setSentry] = useState(null);
+  async function testSentry() {
+    setSentry({ busy: true });
+    try {
+      await call('system/sentry-test', {});
+      setSentry({ ok: true, text: 'Enviado. En unos segundos aparece en sentry.io como «Prueba de Sentry desde el panel».' });
+    } catch (e) {
+      setSentry({ ok: false, text: e.message });
+    }
+  }
   if (!data) return <Loading />;
   const { version, summary, items } = data;
 
@@ -43,6 +54,13 @@ export default function System({ call, onError }) {
                   <span>{i.label}</span>
                   <br />
                   <span className="muted small">{i.detail}</span>
+                  {i.label.includes('Sentry') && i.status === 'ok' && (
+                    <>
+                      <br />
+                      <button className="small" onClick={testSentry} disabled={sentry?.busy}>{sentry?.busy ? 'Enviando…' : 'Probar Sentry'}</button>
+                      {sentry?.text && <span className={`small ${sentry.ok ? 'muted' : 'error'}`} role="status"> {sentry.text}</span>}
+                    </>
+                  )}
                 </span>
                 <span className={`pill ${STATUS[i.status][0]}`}>{STATUS[i.status][1]}</span>
               </div>
