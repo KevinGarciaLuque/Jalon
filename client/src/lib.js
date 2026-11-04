@@ -245,3 +245,12 @@ export async function toJpeg(file) {
   canvas.getContext('2d').drawImage(bmp, 0, 0, canvas.width, canvas.height);
   return canvas.toDataURL('image/jpeg', 0.8);
 }
+
+// Descuento de un código promocional sobre un precio (igual que en el servidor: services/promos.js)
+export function promoDiscount(promo, price) {
+  if (!promo) return 0;
+  const p = Number(price) || 0;
+  const raw = promo.kind === 'percent' ? (p * promo.value) / 100 : promo.value;
+  const capped = promo.kind === 'percent' && promo.maxDiscount != null ? Math.min(raw, promo.maxDiscount) : raw;
+  return Math.round(Math.max(0, Math.min(capped, p)) * 100) / 100;
+}

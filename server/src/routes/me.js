@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { pool } from '../db.js';
 import { distanceKm } from '../geo.js';
-import { getSettings } from '../wallet.js';
+import { getSettings, money } from '../wallet.js';
 import { faresFor } from '../fares.js';
 import { searchPlaces, reversePlace, getRoute } from '../maps.js';
 import { normalizePhone } from '../phone.js';
@@ -18,6 +18,7 @@ import { closeSession } from '../services/activity.js';
 import { permsFor } from '../perms.js';
 import { push, pushStaff } from '../notify.js';
 import { getRide, activeRideFor } from '../services/rides.js';
+import { promoOf } from '../services/promos.js';
 import { anonymizeUser } from '../services/accounts.js';
 import { readVehicle, plateTaken, saveVehicle, isPlateDup } from '../services/vehicles.js';
 import { trackOf, trackKm } from '../services/activity.js';
@@ -168,6 +169,8 @@ app.get('/api/rides/:id/receipt', authUser, async (req, res) => {
     distanceKm: ride.distance_km, durationMin: ride.duration_min,
     ...(await realTrip(ride)),
     price: Number(ride.final_price), payment: 'Efectivo',
+    // Con código promocional: lo que pagó el pasajero y cuánto puso Ktracho GO
+    ...(ride.promo_id && Number(ride.discount) > 0 ? { discount: Number(ride.discount), promoCode: (await promoOf(ride))?.code || null, paid: money(Number(ride.final_price) - Number(ride.discount)) } : {}),
   });
 });
 

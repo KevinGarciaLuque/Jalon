@@ -3,6 +3,17 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-04-codigos-promocionales',
+    date: '2026-11-04',
+    title: 'Códigos promocionales',
+    for: ['passenger', 'driver', 'staff'],
+    items: [
+      'Pasajeros: antes de pedir el viaje toca «¿Tienes un código promocional?». Si sirve, el botón te dice cuánto pagas con el descuento.',
+      'Conductores: si el pasajero usa un código, en el viaje ves cuánto cobrar en efectivo. El descuento te lo pone Ktracho GO en tu saldo al terminar, y no pierdes nada.',
+      'Personal: en Promociones crea códigos de monto fijo o porcentaje, con usos, fechas y «solo primer viaje», y mira cuántas veces se usaron.',
+    ],
+  },
+  {
     id: '2026-11-04-librerias-seguras',
     date: '2026-11-04',
     title: 'Actualización de seguridad',

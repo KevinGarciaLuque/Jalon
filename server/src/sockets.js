@@ -14,6 +14,7 @@ import { isPoint, isPrice, serial, clean } from './util.js';
 import { push, pushStaff, hasPushSub, unreadCount } from './notify.js';
 import { getRide, activeRideFor, ratingsOf, rideView, nearbyDrivers, openRidesNear, closeOpenRide, releaseDriver, sendEta, cancelRide, PIN_TRIES, canTake, announceRide } from './services/rides.js';
 import { walletGate, chargeCommission, dropForLowBalance } from './services/balance.js';
+import { withPromo, PromoError, promoOf, discountFor, creditPromo } from './services/promos.js';
 import { shareWithContacts } from './services/accounts.js';
 import { notifySos } from './services/sos.js';
 import { rentingNow } from './services/rentals.js';
@@ -208,6 +209,7 @@ io.on('connection', async (socket) => {
       if (status === 'completed') {
         releaseDriver(user.id);
         chargeCommission(ride).catch(reportError); // se descuenta del saldo del conductor; sin await para no retrasar la respuesta
+        creditPromo(ride).catch(reportError); // lo que el pasajero no pagó por su código, Ktracho GO se lo pone en su saldo
       }
       const view = await rideView(await getRide(rideId));
       io.to(room(ride.passenger_id)).to(room(user.id)).emit('ride:state', view);
@@ -220,7 +222,7 @@ io.on('connection', async (socket) => {
       ack?.({ ok: true });
       if (status === 'arrived') push(ride.passenger_id, { title: 'Tu conductor llegó', body: `${user.name} te espera · ${user.vehicle || ''} ${user.plate || ''}`.trim(), tag: `ride-${rideId}`, url: '/' });
       if (status === 'started') push(ride.passenger_id, { title: 'Tu viaje empezó', body: `Vas con ${user.name}${ride.dest_text ? ` a ${ride.dest_text}` : ''}. Puedes compartir tu viaje desde la app.`, tag: `ride-${rideId}`, url: '/' });
-      if (status === 'completed') push(ride.passenger_id, { title: 'Llegaste a tu destino', body: `Total a pagar: L ${Math.round(ride.final_price ?? ride.offered_price)}. Califica a ${user.name} y mira el recibo en tu historial.`, tag: `ride-${rideId}`, target: 'history', url: '/' });
+      if (status === 'completed') push(ride.passenger_id, { title: 'Llegaste a tu destino', body: `Total a pagar: L ${Math.round(view.toPay)}. Califica a ${user.name} y mira el recibo en tu historial.`, tag: `ride-${rideId}`, target: 'history', url: '/' });
     });
   }
 
@@ -233,7 +235,7 @@ io.on('connection', async (socket) => {
       socket.emit('drivers:nearby', nearbyDrivers(lat, lng));
     });
 
-    on('ride:request', async ({ origin, dest, price, category: cat, womenOnly, stops: rawStops, pickupNote, rider, scheduledFor }, ack) => {
+    on('ride:request', async ({ origin, dest, price, category: cat, womenOnly, stops: rawStops, pickupNote, rider, scheduledFor, promoCode }, ack) => {
       try {
         if (!isPoint(origin) || !isPoint(dest)) return ack?.({ error: 'Ubicación inválida' });
         // Si ya hay uno (p. ej. pedido desde otro celular), se le muestra para que lo vea o lo cancele
@@ -280,13 +282,22 @@ io.on('connection', async (socket) => {
         }
         const offered = price == null || price === '' ? fareFor(await getSettings(pool), category, km, route.durationMin) : Number(price);
         if (!isPrice(offered)) return ack?.({ error: `El precio debe estar entre L 1 y L ${MAX_PRICE}` });
-        const [r] = await pool.query(
+        const pickup = await pickupText(origin);
+        const insert = (promo) => pool.query(
           `INSERT INTO rides (passenger_id, origin_lat, origin_lng, origin_text, dest_lat, dest_lng, dest_text, distance_km, duration_min, route_json, offered_price, category, women_only,
-                              stops_json, pickup_note, rider_name, rider_phone, scheduled_for, status)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-          [user.id, origin.lat, origin.lng, await pickupText(origin), dest.lat, dest.lng, clean(dest.text), km, route.durationMin, JSON.stringify(route.coords), offered, category, women,
-           cleanStops.length ? JSON.stringify(cleanStops) : null, note, riderName, riderPhone, when, when ? 'scheduled' : 'requested']
+                              stops_json, pickup_note, rider_name, rider_phone, scheduled_for, status, promo_id)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          [user.id, origin.lat, origin.lng, pickup, dest.lat, dest.lng, clean(dest.text), km, route.durationMin, JSON.stringify(route.coords), offered, category, women,
+           cleanStops.length ? JSON.stringify(cleanStops) : null, note, riderName, riderPhone, when, when ? 'scheduled' : 'requested', promo?.id ?? null]
         );
+        // Con código promocional, se revisa y se guarda el viaje en un solo paso (para no pasarse de los usos del código)
+        let r;
+        try {
+          [r] = promoCode ? await withPromo(promoCode, user.id, insert) : await insert(null);
+        } catch (e) {
+          if (e instanceof PromoError) return ack?.({ error: e.message, promo: true });
+          throw e;
+        }
         // Programado: queda guardado y sale a buscar conductor un rato antes de la hora (jobs.js)
         if (when) {
           // La hora se guarda contada desde el reloj de MySQL, para que coincida con NOW() aunque las zonas horarias difieran
@@ -338,6 +349,10 @@ io.on('connection', async (socket) => {
       }
       await pool.query('UPDATE offers SET status = IF(id = ?, "accepted", "rejected") WHERE ride_id = ?', [offer.id, ride.id]);
       closeOpenRide(ride.id);
+      if (ride.promo_id) {
+        const promo = await promoOf(ride);
+        if (promo) await pool.query('UPDATE rides SET discount = ? WHERE id = ?', [discountFor(promo, offer.price), ride.id]);
+      }
 
       const view = await rideView(await getRide(ride.id));
       io.to(room(user.id)).to(room(offer.driver_id)).emit('ride:state', view);

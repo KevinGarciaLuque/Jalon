@@ -27,6 +27,8 @@ export const ACTION_LABEL = {
   'user.reject': 'Rechazó la solicitud del conductor',
   'system.sentry_test': 'Envió un error de prueba a Sentry',
   'system.backup': 'Hizo un respaldo a mano',
+  'promo.create': 'Creó un código promocional',
+  'promo.update': 'Cambió un código promocional',
   'user.unblock': 'Desbloqueó la cuenta',
   'user.edit': 'Editó los datos',
   'user.vehicle': 'Editó el vehículo',
@@ -84,6 +86,7 @@ export function detailText(action, d) {
   if (action === 'alert.resolve') return `alerta #${d.alert}`;
   if (action === 'user.delete') return ROLE_LABEL[d.role] || '';
   if (action === 'user.reject') return d.note || '';
+  if (action === 'promo.create' || action === 'promo.update') return d.code || '';
   return '';
 }
 

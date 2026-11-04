@@ -576,6 +576,22 @@ WhatsApp; en la computadora la descarga), **Descargar imagen**, **Copiar enlace*
 el enlace). La dirección sale de `PUBLIC_URL` (si es https); si no, de la del sitio donde se abrió el panel (`GET /api/admin/share`).
 Prueba: `test/phase24.mjs`.
 
+## Códigos promocionales
+
+Panel → **Promociones** (permiso `settings`). Un código descuenta un monto fijo (p. ej. L 30) o un porcentaje con tope (p. ej. 20 % hasta
+L 15), y puede tener usos en total, fechas de inicio y vencimiento, y «solo para el primer viaje». Cada pasajero usa un mismo código una
+sola vez; si el viaje se cancela, el uso se le devuelve. El pasajero lo escribe en «¿Tienes un código promocional?» antes de pedir y el
+botón le dice cuánto paga.
+
+**Quién paga el descuento:** Ktracho GO, no el conductor. El pasajero paga en efectivo el precio menos el descuento; al terminar el viaje
+el conductor recibe ese descuento en su saldo (movimiento «Descuento de un código»), y la comisión se calcula sobre el precio completo.
+El conductor ve en el viaje cuánto debe cobrar en efectivo. Como el saldo solo sirve con la comisión activa, **los códigos solo funcionan
+con la comisión encendida** (el panel lo avisa). El descuento queda fijo al aceptar la oferta (con el precio final).
+
+Un código ya usado no puede cambiar de nombre ni de descuento (se apaga y se crea otro); sí se puede apagar o cambiar su vencimiento.
+Tablas: `promo_codes`; columnas `rides.promo_id` y `rides.discount`; movimiento `promo` en `wallet_entries`. Pruebas: `test/phase40.mjs`
+y, en pantalla, `test/promo-ui.mjs`.
+
 ## Campanita de notificaciones
 
 Todos (pasajero, conductor, soporte, administrador y superadmin) tienen una 🔔 en el encabezado con el número de avisos sin leer.

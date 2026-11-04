@@ -74,7 +74,7 @@ export default function History({ token, role, onClose }) {
           <div className="req" key={r.id}>
             <div className="row between">
               <b>{dateText(r.created_at)}</b>
-              <span className="tag">{lempiras(r.final_price ?? r.offered_price)}</span>
+              <span className="tag">{lempiras((r.final_price ?? r.offered_price) - (role === 'driver' ? 0 : Number(r.discount) || 0))}</span>
             </div>
             <div className="route-list muted">
               <div><i className="dot-o" />{r.origin_text || 'Mi ubicación'}</div>

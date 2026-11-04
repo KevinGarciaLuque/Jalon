@@ -717,5 +717,29 @@ await conn.query(`
   )
 `);
 
+// Códigos promocionales: el pasajero paga menos en efectivo y Ktracho GO le pone la diferencia al conductor en su saldo.
+// Los usos se cuentan con los viajes que llevan el código (un viaje cancelado devuelve el uso).
+await conn.query(`
+  CREATE TABLE IF NOT EXISTS promo_codes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(20) NOT NULL UNIQUE,
+    description VARCHAR(120) NULL,
+    kind ENUM('fixed','percent') NOT NULL,
+    value DECIMAL(10,2) NOT NULL,
+    max_discount DECIMAL(10,2) NULL,
+    max_uses INT NULL,
+    first_ride_only TINYINT(1) NOT NULL DEFAULT 0,
+    starts_at DATETIME NULL,
+    expires_at DATETIME NULL,
+    active TINYINT(1) NOT NULL DEFAULT 1,
+    created_by INT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  )
+`);
+await addColumn('rides', 'promo_id', 'INT NULL');
+await addColumn('rides', 'discount', 'DECIMAL(10,2) NULL');
+await conn.query("ALTER TABLE wallet_entries MODIFY kind ENUM('topup','commission','bonus','adjustment','rental_commission','rental_payout','promo') NOT NULL");
+
 console.log(`Base de datos "${DB_NAME}" lista.`);
 await conn.end();

@@ -34,7 +34,17 @@ export default function Receipt({ rideId, token, onClose }) {
                 <dt>Recorrido</dt><dd>{r.realKm != null ? `${r.realKm.toFixed(1)} km recorridos` : `${Number(r.distanceKm).toFixed(1)} km`}{r.realMin != null ? ` · ${r.realMin} min` : r.durationMin ? ` · ${Math.round(r.durationMin)} min estimados` : ''}</dd>
                 <dt>Forma de pago</dt><dd>{r.payment}</dd>
               </dl>
-              <div className="total"><span>Total</span><b>{lempiras(r.price)}</b></div>
+              {r.discount > 0 ? (
+                <>
+                  <dl>
+                    <dt>Precio del viaje</dt><dd>{lempiras(r.price)}</dd>
+                    <dt>Descuento</dt><dd>− {lempiras(r.discount)} (código {r.promoCode})</dd>
+                  </dl>
+                  <div className="total"><span>Total pagado</span><b>{lempiras(r.paid)}</b></div>
+                </>
+              ) : (
+                <div className="total"><span>Total</span><b>{lempiras(r.price)}</b></div>
+              )}
               <p className="muted small center">Este comprobante no es una factura fiscal.</p>
             </div>
             <button className="primary no-print" onClick={() => window.print()}>🖨 Imprimir o guardar como PDF</button>

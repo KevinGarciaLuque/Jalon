@@ -7,6 +7,8 @@ import { io } from '../app.js';
 import { drivers, passengers, openRides, declined, room } from '../live.js';
 import { push } from '../notify.js';
 import { openSafetyCheck } from './safety.js';
+import { promoOf, rideDiscount } from './promos.js';
+import { money } from '../wallet.js';
 
 export async function getRide(id) {
   const [rows] = await pool.query('SELECT * FROM rides WHERE id = ?', [id]);
@@ -40,8 +42,14 @@ export async function rideView(ride) {
   const ratings = await ratingsOf(ids);
   const byId = Object.fromEntries(users.map((u) => [u.id, { ...u, rating: ratings.get(u.id) || { avg: null, count: 0 } }]));
   const { route_json, share_token, start_pin, pin_attempts, stops_json, rider_phone, ...rest } = ride;
+  // Código promocional: el pasajero paga el precio menos el descuento; la diferencia se la pone Ktracho GO al conductor
+  const promo = await promoOf(ride);
+  const discount = await rideDiscount(ride, promo);
   return {
     ...rest,
+    promo: promo ? { code: promo.code, description: promo.description } : null,
+    discount,
+    toPay: money(Math.max(0, Number(ride.final_price ?? ride.offered_price) - discount)),
     pinRequired: !!start_pin, // el PIN lo ve solo el pasajero (GET /api/rides/:id/pin)
     stops: ride.stops_json ? JSON.parse(ride.stops_json) : [], // paradas en el camino, en orden
     pinLocked: Number(pin_attempts) >= PIN_TRIES,

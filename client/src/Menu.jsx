@@ -34,6 +34,7 @@ const PATHS = {
   chat: 'M5 19l1.5-3.5A7.5 7.5 0 1 1 9 18.6L5 19z',
   doc: 'M7 3h7l4 4v14H7zM14 3v4h4M10 12h5M10 16h5',
   inbox: 'M4 13l2.5-8h11L20 13v6H4zM4 13h4.5l1 2.5h5l1-2.5H20',
+  tag: 'M3.5 12.5V4.5a1 1 0 0 1 1-1h8l8 8-9 9-8-8zM8 8h.01',
 };
 export function Icon({ name, size = 22 }) {
   return (

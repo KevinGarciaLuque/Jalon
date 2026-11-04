@@ -200,7 +200,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
               <div className="offer">
                 <div>
                   <b>{STATUS[ride.status]}</b>
-                  {ride.status === 'completed' && <div className="muted">Cobrar en efectivo: {lempiras(ride.final_price)}</div>}
+                  {ride.status === 'completed' && <div className="muted">Cobrar en efectivo: {lempiras(ride.toPay ?? ride.final_price)}{ride.discount > 0 ? ` · Ktracho GO te puso ${lempiras(ride.discount)} en tu saldo` : ''}</div>}
                 </div>
                 <button className="primary sm" onClick={() => setRide(null)}>OK</button>
               </div>
@@ -329,6 +329,10 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
               <b>{STATUS[ride.status]}</b>
               <span className="tag">{lempiras(ride.final_price)}</span>
             </div>
+            {/* Con código promocional el pasajero paga menos en efectivo: la diferencia la pone Ktracho GO en su saldo */}
+            {ride.discount > 0 && (
+              <p className="promo-note small" role="status">🏷 El pasajero usa un código: cobra <b>{lempiras(ride.toPay)}</b> en efectivo. Los {lempiras(ride.discount)} restantes te los pone Ktracho GO en tu saldo al terminar.</p>
+            )}
             <div className="offer">
               <Avatar name={ride.passenger?.name} />
               <div className="who">

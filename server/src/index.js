@@ -25,6 +25,7 @@ import './routes/passkeys.js';
 import './routes/recharges.js';
 import './routes/selfies.js';
 import './routes/client-errors.js';
+import './routes/promos.js';
 import './sockets.js';
 import './jobs.js';
 

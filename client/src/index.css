@@ -132,6 +132,7 @@ tbody tr:hover { background: var(--bg); }
 .pill.active { background: var(--brand-soft); color: var(--brand); }
 .pill.pending { background: var(--mango-soft); color: var(--mango-ink); }
 .pill.blocked { background: var(--danger-soft); color: var(--danger); }
+.promo-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.06em; }
 td.actions { display: flex; gap: 6px; }
 
 /* ---- Fase 3 ---- */
@@ -820,3 +821,11 @@ header { gap: 8px; background: linear-gradient(135deg, var(--card), var(--bg)); 
 /* Módulo Solicitudes: avisos de este dispositivo */
 .device-alerts { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-2); background: var(--card); }
 .device-alerts > b { flex-basis: 100%; }
+
+/* Código promocional (pasajero) */
+.promo-link { align-self: flex-start; min-height: 32px; padding: 2px 0; font-size: 14px; }
+.promo-form { display: flex; flex-direction: column; gap: 4px; }
+.promo-form input { min-height: 40px; text-transform: uppercase; }
+.promo-on { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 0; padding: 6px 10px; border-radius: var(--r-1); background: var(--brand-soft); color: var(--text); font-size: 14px; }
+.promo-on .link { min-height: 32px; padding: 2px 6px; }
+.promo-note { margin: 0; padding: 6px 10px; border-radius: var(--r-1); background: var(--brand-soft); color: var(--text); }

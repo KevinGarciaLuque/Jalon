@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
-import { useGeo, apiGet, apiPost, lempiras, minutes, useChat, useNow, CATEGORIES, CATEGORY_LABEL, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
+import { useGeo, apiGet, apiPost, promoDiscount, lempiras, minutes, useChat, useNow, CATEGORIES, CATEGORY_LABEL, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
 import { CarMarker, FitTo, MapControls, RouteLine, icons, rotateOptions, showAt } from './mapParts.jsx';
 import ReportForm from './ReportForm.jsx';
 import Rentals from './Rentals.jsx';
@@ -108,6 +108,45 @@ const CANCELLED = {
 
 const QUICK = ['Ya salgo', 'Dame 2 minutos', 'Estoy en la esquina', '¿Dónde estás?'];
 
+// «¿Tienes un código?»: se prueba con el servidor y, si sirve, el botón de pedir muestra cuánto paga
+function PromoField({ token, price, promo, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [code, setCode] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  async function apply(e) {
+    e.preventDefault();
+    setError('');
+    setBusy(true);
+    try {
+      const r = await apiGet(`promos/check?code=${encodeURIComponent(code.trim())}&price=${Number(price) || 0}`, token);
+      onChange(r.promo);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  if (promo) {
+    return (
+      <div className="promo-on" role="status">
+        <span>🏷 <b className="promo-code">{promo.code}</b> · {lempiras(promoDiscount(promo, price))} menos{promo.description ? <span className="muted small"> · {promo.description}</span> : null}</span>
+        <button type="button" className="link" onClick={() => { onChange(null); setCode(''); }}>Quitar</button>
+      </div>
+    );
+  }
+  if (!open) return <button type="button" className="link promo-link" onClick={() => setOpen(true)}>🏷 ¿Tienes un código promocional?</button>;
+  return (
+    <form className="promo-form" onSubmit={apply}>
+      <div className="row">
+        <input className="grow" aria-label="Código promocional" placeholder="Código" value={code} maxLength={20} autoCapitalize="characters" autoFocus onChange={(e) => setCode(e.target.value)} />
+        <button className="sm" disabled={busy || code.trim().length < 3}>{busy ? 'Revisando…' : 'Aplicar'}</button>
+      </div>
+      {error && <div className="error small">{error}</div>}
+    </form>
+  );
+}
+
 export default function Passenger({ socket, token, userId, perms = [], gender = null }) {
   const { pos, setPos, denied, course } = useGeo();
   const [drivers, setDrivers] = useState([]);
@@ -128,6 +167,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
   const [note, setNote] = useState(''); // punto de referencia para el conductor
   const [forOther, setForOther] = useState(false); // el viaje es para otra persona
   const [rider, setRider] = useState({ name: '', phone: '' });
+  const [promo, setPromo] = useState(null); // código promocional ya revisado
   const [when, setWhen] = useState(''); // '' = ahora; si no, fecha y hora (datetime-local)
   const [scheduled, setScheduled] = useState([]); // viajes programados
   const [info, setInfo] = useState('');
@@ -244,9 +284,13 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
       pickupNote: note.trim() || undefined,
       rider: forOther ? { name: rider.name.trim(), phone: rider.phone.trim() } : undefined,
       scheduledFor: when ? new Date(when).toISOString() : undefined,
+      promoCode: promo?.code,
     };
     socket.emit('ride:request', payload, (res) => {
-      if (res?.error) return setError(res.error);
+      if (res?.error) {
+        if (res.promo) setPromo(null); // el código dejó de servir (p. ej. se terminó): se quita
+        return setError(res.error);
+      }
       if (res?.scheduled) {
         setInfo(`✓ Viaje programado para el ${new Date(res.scheduled.scheduledFor).toLocaleString('es-HN', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}. Te avisaremos cuando busquemos conductor.`);
         newTrip();
@@ -272,6 +316,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
     setForOther(false);
     setRider({ name: '', phone: '' });
     setWhen('');
+    setPromo(null);
     setPreview(null);
     setPrice('');
     setDriverPos(null);
@@ -428,8 +473,11 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
                 {/* Precio y botón fijos abajo del panel: se ven sin bajar */}
                 <div className="ask-bar">
                   <PriceStepper value={price} label="Tu oferta en lempiras" onChange={(v) => { priceEdited.current = true; setPrice(v); }} />
+                  <PromoField token={token} price={price} promo={promo} onChange={setPromo} />
                   {error && <div className="error">{error}</div>}
-                  <button className="primary" disabled={!price} onClick={request}>{when ? 'Programar viaje por' : 'Pedir viaje por'} {lempiras(price || 0)}</button>
+                  <button className="primary" disabled={!price} onClick={request}>
+                    {when ? 'Programar viaje por' : 'Pedir viaje por'} {lempiras(price || 0)}{promo ? ` · pagas ${lempiras(Number(price || 0) - promoDiscount(promo, price))}` : ''}
+                  </button>
                 </div>
               </>
             )}
@@ -440,8 +488,9 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
           <>
             <div className="row between">
               <b>{STATUS[ride.status]}</b>
-              <span className="tag">{lempiras(ride.final_price ?? ride.offered_price)}</span>
+              <span className="tag">{lempiras(ride.toPay ?? ride.final_price ?? ride.offered_price)}</span>
             </div>
+            {ride.promo && ride.discount > 0 && <p className="promo-note small" role="status">🏷 Código <b className="promo-code">{ride.promo.code}</b>: pagas {lempiras(ride.toPay)} en vez de {lempiras(ride.final_price ?? ride.offered_price)}</p>}
             <p className="muted">
               {CATEGORY_LABEL[ride.category || 'car']}{ride.women_only ? ' · 🚺 Solo conductoras' : ''} · {ride.dest_text || 'Destino'} · {ride.distance_km.toFixed(1)} km{ride.duration_min ? ` · ${minutes(ride.duration_min)}` : ''}
             </p>
@@ -513,7 +562,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
             <b>{ride.status === 'cancelled' ? CANCELLED[ride.cancelled_by] || STATUS.cancelled : STATUS[ride.status]}</b>
             {ride.status === 'completed' && (
               <>
-                <p>Total a pagar en efectivo: <b>{lempiras(ride.final_price)}</b></p>
+                <p>Total a pagar en efectivo: <b>{lempiras(ride.toPay ?? ride.final_price)}</b>{ride.discount > 0 && <span className="muted small"> (precio {lempiras(ride.final_price)} − {lempiras(ride.discount)} del código {ride.promo?.code})</span>}</p>
                 {ride.driver && <Rate token={token} rideId={ride.id} who={ride.driver.name} title="¡Llegaste!" />}
                 {chat.chatable && !chat.closed && (
                   <button onClick={chat.open ? chat.closeChat : chat.openChat}>💬 ¿Olvidaste algo? Escribe al conductor{chat.unread ? ` (${chat.unread})` : ''}</button>

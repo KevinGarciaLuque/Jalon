@@ -12,6 +12,7 @@ import AdminRentals from './AdminRentals.jsx';
 import Permissions from './Permissions.jsx';
 import Metrics from './Metrics.jsx';
 import Selfies from './Selfies.jsx';
+import Promos from './Promos.jsx';
 import UserDetail, { TempPassword, ROLE_LABEL, STATUS_LABEL, ACTION_LABEL, detailText } from './UserDetail.jsx';
 
 const RIDE_STATUS = {
@@ -30,6 +31,7 @@ export const SECTIONS = {
   reports: { label: 'Reportes', icon: 'flag', group: 'Operación', hint: 'Problemas que reportaron pasajeros y conductores.' },
   topups: { label: 'Recargas', icon: 'wallet', group: 'Operación', hint: 'Solicitudes de recarga (asigna una cuenta) y comprobantes por aprobar.' },
   rentals: { label: 'Alquileres', icon: 'key', group: 'Operación', hint: 'Alquiler de carros por días.' },
+  promos: { label: 'Promociones', icon: 'tag', group: 'Crecimiento', hint: 'Códigos de descuento para los pasajeros. El descuento se lo pone Ktracho GO al conductor en su saldo.' },
   share: { label: 'Compartir la app', icon: 'share', group: 'Crecimiento', hint: 'Códigos QR y enlace para invitar pasajeros y conductores.' },
   settings: { label: 'Ajustes', icon: 'sliders', group: 'Administración', hint: 'Tarifas, comisión, recargas y otras reglas de la app.' },
   system: { label: 'Sistema', icon: 'server', group: 'Administración', hint: 'Lo que falta configurar y qué versión está publicada.' },
@@ -129,7 +131,7 @@ export default function Admin({ token, onGate, onSections }) {
   const tabs = [
     can('metrics') && 'metrics', 'requests',
     'users', can('users.manage') && 'selfies', can('wallet') && 'topups', 'reports', 'rides', can('monitor') && 'monitor', can('rentals') && 'rentals',
-    can('share') && 'share',
+    can('settings') && 'promos', can('share') && 'share',
     can('settings') && 'settings', can('staff.manage') && 'staff', can('staff.manage') && 'perms', can('audit') && 'audit', can('settings') && 'system',
   ].filter(Boolean);
   const loaded = me.id !== 0; // los permisos ya llegaron
@@ -487,6 +489,7 @@ export default function Admin({ token, onGate, onSections }) {
       {current === 'settings' && <Settings call={call} onError={setError} />}
       {current === 'selfies' && can('users.manage') && <Selfies call={call} onError={setError} reload={load} />}
       {current === 'system' && can('settings') && <Suspense fallback={<Loading />}><System call={call} onError={setError} /></Suspense>}
+      {current === 'promos' && can('settings') && <Promos call={call} onError={setError} />}
       {current === 'share' && can('share') && <Suspense fallback={<Loading />}><Share call={call} onError={setError} /></Suspense>}
       {current === 'rentals' && can('rentals') && <AdminRentals call={call} token={token} can={can} onError={setError} />}
       {current === 'monitor' && can('monitor') && <Suspense fallback={<Loading />}><Monitor call={call} onError={setError} /></Suspense>}
