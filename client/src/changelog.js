@@ -3,6 +3,15 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-04-saldo-sin-perdidas',
+    date: '2026-11-04',
+    title: 'El saldo no pierde movimientos',
+    for: ['driver', 'staff'],
+    items: [
+      'Conductores: si al terminar un viaje llegan a la vez la comisión y el descuento de un código, ahora se guardan los dos siempre. Antes uno podía perderse.',
+    ],
+  },
+  {
     id: '2026-11-04-codigos-promocionales',
     date: '2026-11-04',
     title: 'Códigos promocionales',

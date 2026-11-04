@@ -109,6 +109,9 @@ export async function postEntry(pool, { userId, amount, kind, rideId = null, top
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
+    // Primero se aparta la fila del conductor: si llegan dos movimientos a la vez (la comisión y el descuento de un código
+    // al terminar un viaje), el segundo espera al primero en vez de trabarse con él (deadlock) y perderse
+    await conn.query('SELECT id FROM users WHERE id = ? FOR UPDATE', [userId]);
     try {
       await conn.query('INSERT INTO wallet_entries (user_id, amount, kind, ride_id, topup_id, rental_id, note, created_by) VALUES (?,?,?,?,?,?,?,?)', [userId, money(amount), kind, rideId, topupId, rentalId, note, by]);
     } catch (e) {
