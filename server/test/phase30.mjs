@@ -3,7 +3,7 @@ import 'dotenv/config';
 import jwt from 'jsonwebtoken';
 import { io } from 'socket.io-client';
 import { pool } from '../src/db.js';
-import { API, http, registerUser, uploadDocs, createTestSuperadmin } from './helpers.mjs';
+import { API, http, registerUser, uploadDocs, createTestSuperadmin, waitForBell } from './helpers.mjs';
 
 let fails = 0;
 const check = (name, ok, extra = '') => { console.log(`${ok ? 'OK  ' : 'FAIL'} ${name} ${extra}`); if (!ok) fails++; };
@@ -82,7 +82,7 @@ try {
   for (let i = 0; i < 5; i++) last = await emitAck(ds, 'ride:status', { rideId: second.rd.id, status: 'started', pin: wrong2 });
   check('a los 5 intentos equivocados se bloquea el inicio', last?.locked === true);
   check('ni con el PIN correcto se puede iniciar después', (await emitAck(ds, 'ride:status', { rideId: second.rd.id, status: 'started', pin: pin2 }))?.locked === true);
-  const bell = await http('GET', 'notifications', P.token);
+  const bell = await waitForBell(P.token, (n) => n.title === 'No se pudo confirmar tu PIN');
   check('la pasajera recibe el aviso «No se pudo confirmar tu PIN»', bell.items?.some((n) => n.title === 'No se pudo confirmar tu PIN'));
   const [[row]] = await pool.query('SELECT status FROM rides WHERE id = ?', [second.rd.id]);
   check('el viaje sigue sin empezar (se puede cancelar)', row.status === 'arrived');

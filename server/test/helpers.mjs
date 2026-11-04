@@ -25,6 +25,15 @@ export async function http(method, path, token, body) {
   return Array.isArray(j) ? Object.assign(j, { status: r.status }) : { status: r.status, ...j };
 }
 
+// Los avisos de la campana se guardan sin esperar (no retrasan la respuesta): se revisa varias veces hasta 3 segundos
+export async function waitForBell(token, pred, ms = 3000) {
+  for (const end = Date.now() + ms; ;) {
+    const bell = await http('GET', 'notifications', token);
+    if (bell.items?.some(pred) || Date.now() > end) return bell;
+    await new Promise((r) => setTimeout(r, 150));
+  }
+}
+
 // Registro con verificación por SMS: en desarrollo el servidor devuelve el código en la respuesta
 export async function registerUser(data) {
   const o = await http('POST', 'otp/send', null, { phone: data.phone });

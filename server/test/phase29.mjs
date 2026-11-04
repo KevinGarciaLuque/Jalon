@@ -3,7 +3,7 @@ import 'dotenv/config';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { pool } from '../src/db.js';
-import { FIXTURE, http, registerUser, uploadDocs, createTestSuperadmin } from './helpers.mjs';
+import { FIXTURE, http, registerUser, uploadDocs, createTestSuperadmin, waitForBell } from './helpers.mjs';
 
 let fails = 0;
 const check = (name, ok, extra = '') => { console.log(`${ok ? 'OK  ' : 'FAIL'} ${name} ${extra}`); if (!ok) fails++; };
@@ -67,7 +67,7 @@ try {
   const hours = (new Date(w1.request.expiresAt) - Date.now()) / 3600000;
   check('la cuenta le dura 24 horas', hours > 23.5 && hours <= 24.1, `(${hours.toFixed(2)} h)`);
   check('otro conductor no ve esa cuenta', !JSON.stringify(await http('GET', 'driver/wallet', O.token)).includes('29-111-111'));
-  const bell = await http('GET', 'notifications', D.token);
+  const bell = await waitForBell(D.token, (n) => n.title === 'Ya puedes transferir' && n.target === 'wallet');
   check('al conductor le llega el aviso «Ya puedes transferir»', bell.items?.some((n) => n.title === 'Ya puedes transferir' && n.target === 'wallet'));
 
   // ---- Sube el comprobante: queda unido a la solicitud y la cuenta se oculta ----
