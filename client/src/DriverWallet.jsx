@@ -3,7 +3,7 @@ import { API, api, authFetch, toJpeg, money2 } from './lib.js';
 import { Panel } from './Menu.jsx';
 
 const BANKS = ['BAC Credomatic', 'Ficohsa', 'Banco Atlántida', 'Banpaís', 'Davivienda', 'Banco de Occidente', 'Promerica', 'Lafise', 'Tigo Money', 'Otro'];
-const KIND = { topup: 'Recarga', commission: 'Comisión de viaje', bonus: 'Crédito', adjustment: 'Ajuste', promo: 'Descuento de un código (lo pone Ktracho GO)' };
+const KIND = { topup: 'Recarga', commission: 'Comisión de viaje', bonus: 'Crédito', adjustment: 'Ajuste', promo: 'Descuento de un código (lo pone Ktracho GO)', referral: 'Premio por invitar' };
 const when = (d) => new Date(d).toLocaleString('es-HN', { dateStyle: 'medium', timeStyle: 'short' });
 
 // Saldo del conductor: pedir una recarga, transferir a la cuenta que le asignen (24 h), subir el comprobante, y sus movimientos

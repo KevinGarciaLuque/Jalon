@@ -35,6 +35,8 @@ if (ids.length) {
   await pool.query(`DELETE FROM ratings WHERE rater_id IN (?) OR ratee_id IN (?) OR ride_id IN (${own})`, [ids, ids, ids, ids]);
   await pool.query('DELETE FROM offers WHERE driver_id IN (?) OR ride_id IN (SELECT id FROM rides WHERE passenger_id IN (?) OR driver_id IN (?))', [ids, ids, ids]);
   await pool.query('DELETE FROM rides WHERE passenger_id IN (?) OR driver_id IN (?)', [ids, ids]);
+  await pool.query('DELETE FROM referrals WHERE referrer_id IN (?) OR referred_id IN (?)', [ids, ids]);
+  await pool.query('DELETE FROM referrals WHERE referrer_id IN (?) OR referred_id IN (?)', [ids, ids]);
   await pool.query('DELETE FROM users WHERE id IN (?)', [ids]);
 }
 if (phones.length) await pool.query('DELETE FROM otp_codes WHERE phone IN (?)', [phones]);

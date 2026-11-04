@@ -4,7 +4,7 @@ import { pool } from '../db.js';
 import { app } from '../app.js';
 import { authUser, passengerOnly, staffOnly, audit } from '../access.js';
 import { getSettings, money } from '../wallet.js';
-import { checkPromo, discountFor, promoPublic, PromoError, validatePromo, listPromos } from '../services/promos.js';
+import { checkPromo, discountFor, promoPublic, PromoError, validatePromo, listPromos, myPromos } from '../services/promos.js';
 
 // Para que nadie pruebe códigos al azar hasta dar con uno
 const checkLimiter = rateLimit({ windowMs: 10 * 60 * 1000, limit: 20, message: { error: 'Demasiados intentos con códigos. Intenta en unos minutos.' } });
@@ -20,6 +20,9 @@ app.get('/api/promos/check', authUser, passengerOnly, checkLimiter, async (req, 
     throw e;
   }
 });
+
+// Los códigos personales del pasajero (p. ej. el premio por invitar): se le ofrecen al pedir el viaje
+app.get('/api/promos/mine', authUser, passengerOnly, async (req, res) => res.json({ promos: await myPromos(req.user.id) }));
 
 // ---------- Panel ----------
 app.get('/api/admin/promos', staffOnly('settings'), async (_req, res) => {

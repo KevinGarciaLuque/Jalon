@@ -483,7 +483,7 @@ await conn.query(`
 // Todos los tipos de movimiento del saldo en UNA sola lista: setup corre en cada arranque, y si una migración vieja
 // volviera a poner una lista más corta, MySQL no podría guardar los movimientos que ya existen de los tipos nuevos
 // (el arranque fallaría). Para un tipo nuevo, agrégalo aquí al final (nunca quites uno).
-const WALLET_KINDS = ['topup', 'commission', 'bonus', 'adjustment', 'rental_commission', 'rental_payout', 'promo'];
+const WALLET_KINDS = ['topup', 'commission', 'bonus', 'adjustment', 'rental_commission', 'rental_payout', 'promo', 'referral'];
 await conn.query(`ALTER TABLE wallet_entries MODIFY kind ENUM(${WALLET_KINDS.map((k) => `'${k}'`).join(',')}) NOT NULL`);
 await addColumn('wallet_entries', 'rental_id', 'INT NULL');
 {
@@ -743,6 +743,34 @@ await conn.query(`
 `);
 await addColumn('rides', 'promo_id', 'INT NULL');
 await addColumn('rides', 'discount', 'DECIMAL(10,2) NULL');
+
+// Referidos: cada persona invita con su código; el premio llega cuando el invitado viaja (apagado hasta que el superadmin lo active)
+await addColumn('users', 'referral_code', 'VARCHAR(12) NULL');
+{
+  const [ix] = await conn.query("SELECT 1 FROM information_schema.statistics WHERE table_schema = ? AND table_name = 'users' AND index_name = 'uniq_referral_code'", [DB_NAME]);
+  if (!ix.length) await conn.query('ALTER TABLE users ADD UNIQUE KEY uniq_referral_code (referral_code)');
+}
+await conn.query(`
+  CREATE TABLE IF NOT EXISTS referrals (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    referrer_id INT NOT NULL,
+    referred_id INT NOT NULL UNIQUE,
+    referred_role ENUM('passenger','driver') NOT NULL,
+    status ENUM('pending','rewarded','rejected') NOT NULL DEFAULT 'pending',
+    reason VARCHAR(120) NULL,
+    reward_kind ENUM('promo','wallet') NULL,
+    reward_amount DECIMAL(10,2) NULL,
+    reward_promo_id INT NULL,
+    welcome_promo_id INT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    rewarded_at TIMESTAMP NULL,
+    KEY by_referrer (referrer_id, status),
+    FOREIGN KEY (referrer_id) REFERENCES users(id),
+    FOREIGN KEY (referred_id) REFERENCES users(id)
+  )
+`);
+// Códigos personales (premios de referidos): solo los puede usar esa persona
+await addColumn('promo_codes', 'user_id', 'INT NULL');
 
 console.log(`Base de datos "${DB_NAME}" lista.`);
 await conn.end();

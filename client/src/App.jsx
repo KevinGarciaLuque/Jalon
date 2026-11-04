@@ -16,6 +16,7 @@ const TwoFactorSetup = lazyPage(() => import('./TwoFactorSetup.jsx'));
 const TermsUpdate = lazyPage(() => import('./TermsUpdate.jsx'));
 const PasskeyOffer = lazyPage(() => import('./PasskeyParts.jsx').then((m) => ({ default: m.PasskeyOffer })));
 const DriverApply = lazyPage(() => import('./DriverApply.jsx'));
+const Invite = lazyPage(() => import('./Invite.jsx'));
 
 const STAFF = ['superadmin', 'admin', 'support'];
 
@@ -103,6 +104,7 @@ export default function App() {
   const [wallet, setWallet] = useState(null); // saldo del conductor para el menú (si la comisión está activa)
   const [modeNotice, setModeNotice] = useState(null); // 'driver' | 'passenger' justo después de cambiar de modo
   const [driveIn, setDriveIn] = useState(null); // animación del carro al activar el modo conductor
+  const [showInvite, setShowInvite] = useState(false); // «Invita y gana» (referidos)
   const [showApply, setShowApply] = useState(false); // un pasajero pide ser conductor
   const animating = useRef(false); // mientras corre, el aviso de «otro aparato» no se repite aquí
   const wide = useWide();
@@ -128,7 +130,7 @@ export default function App() {
       .then(({ user }) => setSession((cur) => {
         if (!cur || cur.user.id !== user.id) return cur;
         setAccountStatus(user.status); // p. ej. lo aprobaron mientras la app estaba cerrada
-        const next = { ...cur, user: { ...cur.user, perms: user.perms, mustAcceptTerms: user.mustAcceptTerms, termsVersion: user.termsVersion, rating: user.rating, mapRotation: user.mapRotation, gender: user.gender, genderVerified: user.genderVerified, ridePin: user.ridePin, role: user.role, canDrive: user.canDrive, passengerMode: user.passengerMode } };
+        const next = { ...cur, user: { ...cur.user, perms: user.perms, mustAcceptTerms: user.mustAcceptTerms, termsVersion: user.termsVersion, rating: user.rating, mapRotation: user.mapRotation, referrals: !!user.referrals, gender: user.gender, genderVerified: user.genderVerified, ridePin: user.ridePin, role: user.role, canDrive: user.canDrive, passengerMode: user.passengerMode } };
         localStorage.setItem('jalon', JSON.stringify(next));
         return next;
       }))
@@ -211,6 +213,7 @@ export default function App() {
     if (target === 'account') return setShowAccount(true);
     if (target === 'mode') return switchMode();
     if (target === 'apply') return setShowApply(true);
+    if (target === 'invite') return setShowInvite(true);
     if (target === 'help') return setShowHelp(true);
     if (target === 'news') { setShowNews(true); markSeen(); return; }
     if (target === 'bell') return window.dispatchEvent(new Event('ktracho:bell'));
@@ -348,6 +351,7 @@ export default function App() {
       {modeNotice && <ModeNotice mode={modeNotice} user={session.user} wallet={wallet} pending={accountStatus === 'pending'} onClose={() => setModeNotice(null)} />}
       {showApply && <DriverApply token={session.token} onDone={applied} onClose={() => setShowApply(false)} />}
       {showNews && <News news={news} onClose={() => setShowNews(false)} />}
+      {showInvite && <Invite token={session.token} onClose={() => setShowInvite(false)} />}
       {showHelp && <HelpPanel user={session.user} onClose={() => setShowHelp(false)} onHistory={() => goTo('history')} />}
       {showHistory && <History token={session.token} role={session.user.role} onClose={() => setShowHistory(false)} />}
       </Suspense>

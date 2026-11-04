@@ -203,6 +203,9 @@ app.put('/api/admin/settings', staffOnly('settings'), async (req, res) => {
   // Con la comisión activa los conductores tienen que poder recibir una cuenta para transferir
   if (values.commission_enabled === '1' && current.commission_enabled !== '1' && !(await activeAccounts()).length)
     return res.status(400).json({ error: 'Antes de activar la comisión agrega al menos una cuenta bancaria activa (Ajustes → Cuentas bancarias)' });
+  // Los referidos los enciende o apaga solo el superadmin
+  if (values.referral_enabled !== undefined && values.referral_enabled !== current.referral_enabled && req.staff.role !== 'superadmin')
+    return res.status(403).json({ error: 'Solo el superadministrador puede encender o apagar los referidos' });
   const changed = Object.keys(values).filter((k) => values[k] !== current[k]);
   for (const k of changed) await pool.query('INSERT INTO settings (name, value, updated_by) VALUES (?,?,?) ON DUPLICATE KEY UPDATE value = VALUES(value), updated_by = VALUES(updated_by)', [k, values[k], req.staff.id]);
   clearSettingsCache();

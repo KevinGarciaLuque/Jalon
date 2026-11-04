@@ -19,6 +19,7 @@ import { permsFor } from '../perms.js';
 import { push, pushStaff } from '../notify.js';
 import { getRide, activeRideFor } from '../services/rides.js';
 import { promoOf } from '../services/promos.js';
+import { referralsOn } from '../services/referrals.js';
 import { anonymizeUser } from '../services/accounts.js';
 import { readVehicle, plateTaken, saveVehicle, isPlateDup } from '../services/vehicles.js';
 import { trackOf, trackKm } from '../services/activity.js';
@@ -225,6 +226,7 @@ app.post('/api/push/unsubscribe', authUser, async (req, res) => {
 app.get('/api/me', authUser, async (req, res) => {
   const user = publicUser(req.user, isStaff(req.user.role) && (await twoFactorRequired()), await permsFor(req.user));
   user.mapRotation = (await getSettings(pool)).map_rotation !== '0'; // el mapa puede girar (lo apaga el superadmin en Ajustes)
+  if (!isStaff(req.user.role)) user.referrals = await referralsOn(); // «Invita y gana» en el menú
   // Pasajeros y conductores ven su calificación en el menú
   if (!isStaff(req.user.role)) {
     const [[r]] = await pool.query('SELECT AVG(stars) AS avg, COUNT(*) AS n FROM ratings WHERE ratee_id = ?', [req.user.id]);

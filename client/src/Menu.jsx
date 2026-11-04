@@ -35,6 +35,7 @@ const PATHS = {
   doc: 'M7 3h7l4 4v14H7zM14 3v4h4M10 12h5M10 16h5',
   inbox: 'M4 13l2.5-8h11L20 13v6H4zM4 13h4.5l1 2.5h5l1-2.5H20',
   tag: 'M3.5 12.5V4.5a1 1 0 0 1 1-1h8l8 8-9 9-8-8zM8 8h.01',
+  gift: 'M20 12v9H4v-9M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 1 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 1 0 0-5C13 2 12 7 12 7z',
 };
 export function Icon({ name, size = 22 }) {
   return (
@@ -118,6 +119,7 @@ export default function Menu({ user, hasBell, go, sections, current, wallet, pin
     user.role === 'driver' && wallet && { key: 'wallet', icon: 'wallet', label: 'Mi saldo y recargas', note: money2(wallet.balance), low: wallet.low },
     user.role === 'driver' && user.status === 'active' && { key: 'earnings', icon: 'earnings', label: 'Mis ganancias' },
     { key: 'history', icon: 'history', label: 'Historial de viajes' },
+    user.referrals && { key: 'invite', icon: 'gift', label: 'Invita y gana' },
     user.canDrive && (user.role === 'driver' ? { key: 'mode', icon: 'user', label: 'Cambiar a modo pasajero' }
       : { key: 'mode', icon: 'car', label: user.status === 'pending' ? 'Mi solicitud de conductor' : 'Cambiar a modo conductor' }),
     // Un pasajero puede pedir ser conductor con su misma cuenta

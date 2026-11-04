@@ -28,6 +28,12 @@ export const SETTING_DEFAULTS = {
   rental_price_max: '5000',
   rental_max_days: '7',
   rental_advance_days: '30', // con cuántos días de anticipación se puede reservar
+  // Referidos (apagado hasta que el superadmin lo active; necesita la comisión activa, como los códigos)
+  referral_enabled: '0',
+  referral_reward: '30', // premio para quien invita: código de descuento (pasajero) o saldo (conductor)
+  referral_welcome: '30', // descuento del primer viaje para el pasajero invitado (0 = sin bienvenida)
+  referral_driver_rides: '5', // viajes que debe terminar un conductor invitado para que se pague el premio
+  referral_monthly_max: '10', // premios por persona al mes
 };
 
 export const money = (n) => Math.round(Number(n) * 100) / 100;
@@ -84,6 +90,11 @@ export function validateSettings(input, current) {
     rental_price_max: () => num('rental_price_max', 1, 50000, 'El precio máximo por día'),
     rental_max_days: () => num('rental_max_days', 1, 30, 'Los días máximos de un alquiler'),
     rental_advance_days: () => num('rental_advance_days', 0, 180, 'Los días de anticipación'),
+    referral_enabled: () => { values.referral_enabled = [true, '1', 1].includes(input.referral_enabled) ? '1' : '0'; return null; },
+    referral_reward: () => num('referral_reward', 1, 500, 'El premio por invitar'),
+    referral_welcome: () => num('referral_welcome', 0, 500, 'La bienvenida del invitado'),
+    referral_driver_rides: () => num('referral_driver_rides', 1, 50, 'Los viajes del conductor invitado'),
+    referral_monthly_max: () => num('referral_monthly_max', 1, 100, 'Los premios por mes'),
     // Tarifas: base, por km, por minuto y mínima de cada categoría
     ...Object.fromEntries(CATEGORIES.flatMap((c) => [
       [`fare_${c}_base`, () => num(`fare_${c}_base`, 0, 1000, `La tarifa base de ${CATEGORY_LABEL[c]}`)],

@@ -114,12 +114,14 @@ function PromoField({ token, price, promo, onChange }) {
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  async function apply(e) {
+  const [mine, setMine] = useState([]); // sus códigos personales (premios por invitar, bienvenida)
+  useEffect(() => { apiGet('promos/mine', token).then((r) => setMine(r.promos || [])).catch(() => {}); }, [token]);
+  async function apply(e, typed = code) {
     e.preventDefault();
     setError('');
     setBusy(true);
     try {
-      const r = await apiGet(`promos/check?code=${encodeURIComponent(code.trim())}&price=${Number(price) || 0}`, token);
+      const r = await apiGet(`promos/check?code=${encodeURIComponent(typed.trim())}&price=${Number(price) || 0}`, token);
       onChange(r.promo);
     } catch (err) {
       setError(err.message);
@@ -135,7 +137,17 @@ function PromoField({ token, price, promo, onChange }) {
       </div>
     );
   }
-  if (!open) return <button type="button" className="link promo-link" onClick={() => setOpen(true)}>🏷 ¿Tienes un código promocional?</button>;
+  const gifts = mine.length > 0 && (
+    <div className="promo-mine">
+      {mine.map((p) => (
+        <button type="button" key={p.code} className="promo-gift" disabled={busy} onClick={(e) => apply(e, p.code)}>
+          🎁 <span>Usar tu descuento de <b>{lempiras(p.value)}</b><span className="muted small"> · {p.description}</span></span>
+        </button>
+      ))}
+      {error && !open && <div className="error small">{error}</div>}
+    </div>
+  );
+  if (!open) return <>{gifts}<button type="button" className="link promo-link" onClick={() => setOpen(true)}>🏷 ¿Tienes un código promocional?</button></>;
   return (
     <form className="promo-form" onSubmit={apply}>
       <div className="row">

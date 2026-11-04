@@ -2,6 +2,7 @@
 // El descuento lo paga Ktracho GO, no el conductor: al terminar el viaje se le pone esa diferencia en su saldo
 // (el mismo saldo del que se descuentan las comisiones). Por eso los códigos solo funcionan con la comisión activa.
 // Los usos se cuentan con los viajes que llevan el código y no se cancelaron: si el viaje se cancela, el uso se devuelve.
+import crypto from 'crypto';
 import { pool } from '../db.js';
 import { getSettings, postEntry, money } from '../wallet.js';
 import { tellWallet } from './balance.js';
@@ -32,7 +33,8 @@ export async function checkPromo(code, userId, db = pool) {
   const [[p]] = await db.query(
     'SELECT *, (starts_at IS NOT NULL AND starts_at > NOW()) AS not_yet, (expires_at IS NOT NULL AND expires_at <= NOW()) AS expired FROM promo_codes WHERE code = ?', [c]
   );
-  if (!p || !p.active) throw new PromoError('Ese código no existe o ya no está activo');
+  // Un código personal (premio de referidos) solo lo puede usar su dueño
+  if (!p || !p.active || (p.user_id != null && p.user_id !== userId)) throw new PromoError('Ese código no existe o ya no está activo');
   if (p.not_yet) throw new PromoError('Ese código todavía no se puede usar');
   if (p.expired) throw new PromoError('Ese código ya venció');
   const [[uses]] = await db.query(
@@ -74,6 +76,37 @@ export async function creditPromo(ride) {
   const promo = await promoOf(ride);
   const balance = await postEntry(pool, { userId: ride.driver_id, amount: discount, kind: 'promo', rideId: ride.id, note: `Descuento del código ${promo?.code || ''} en el viaje #${ride.id}: te lo paga Ktracho GO`.replace('  ', ' ') });
   if (balance !== null) tellWallet(ride.driver_id, balance, { change: discount, kind: 'promo', rideId: ride.id });
+}
+
+// Códigos personales (premios de referidos): de un solo uso, solo para esa persona y con vencimiento
+const PERSONAL_DAYS = 60;
+export async function createPersonalPromo(db, { userId, amount, description, firstRideOnly = false }) {
+  const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  for (let i = 0; i < 5; i++) {
+    const code = `R${Array.from(crypto.randomBytes(7), (b) => letters[b % letters.length]).join('')}`;
+    try {
+      const [r] = await db.query(
+        'INSERT INTO promo_codes (code, description, kind, value, max_uses, first_ride_only, expires_at, user_id) VALUES (?,?,?,?,1,?, NOW() + INTERVAL ? DAY, ?)',
+        [code, description, 'fixed', money(amount), firstRideOnly ? 1 : 0, PERSONAL_DAYS, userId]
+      );
+      return { id: r.insertId, code };
+    } catch (e) {
+      if (e.code !== 'ER_DUP_ENTRY') throw e;
+    }
+  }
+  throw new Error('No se pudo crear el código personal');
+}
+
+// Los códigos personales que esta persona todavía puede usar (se le muestran al pedir el viaje)
+export async function myPromos(userId) {
+  if ((await getSettings(pool)).commission_enabled !== '1') return [];
+  const [rows] = await pool.query(
+    `SELECT p.* FROM promo_codes p
+     WHERE p.user_id = ? AND p.active = 1 AND (p.expires_at IS NULL OR p.expires_at > NOW())
+       AND NOT EXISTS (SELECT 1 FROM rides r WHERE r.promo_id = p.id AND r.status <> 'cancelled')
+     ORDER BY p.id`, [userId]
+  );
+  return rows.map((p) => ({ ...promoPublic(p), expiresAt: p.expires_at }));
 }
 
 // ---------- Para el panel ----------
@@ -128,7 +161,7 @@ export async function listPromos() {
        (SELECT COUNT(*) FROM rides r WHERE r.promo_id = p.id AND r.status NOT IN ('completed','cancelled')) AS in_progress,
        (SELECT COALESCE(SUM(r.discount), 0) FROM rides r WHERE r.promo_id = p.id AND r.status = 'completed') AS total_discount,
        (p.expires_at IS NOT NULL AND p.expires_at <= NOW()) AS expired
-     FROM promo_codes p ORDER BY p.active DESC, p.id DESC`
+     FROM promo_codes p WHERE p.user_id IS NULL ORDER BY p.active DESC, p.id DESC`
   );
   return rows.map((p) => ({ ...p, used: Number(p.used), in_progress: Number(p.in_progress), total_discount: money(p.total_discount), expired: !!p.expired }));
 }

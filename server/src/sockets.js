@@ -15,6 +15,7 @@ import { push, pushStaff, hasPushSub, unreadCount } from './notify.js';
 import { getRide, activeRideFor, ratingsOf, rideView, nearbyDrivers, openRidesNear, closeOpenRide, releaseDriver, sendEta, cancelRide, PIN_TRIES, canTake, announceRide } from './services/rides.js';
 import { walletGate, chargeCommission, dropForLowBalance } from './services/balance.js';
 import { withPromo, PromoError, promoOf, discountFor, creditPromo } from './services/promos.js';
+import { checkReferrals } from './services/referrals.js';
 import { shareWithContacts } from './services/accounts.js';
 import { notifySos } from './services/sos.js';
 import { rentingNow } from './services/rentals.js';
@@ -210,6 +211,7 @@ io.on('connection', async (socket) => {
         releaseDriver(user.id);
         chargeCommission(ride).catch(reportError); // se descuenta del saldo del conductor; sin await para no retrasar la respuesta
         creditPromo(ride).catch(reportError); // lo que el pasajero no pagó por su código, Ktracho GO se lo pone en su saldo
+        checkReferrals(ride).catch(reportError); // ¿con este viaje alguien ganó su premio por invitar?
       }
       const view = await rideView(await getRide(rideId));
       io.to(room(ride.passenger_id)).to(room(user.id)).emit('ride:state', view);

@@ -14,6 +14,7 @@ import { app, loginLimiter, registerLimiter, otpLimiter } from '../app.js';
 import { startSession, moveToCookie, clearSession, userFromToken, wantsCookie, checkPassword, twoFactorRequired, publicUser, authUser, isStaff, audit } from '../access.js';
 import { readVehicle, plateTaken, saveVehicle, vehicleLabel, isPlateDup } from '../services/vehicles.js';
 import { permsFor } from '../perms.js';
+import { referralsOn, findReferrer, attachReferral } from '../services/referrals.js';
 
 // ---------- Auth ----------
 app.post('/api/register', registerLimiter, async (req, res) => {
@@ -42,6 +43,12 @@ app.post('/api/register', registerLimiter, async (req, res) => {
     if (name.length > 100 || (vehicle || '').length > 100 || (plate || '').length > 20)
       return res.status(400).json({ error: 'Algún dato es demasiado largo' });
     if (acceptTerms !== true) return res.status(400).json({ error: 'Debes aceptar los Términos y la Política de Privacidad' });
+    // Código de invitación (opcional): si los referidos están apagados se ignora; si no existe se avisa antes de gastar el código del correo
+    let referrer = null;
+    if (typeof req.body?.referral === 'string' && req.body.referral.trim() && (await referralsOn())) {
+      referrer = await findReferrer(req.body.referral);
+      if (!referrer) return res.status(400).json({ error: 'Ese código de invitación no existe. Revísalo o déjalo vacío.' });
+    }
     // El código se envió al correo (o al SMS) y solo vale para ese correo; se consume al final de las validaciones
     if (!(await consumeOtp(phoneN, 'register', code, email))) return res.status(400).json({ error: 'Código incorrecto o vencido' });
 
@@ -58,6 +65,7 @@ app.post('/api/register', registerLimiter, async (req, res) => {
         [name.trim(), phoneN, email, hash, role, status, TERMS_VERSION]
       );
       if (veh) await saveVehicle(conn, r.insertId, veh);
+      if (referrer) await attachReferral(conn, { referrer, userId: r.insertId, role });
       await conn.commit();
       user = { id: r.insertId, name: name.trim(), phone: phoneN, email, role, status, vehicle: veh ? vehicleLabel(veh) : null, plate: veh?.plate || null, terms_version: TERMS_VERSION };
     } catch (e) {

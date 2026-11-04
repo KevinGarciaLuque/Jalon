@@ -592,6 +592,28 @@ Un código ya usado no puede cambiar de nombre ni de descuento (se apaga y se cr
 Tablas: `promo_codes`; columnas `rides.promo_id` y `rides.discount`; movimiento `promo` en `wallet_entries`. Pruebas: `test/phase40.mjs`
 y, en pantalla, `test/promo-ui.mjs`.
 
+## Referidos (Invita y gana)
+
+**Apagado por defecto.** Lo enciende o apaga solo el **superadmin** en Panel → **Referidos** (las reglas las puede cambiar quien tenga
+el permiso `settings`). Necesita la **comisión encendida**, igual que los códigos promocionales.
+
+- Cada pasajero y conductor tiene en el menú **«Invita y gana»** con su código (letras de su nombre + 3 al azar) y un enlace
+  `https://ktrachogo.com/?ref=CODIGO` para compartir por WhatsApp. El enlace abre el registro con el código ya escrito (también se
+  puede escribir en «¿Te invitó alguien?»).
+- El **pasajero invitado** recibe al registrarse un código personal de bienvenida para su primer viaje (`referral_welcome`, 0 = sin).
+- **Quien invita gana** (`referral_reward`) cuando su invitado termina su primer viaje; si el invitado es conductor, cuando termina sus
+  primeros `referral_driver_rides` viajes. Si quien invita es pasajero, el premio es un código personal de descuento; si es conductor,
+  saldo (movimiento `referral`).
+- Contra trampas: no cuentan los viajes que el conductor hace con su propio invitado (ni los del conductor invitado con quien lo invitó),
+  solo cuentan cuentas nuevas y hay un tope de premios por persona al mes (`referral_monthly_max`); pasado el tope, la invitación queda
+  «Sin premio» con el motivo.
+- Los códigos personales son de un solo uso, solo los puede usar su dueño, vencen a los 60 días, no aparecen en Promociones y se le
+  ofrecen al pasajero al pedir el viaje («Usar tu descuento de L 30»). Se pagan igual que los promocionales: Ktracho GO pone el descuento
+  en el saldo del conductor.
+
+Tablas: `referrals`; columnas `users.referral_code` y `promo_codes.user_id`; movimiento `referral` en `wallet_entries`.
+Pruebas: `test/phase41.mjs` y, en pantalla, `test/referral-ui.mjs`.
+
 ## Campanita de notificaciones
 
 Todos (pasajero, conductor, soporte, administrador y superadmin) tienen una 🔔 en el encabezado con el número de avisos sin leer.

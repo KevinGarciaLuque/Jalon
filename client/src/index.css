@@ -193,6 +193,8 @@ header { padding-top: max(10px, env(safe-area-inset-top)); }
 /* ---- Fase 5B ---- */
 .overlay.top { z-index: 4000; }
 .pending { display: flex; flex-direction: column; gap: 8px; border: 2px solid var(--mango); background: var(--mango-soft); border-radius: var(--r-2); padding: 12px; }
+/* Una etiqueta «pendiente» sigue siendo etiqueta (la regla de arriba es para la tarjeta de aviso) */
+.pill.pending { display: inline-flex; flex-direction: row; gap: 6px; border: 0; border-radius: 999px; padding: 3px 10px; }
 .ucard { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; border: 1px solid var(--line); background: var(--card); border-radius: var(--r-2); padding: 10px 12px; color: var(--text); width: 100%; font-weight: 400; }
 .ucard.click { cursor: pointer; text-align: left; }
 .ucard.click:hover { border-color: var(--brand); }
@@ -829,3 +831,16 @@ header { gap: 8px; background: linear-gradient(135deg, var(--card), var(--bg)); 
 .promo-on { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 0; padding: 6px 10px; border-radius: var(--r-1); background: var(--brand-soft); color: var(--text); font-size: 14px; }
 .promo-on .link { min-height: 32px; padding: 2px 6px; }
 .promo-note { margin: 0; padding: 6px 10px; border-radius: var(--r-1); background: var(--brand-soft); color: var(--text); }
+.promo-mine { display: flex; flex-direction: column; gap: 6px; }
+.promo-gift { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 6px 10px; text-align: left; font-size: 14px; border: 1px dashed var(--brand); border-radius: var(--r-1); background: var(--brand-soft); color: var(--text); }
+
+/* Invita y gana (referidos) */
+.invite-card { gap: 8px; }
+.invite-card p { margin: 0; }
+.invite-code { font-size: 28px; letter-spacing: 3px; color: var(--brand); font-variant-numeric: tabular-nums; }
+.invite-earned { margin: 0; padding: 8px 12px; border-radius: var(--r-1); background: var(--brand-soft); color: var(--text); }
+.ref-field { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.ref-field input { text-transform: uppercase; }
+.stats-row { gap: 8px; }
+.stats-row .req { min-width: 130px; gap: 2px; }
+.stats-row .req b { font-size: 20px; }

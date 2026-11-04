@@ -3,6 +3,17 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-04-invita-y-gana',
+    date: '2026-11-04',
+    title: 'Invita y gana',
+    for: ['passenger', 'driver', 'staff'],
+    items: [
+      'Pasajeros y conductores: cuando Ktracho GO lo active, en el menú aparece «Invita y gana» con tu código y un enlace para compartir por WhatsApp. Cuando tu invitado termina su primer viaje, ganas un descuento (pasajeros) o saldo (conductores).',
+      'Si te invitaron: tu primer viaje tiene descuento. Al pedir el viaje te aparece «Usar tu descuento», sin escribir nada.',
+      'Personal: en Referidos ves quién invitó a quién y lo pagado, y cambias las reglas. Solo el superadministrador lo enciende.',
+    ],
+  },
+  {
     id: '2026-11-04-arranque-seguro',
     date: '2026-11-04',
     title: 'El servidor arranca bien después de usar códigos',

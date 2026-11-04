@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { api, useInstall } from './lib.js';
+import { api, apiGet, useInstall } from './lib.js';
 import { Brand, PasswordInput, VehicleFields } from './components.jsx';
 import { loginWithPasskey, passkeyName, passkeysSupported } from './passkeys.js';
 
 const RESEND_SECONDS = 60;
 // Enlace de invitación (QR de «Compartir» del panel): ?registro=conductor abre el registro con «Soy conductor» elegido
 const invite = new URLSearchParams(window.location.search).get('registro');
+// Enlace de «Invita y gana»: ?ref=CODIGO abre el registro con el código de invitación ya escrito
+const refCode = (new URLSearchParams(window.location.search).get('ref') || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 12).toUpperCase();
 // Si ya no tiene acceso a su correo: escribirle a soporte (variables de Railway, se ponen al compilar)
 const SUPPORT_EMAIL = import.meta.env.VITE_CONTACT_EMAIL;
 const SUPPORT_WHATSAPP = (import.meta.env.VITE_SUPPORT_WHATSAPP || '').replace(/\D/g, '');
@@ -15,16 +17,18 @@ const supportLink = SUPPORT_WHATSAPP
 const friendly = (e) => (e.message === 'Failed to fetch' ? 'No se pudo conectar con el servidor' : e.message);
 
 export default function Auth({ onAuth, notice }) {
-  const [mode, setMode] = useState(invite ? 'register' : 'login'); // login | register | forgot
+  const [mode, setMode] = useState(invite || refCode ? 'register' : 'login'); // login | register | forgot
   const [step, setStep] = useState(1); // 1: datos · 2: código recibido por correo
   const [role, setRole] = useState(invite === 'conductor' ? 'driver' : 'passenger');
-  const [f, setF] = useState({ name: '', phone: '', email: '', password: '', again: '', code: '', category: 'car', make: '', model: '', color: '', year: '', plate: '' });
+  const [f, setF] = useState({ referral: refCode, name: '', phone: '', email: '', password: '', again: '', code: '', category: 'car', make: '', model: '', color: '', year: '', plate: '' });
   const [error, setError] = useState('');
   const [info, setInfo] = useState(notice || '');
   const [devCode, setDevCode] = useState('');
   const [wait, setWait] = useState(0);
   const [busy, setBusy] = useState(false);
   const [terms, setTerms] = useState(false);
+  const [showRef, setShowRef] = useState(!!refCode); // el campo del código de invitación
+  const [referrer, setReferrer] = useState(null); // quién invita (al revisar el código)
   const [challenge, setChallenge] = useState(null); // el personal con verificación en dos pasos: tras la contraseña falta el código
   const [via, setVia] = useState('password'); // con qué entró (después de la contraseña se ofrece activar Face ID)
   const canPasskey = passkeysSupported();
@@ -76,6 +80,11 @@ export default function Auth({ onAuth, notice }) {
       } else if (step === 1) {
         if (mode === 'register' && f.password.length < 8) throw new Error('La contraseña debe tener al menos 8 caracteres');
         if (mode === 'register' && !terms) throw new Error('Debes aceptar los Términos y la Política de Privacidad');
+        // El código de invitación se revisa antes de mandar el código al correo
+        if (mode === 'register' && f.referral.trim()) {
+          const r = await apiGet(`referrals/check?code=${encodeURIComponent(f.referral.trim())}`);
+          setReferrer(r.enabled ? r : null);
+        }
         await sendCode();
       } else if (mode === 'register') {
         onAuth(await api('register', { ...f, role, acceptTerms: terms }));
@@ -227,6 +236,13 @@ export default function Auth({ onAuth, notice }) {
             </div>
           </>
         )}
+
+        {mode === 'register' && step === 1 && (showRef ? (
+          <label className="grow ref-field">Código de invitación (opcional)
+            <input aria-label="Código de invitación" placeholder="Código de quien te invitó" value={f.referral} maxLength={12} autoCapitalize="characters" onChange={(e) => { setReferrer(null); setF({ ...f, referral: e.target.value }); }} />
+          </label>
+        ) : <button type="button" className="link promo-link" onClick={() => setShowRef(true)}>🎁 ¿Te invitó alguien?</button>)}
+        {mode === 'register' && step === 2 && referrer && <div className="hint ok">🎁 Te invitó {referrer.name}{referrer.welcome > 0 ? `: tendrás L ${referrer.welcome} menos en tu primer viaje` : ''}.</div>}
 
         {mode === 'register' && step === 1 && (
           <label className="check terms">

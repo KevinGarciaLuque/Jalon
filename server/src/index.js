@@ -26,6 +26,7 @@ import './routes/recharges.js';
 import './routes/selfies.js';
 import './routes/client-errors.js';
 import './routes/promos.js';
+import './routes/referrals.js';
 import './sockets.js';
 import './jobs.js';
 
