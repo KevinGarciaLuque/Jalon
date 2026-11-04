@@ -3,6 +3,15 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-04-arranque-seguro',
+    date: '2026-11-04',
+    title: 'El servidor arranca bien después de usar códigos',
+    for: ['staff'],
+    items: [
+      'Personal: se arregló una falla que podía impedir que la app volviera a arrancar en una actualización después de que alguien usara un código promocional.',
+    ],
+  },
+  {
     id: '2026-11-04-saldo-sin-perdidas',
     date: '2026-11-04',
     title: 'El saldo no pierde movimientos',

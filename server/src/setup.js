@@ -480,7 +480,11 @@ await conn.query(`
 `);
 // En el libro de cuentas: la comisión de un alquiler cobrado en efectivo, y lo que se le acredita al conductor por uno pagado por transferencia.
 // Nunca dos veces por el mismo alquiler.
-await conn.query("ALTER TABLE wallet_entries MODIFY kind ENUM('topup','commission','bonus','adjustment','rental_commission','rental_payout') NOT NULL");
+// Todos los tipos de movimiento del saldo en UNA sola lista: setup corre en cada arranque, y si una migración vieja
+// volviera a poner una lista más corta, MySQL no podría guardar los movimientos que ya existen de los tipos nuevos
+// (el arranque fallaría). Para un tipo nuevo, agrégalo aquí al final (nunca quites uno).
+const WALLET_KINDS = ['topup', 'commission', 'bonus', 'adjustment', 'rental_commission', 'rental_payout', 'promo'];
+await conn.query(`ALTER TABLE wallet_entries MODIFY kind ENUM(${WALLET_KINDS.map((k) => `'${k}'`).join(',')}) NOT NULL`);
 await addColumn('wallet_entries', 'rental_id', 'INT NULL');
 {
   const [ix] = await conn.query("SELECT 1 FROM information_schema.statistics WHERE table_schema = ? AND table_name = 'wallet_entries' AND index_name = 'one_rental'", [DB_NAME]);
@@ -739,7 +743,6 @@ await conn.query(`
 `);
 await addColumn('rides', 'promo_id', 'INT NULL');
 await addColumn('rides', 'discount', 'DECIMAL(10,2) NULL');
-await conn.query("ALTER TABLE wallet_entries MODIFY kind ENUM('topup','commission','bonus','adjustment','rental_commission','rental_payout','promo') NOT NULL");
 
 console.log(`Base de datos "${DB_NAME}" lista.`);
 await conn.end();
