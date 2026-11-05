@@ -20,6 +20,7 @@ export const CHANGELOG = [
     items: [
       'La primera vez que abres Ktracho GO te preguntamos si eres nuevo o ya tienes cuenta, para llevarte directo a donde necesitas.',
       'Si te equivocas al entrar, te ofrecemos crear tu cuenta con tu teléfono ya escrito.',
+      'En Entrar, Crear cuenta y Recuperar contraseña hay un botón «← Inicio» para volver a elegir entre «Soy nuevo» y «Ya tengo cuenta».',
       'Personal: el enlace y el QR para pasajeros de «Compartir la app» ahora abren directo «Crear cuenta», igual que el de conductores.',
     ],
   },

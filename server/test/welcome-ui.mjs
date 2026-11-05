@@ -43,6 +43,12 @@ try {
   check('el registro ofrece «¿Ya tienes cuenta? Entrar»', await see(a, '¿Ya tienes cuenta? Entrar'));
   await press(a, '¿Ya tienes cuenta? Entrar');
   check('y lleva a «Entrar»', !!(await a.$('input[placeholder="Contraseña"]')) && !(await a.$('input[placeholder="Nombre"]')));
+  await shot(a, 'entrar-con-inicio');
+  await press(a, '← Inicio');
+  check('«← Inicio» en Entrar vuelve a la pregunta', await see(a, '¿Es tu primera vez aquí?'));
+  await press(a, 'Soy nuevo · Crear mi cuenta');
+  await press(a, '← Inicio');
+  check('y también desde Crear cuenta', await see(a, '¿Es tu primera vez aquí?'));
 
   // ---------- Intenta entrar sin cuenta ----------
   const b = await fresh();

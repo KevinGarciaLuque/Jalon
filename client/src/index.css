@@ -817,6 +817,8 @@ header { gap: 8px; background: linear-gradient(135deg, var(--card), var(--bg)); 
 .welcome-card button { min-height: 52px; }
 .welcome-card button.big { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 64px; font-size: 17px; }
 .welcome-card button.big .small { font-weight: 500; opacity: .85; }
+.auth-head { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.auth-head .auth-home { display: inline-flex; align-items: center; gap: 4px; min-height: 36px; padding: 6px 14px; border: 1px solid var(--line); border-radius: 999px; font-size: 14px; font-weight: 600; color: var(--text); }
 /* Tras un intento fallido: ofrecer crear la cuenta */
 .hint.no-account { display: flex; flex-direction: column; gap: 8px; }
 /* Cuentas bancarias en Ajustes */
