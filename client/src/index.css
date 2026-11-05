@@ -60,8 +60,19 @@ button.link { min-height: 0; background: none; border: none; color: var(--brand)
 .sm { min-height: 36px; padding: 8px 12px; font-size: 14px; white-space: nowrap; }
 
 .auth { max-width: 380px; margin: 0 auto; padding: 48px 16px; }
-.auth .auth-logo { display: flex; justify-content: center; }
-.auth .auth-logo img { width: 200px; height: auto; filter: drop-shadow(0 6px 18px rgba(0, 0, 0, .18)); }
+.auth .auth-logo { display: flex; justify-content: center; padding: 26px 0 22px; }
+.auth .auth-logo img { position: relative; z-index: 1; display: block; width: 200px; height: auto; filter: drop-shadow(0 6px 18px rgba(0, 0, 0, .18)); }
+/* Aura del aro verde del logo: un resplandor que respira alrededor del aro y una onda que sale del aro y se desvanece (3,6 s) */
+.logo-aura { position: relative; display: inline-block; border-radius: 50%; }
+.logo-aura::before, .logo-aura::after { content: ''; position: absolute; inset: 1%; border-radius: 50%; pointer-events: none; }
+.logo-aura::before { box-shadow: 0 0 22px 6px rgba(46, 204, 64, .55), 0 0 48px 14px rgba(46, 204, 64, .25); animation: aura-breathe 3.6s ease-in-out infinite; }
+.logo-aura::after { border: 4px solid rgba(46, 204, 64, .75); box-shadow: 0 0 16px rgba(46, 204, 64, .6), inset 0 0 10px rgba(46, 204, 64, .35); animation: aura-wave 3.6s cubic-bezier(.22, .61, .36, 1) infinite; }
+@keyframes aura-breathe { 0%, 100% { opacity: .35; transform: scale(1); } 50% { opacity: 1; transform: scale(1.04); } }
+@keyframes aura-wave { 0% { opacity: .9; transform: scale(1); } 75% { opacity: 0; transform: scale(1.28); } 100% { opacity: 0; transform: scale(1.28); } }
+@media (prefers-reduced-motion: reduce) {
+  .logo-aura::before { animation: none; opacity: .6; }
+  .logo-aura::after { animation: none; opacity: 0; }
+}
 .auth h1 { margin: 0; font-size: 52px; font-weight: 800; letter-spacing: -.03em; color: var(--brand); text-align: center; }
 .tagline { text-align: center; color: var(--muted); margin: 4px 0 24px; }
 .card { background: var(--card); border-radius: var(--r-2); padding: 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: var(--shadow); }

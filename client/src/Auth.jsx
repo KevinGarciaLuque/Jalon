@@ -20,7 +20,8 @@ const SEEN_KEY = 'jalon-has-account';
 const seen = () => { try { return localStorage.getItem(SEEN_KEY) === '1'; } catch { return true; } };
 const markSeen = () => { try { localStorage.setItem(SEEN_KEY, '1'); } catch { /* sin almacenamiento */ } };
 // El logo circular ya trae el nombre: el título queda solo para el lector de pantalla
-const AuthLogo = () => <h1 className="auth-logo"><img src={logoImg} alt="Ktracho GO" width="200" height="200" /></h1>;
+// Con un aura verde que late suave detrás del logo (index.css · .logo-aura)
+const AuthLogo = () => <h1 className="auth-logo"><span className="logo-aura"><img src={logoImg} alt="Ktracho GO" width="200" height="200" /></span></h1>;
 const friendly = (e) => (e.message === 'Failed to fetch' ? 'No se pudo conectar con el servidor' : e.message);
 
 export default function Auth({ onAuth: done, notice }) {

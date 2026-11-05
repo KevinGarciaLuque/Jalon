@@ -8,7 +8,7 @@ export const CHANGELOG = [
     title: 'Nuevo logo de Ktracho GO',
     for: ['all'],
     items: [
-      'La pantalla de entrada y la pestaña del navegador ahora muestran el logo circular de Ktracho GO.',
+      'La pantalla de entrada y la pestaña del navegador ahora muestran el logo circular de Ktracho GO, con un aura verde suave que late alrededor del aro.',
       'Al compartir el enlace por WhatsApp o Facebook se ve una vista previa con el logo.',
     ],
   },
