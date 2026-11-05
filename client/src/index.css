@@ -60,6 +60,8 @@ button.link { min-height: 0; background: none; border: none; color: var(--brand)
 .sm { min-height: 36px; padding: 8px 12px; font-size: 14px; white-space: nowrap; }
 
 .auth { max-width: 380px; margin: 0 auto; padding: 48px 16px; }
+.auth .auth-logo { display: flex; justify-content: center; }
+.auth .auth-logo img { width: 200px; height: auto; filter: drop-shadow(0 6px 18px rgba(0, 0, 0, .18)); }
 .auth h1 { margin: 0; font-size: 52px; font-weight: 800; letter-spacing: -.03em; color: var(--brand); text-align: center; }
 .tagline { text-align: center; color: var(--muted); margin: 4px 0 24px; }
 .card { background: var(--card); border-radius: var(--r-2); padding: 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: var(--shadow); }
@@ -323,6 +325,7 @@ header span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-spa
 @media (max-width: 380px) {
   .auth { padding: 24px 12px; }
   .auth h1 { font-size: 36px; }
+  .auth .auth-logo img { width: 168px; }
   .card { padding: 16px; }
   .balance b { font-size: 28px; }
   .grow { min-width: 140px; }

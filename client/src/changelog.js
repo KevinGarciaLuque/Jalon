@@ -3,6 +3,16 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-05-logo-circular',
+    date: '2026-11-05',
+    title: 'Nuevo logo de Ktracho GO',
+    for: ['all'],
+    items: [
+      'La pantalla de entrada y la pestaña del navegador ahora muestran el logo circular de Ktracho GO.',
+      'Al compartir el enlace por WhatsApp o Facebook se ve una vista previa con el logo.',
+    ],
+  },
+  {
     id: '2026-11-05-bienvenida',
     date: '2026-11-05',
     title: 'Más fácil crear tu cuenta',

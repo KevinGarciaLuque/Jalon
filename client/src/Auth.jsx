@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, apiGet, useInstall } from './lib.js';
-import { Brand, PasswordInput, VehicleFields } from './components.jsx';
+import { PasswordInput, VehicleFields } from './components.jsx';
+import logoImg from './assets/logo-circulo.webp';
 import { loginWithPasskey, passkeyName, passkeysSupported } from './passkeys.js';
 
 const RESEND_SECONDS = 60;
@@ -18,6 +19,8 @@ const supportLink = SUPPORT_WHATSAPP
 const SEEN_KEY = 'jalon-has-account';
 const seen = () => { try { return localStorage.getItem(SEEN_KEY) === '1'; } catch { return true; } };
 const markSeen = () => { try { localStorage.setItem(SEEN_KEY, '1'); } catch { /* sin almacenamiento */ } };
+// El logo circular ya trae el nombre: el título queda solo para el lector de pantalla
+const AuthLogo = () => <h1 className="auth-logo"><img src={logoImg} alt="Ktracho GO" width="200" height="200" /></h1>;
 const friendly = (e) => (e.message === 'Failed to fetch' ? 'No se pudo conectar con el servidor' : e.message);
 
 export default function Auth({ onAuth: done, notice }) {
@@ -142,7 +145,7 @@ export default function Auth({ onAuth: done, notice }) {
   if (mode === 'welcome') {
     return (
       <div className="auth">
-        <h1><Brand size="lg" /></h1>
+        <AuthLogo />
         <p className="tagline">Tú pones el precio. Tu conductor llega.</p>
         <div className="card welcome-card">
           <b className="welcome-title">¡Bienvenido a Ktracho GO!</b>
@@ -167,7 +170,7 @@ export default function Auth({ onAuth: done, notice }) {
 
   return (
     <div className="auth">
-      <h1><Brand size="lg" /></h1>
+      <AuthLogo />
       <p className="tagline">Tú pones el precio. Tu conductor llega.</p>
       {/* method/action y los name: así el llavero del iPhone (y los gestores de contraseñas) reconocen el formulario y ofrecen guardar la contraseña */}
       <form onSubmit={submit} className="card" method="post" action="/" autoComplete="on">
