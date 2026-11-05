@@ -796,6 +796,15 @@ header { gap: 8px; background: linear-gradient(135deg, var(--card), var(--bg)); 
 @media (prefers-reduced-motion: reduce) { .map-btn.compass svg, .map-btn.compass b { transition: none; } }
 /* «Escríbenos» en Recuperar contraseña: con el color de la marca */
 .auth .card .muted a { color: var(--brand); font-weight: 700; }
+/* Primera vez: «¿Eres nuevo?» con dos botones grandes */
+.welcome-card { text-align: center; }
+.welcome-card .welcome-title { font-size: 20px; }
+.welcome-card p { margin: 0; }
+.welcome-card button { min-height: 52px; }
+.welcome-card button.big { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 64px; font-size: 17px; }
+.welcome-card button.big .small { font-weight: 500; opacity: .85; }
+/* Tras un intento fallido: ofrecer crear la cuenta */
+.hint.no-account { display: flex; flex-direction: column; gap: 8px; }
 /* Cuentas bancarias en Ajustes */
 .bank-row.off { opacity: .6; }
 .bank-edit { background: var(--bg); }

@@ -14,10 +14,16 @@ const SUPPORT_WHATSAPP = (import.meta.env.VITE_SUPPORT_WHATSAPP || '').replace(/
 const supportLink = SUPPORT_WHATSAPP
   ? `https://wa.me/${SUPPORT_WHATSAPP.length === 8 ? `504${SUPPORT_WHATSAPP}` : SUPPORT_WHATSAPP}?text=${encodeURIComponent('Hola, no puedo entrar a mi cuenta de Ktracho GO y ya no tengo acceso a mi correo.')}`
   : SUPPORT_EMAIL ? `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('No puedo entrar a mi cuenta')}` : '';
+// ¿Ya se usó Ktracho GO en este aparato? Si no, primero se pregunta si es nuevo o ya tiene cuenta
+const SEEN_KEY = 'jalon-has-account';
+const seen = () => { try { return localStorage.getItem(SEEN_KEY) === '1'; } catch { return true; } };
+const markSeen = () => { try { localStorage.setItem(SEEN_KEY, '1'); } catch { /* sin almacenamiento */ } };
 const friendly = (e) => (e.message === 'Failed to fetch' ? 'No se pudo conectar con el servidor' : e.message);
 
-export default function Auth({ onAuth, notice }) {
-  const [mode, setMode] = useState(invite || refCode ? 'register' : 'login'); // login | register | forgot
+export default function Auth({ onAuth: done, notice }) {
+  // welcome: la primera vez en este aparato (sin enlace de registro ni aviso) se pregunta «¿Eres nuevo?»
+  const [mode, setMode] = useState(invite || refCode ? 'register' : notice || seen() ? 'login' : 'welcome'); // welcome | login | register | forgot
+  const [loginFailed, setLoginFailed] = useState(false); // tras un intento fallido se ofrece crear la cuenta
   const [step, setStep] = useState(1); // 1: datos · 2: código recibido por correo
   const [role, setRole] = useState(invite === 'conductor' ? 'driver' : 'passenger');
   const [f, setF] = useState({ referral: refCode, name: '', phone: '', email: '', password: '', again: '', code: '', category: 'car', make: '', model: '', color: '', year: '', plate: '' });
@@ -34,6 +40,7 @@ export default function Auth({ onAuth, notice }) {
   const canPasskey = passkeysSupported();
   const install = useInstall();
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const onAuth = (res, via) => { markSeen(); done(res, via); };
 
   useEffect(() => {
     if (wait <= 0) return;
@@ -42,6 +49,8 @@ export default function Auth({ onAuth, notice }) {
   }, [wait]);
 
   function go(next) {
+    if (next === 'login') markSeen();
+    setLoginFailed(false);
     setMode(next);
     setStep(1);
     setError('');
@@ -69,7 +78,8 @@ export default function Auth({ onAuth, notice }) {
       if (mode === 'login' && challenge) {
         onAuth(await api('login/2fa', { challenge, code: f.code.trim() }), via);
       } else if (mode === 'login') {
-        const res = await api('login', { phone: f.phone, password: f.password });
+        setLoginFailed(false);
+        const res = await api('login', { phone: f.phone, password: f.password }).catch((err) => { if (err.message === 'Teléfono o contraseña incorrectos') setLoginFailed(true); throw err; });
         if (res.twoFactor) {
           setVia('password');
           setChallenge(res.challenge);
@@ -126,6 +136,26 @@ export default function Auth({ onAuth, notice }) {
     setError('');
     setBusy(true);
     try { await sendCode(); } catch (err) { setError(friendly(err)); } finally { setBusy(false); }
+  }
+
+  // Primera vez en este aparato: elegir entre crear la cuenta o entrar
+  if (mode === 'welcome') {
+    return (
+      <div className="auth">
+        <h1><Brand size="lg" /></h1>
+        <p className="tagline">Tú pones el precio. Tu conductor llega.</p>
+        <div className="card welcome-card">
+          <b className="welcome-title">¡Bienvenido a Ktracho GO!</b>
+          <p className="muted">¿Es tu primera vez aquí?</p>
+          <button className="primary big" onClick={() => go('register')}>
+            Soy nuevo · Crear mi cuenta
+            <span className="small">Pasajeros y conductores. Toma un minuto.</span>
+          </button>
+          <button onClick={() => go('login')}>Ya tengo cuenta · Entrar</button>
+          {install.canInstall && <button type="button" className="link" onClick={install.prompt}>📲 Instalar la app</button>}
+        </div>
+      </div>
+    );
   }
 
   const title = challenge ? 'Verificación en dos pasos' : { login: 'Entrar', register: 'Crear cuenta', forgot: 'Recuperar contraseña' }[mode];
@@ -256,7 +286,13 @@ export default function Auth({ onAuth, notice }) {
 
         {step === 1 && info && <div className="hint ok">{info}</div>}
         {error && <div className="error">{error}</div>}
-        <button className="primary" disabled={busy || (step === 2 && f.code.length !== 6)}>{busy ? 'Un momento…' : button}</button>
+        {mode === 'login' && loginFailed && !challenge && (
+          <div className="hint no-account" role="status">
+            <b>¿Todavía no tienes cuenta?</b> Para usar Ktracho GO primero hay que registrarse.
+            <button type="button" className="primary" onClick={() => go('register')}>Crear mi cuenta</button>
+          </div>
+        )}
+        <button className={mode === 'login' && loginFailed ? '' : 'primary'} disabled={busy || (step === 2 && f.code.length !== 6)}>{busy ? 'Un momento…' : button}</button>
 
         {mode === 'login' && !challenge && canPasskey && (
           <>
@@ -278,7 +314,8 @@ export default function Auth({ onAuth, notice }) {
         {mode === 'forgot' && supportLink && (
           <p className="muted small center">¿Ya no tienes acceso a tu correo? <a href={supportLink} target="_blank" rel="noreferrer">Escríbenos</a></p>
         )}
-        {mode !== 'login' && !challenge && <button type="button" className="link" onClick={() => go('login')}>← Volver a entrar</button>}
+        {mode === 'register' && <button type="button" className="link" onClick={() => go('login')}>¿Ya tienes cuenta? Entrar</button>}
+        {mode === 'forgot' && <button type="button" className="link" onClick={() => go('login')}>← Volver a entrar</button>}
         {mode === 'login' && install.canInstall && <button type="button" className="link" onClick={install.prompt}>📲 Instalar la app</button>}
       </form>
     </div>

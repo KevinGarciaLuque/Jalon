@@ -21,7 +21,7 @@ app.get('/api/referrals/me', authUser, async (req, res) => {
   const s = await getSettings(pool);
   const invites = await myReferrals(req.user.id);
   res.json({
-    enabled: true, code, link: `${shareLinks(req).passenger}?ref=${code}`,
+    enabled: true, code, link: `${shareLinks(req).home}?ref=${code}`,
     driver: req.user.role === 'driver' || !!req.user.passenger_mode, // el premio de un conductor es saldo; el de un pasajero, un código de descuento
     ...rules(s), invites,
     earned: money(invites.filter((i) => i.status === 'rewarded').reduce((t, i) => t + (i.reward || 0), 0)),

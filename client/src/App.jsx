@@ -24,7 +24,12 @@ const STAFF = ['superadmin', 'admin', 'support'];
 // `token` aparece solo en sesiones guardadas antes de la cookie: al abrir la app se pasa a la cookie y se borra.
 function loadSession() {
   // Si lo guardado está dañado o incompleto (sin la persona), se vuelve a la pantalla de entrada en vez de quedar en blanco
-  try { const s = JSON.parse(localStorage.getItem('jalon')); return s?.user?.id && s.user.role ? s : null; } catch { return null; }
+  try {
+    const s = JSON.parse(localStorage.getItem('jalon'));
+    if (!(s?.user?.id && s.user.role)) return null;
+    localStorage.setItem('jalon-has-account', '1'); // al cerrar sesión, la entrada no pregunta «¿Eres nuevo?» (Auth.jsx)
+    return s;
+  } catch { return null; }
 }
 
 // Pantalla ancha (computadora): el menú del panel se queda fijo

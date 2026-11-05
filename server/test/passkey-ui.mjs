@@ -32,6 +32,7 @@ try {
 
   // Entrar con la contraseña → se ofrece activar Face ID
   await page.goto(CLIENT, { waitUntil: 'domcontentloaded' });
+  await clickText(page, 'button', 'Ya tengo cuenta'); // aparato nuevo: primero pregunta si ya tiene cuenta
   await page.waitForSelector('input[name="username"]', { timeout: 15000 });
   const attrs = await page.evaluate(() => ({ user: document.querySelector('input[name="username"]').autocomplete, pass: document.querySelector('input[name="password"]').autocomplete }));
   check('el formulario marca usuario y contraseña para el llavero del celular', attrs.user === 'username' && attrs.pass === 'current-password', JSON.stringify(attrs));

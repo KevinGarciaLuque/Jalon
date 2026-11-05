@@ -117,7 +117,11 @@ try {
   check('la comisión queda activa (con una cuenta bancaria activa)', cfg.commission_enabled === '1');
 
   // ---- Registro del pasajero por pantalla, con código por SMS ----
-  await click(pass, '¿No tienes cuenta? Regístrate');
+  // Primera vez en este aparato: pregunta si es nuevo o ya tiene cuenta
+  check('la primera vez pregunta «¿Es tu primera vez aquí?»', (await see(pass, '¡Bienvenido a Ktracho GO!')) && !(await pass.$('input[placeholder="Contraseña"]')));
+  await shot(pass, '0a-bienvenida');
+  await click(pass, 'Soy nuevo · Crear mi cuenta');
+  check('«Soy nuevo» abre el registro', await see(pass, 'Crear cuenta'));
   await pass.type('input[placeholder="Nombre"]', 'E2E Pasajero');
   await pass.type('input[placeholder^="Teléfono"]', passPhone);
   await pass.type('input[placeholder="Correo electrónico"]', `e2e${passPhone}@prueba.jalon.test`);
@@ -434,8 +438,16 @@ try {
   await click(admin, 'Listo, ya la anoté');
 
   const staffPage = await openAs(null, { latitude: 14.07, longitude: -87.19 }, 'soporte');
+  await click(staffPage, 'Ya tengo cuenta · Entrar'); // aparato nuevo: primero pregunta si ya tiene cuenta
   await staffPage.waitForSelector('input[placeholder^="Teléfono"]', { timeout: 15000 }); // la pantalla de entrada se descarga al abrir
   await staffPage.type('input[placeholder^="Teléfono"]', staffPhone);
+  // Con la contraseña equivocada ofrece crear la cuenta (sin decir si el teléfono existe)
+  await staffPage.type('input[placeholder="Contraseña"]', 'no-es-la-clave');
+  await click(staffPage, 'Entrar');
+  check('al fallar la entrada ofrece «¿Todavía no tienes cuenta?»', (await see(staffPage, 'Teléfono o contraseña incorrectos')) && (await see(staffPage, '¿Todavía no tienes cuenta?')));
+  await shot(staffPage, '0e-entrada-fallida');
+  await staffPage.focus('input[placeholder="Contraseña"]'); await staffPage.keyboard.down('Control'); await staffPage.keyboard.press('KeyA'); await staffPage.keyboard.up('Control');
+  await staffPage.keyboard.press('Backspace');
   await staffPage.type('input[placeholder="Contraseña"]', tempPass);
   await click(staffPage, 'Entrar');
   check('el personal nuevo debe cambiar la contraseña antes de entrar', await see(staffPage, 'Cambia tu contraseña para continuar'));

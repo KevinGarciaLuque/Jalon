@@ -16,8 +16,8 @@ let adminId = null;
 try {
   const links = await http('GET', 'admin/share', SA);
   check('el superadmin recibe los dos enlaces', links.status === 200 && !!links.passenger && !!links.driver, JSON.stringify(links));
-  check('el de pasajeros es la página principal', /^https?:\/\/[^/]+\/$/.test(links.passenger));
-  check('el de conductores abre el registro de conductor', links.driver === `${links.passenger}?registro=conductor`);
+  check('el de pasajeros abre el registro de pasajero', /^https?:\/\/[^/]+\/\?registro=pasajero$/.test(links.passenger));
+  check('el de conductores abre el registro de conductor', links.driver === links.passenger.replace('pasajero', 'conductor'));
 
   const [a] = await pool.query("INSERT INTO users (name, phone, password_hash, role, status, totp_enabled, terms_accepted_at) VALUES ('T Admin compartir', ?, ?, 'admin', 'active', 1, NOW())", [`54${rnd}6`.slice(0, 8), await bcrypt.hash('no-se-usa-1', 4)]);
   adminId = a.insertId;

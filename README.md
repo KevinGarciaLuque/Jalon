@@ -569,12 +569,23 @@ a entrar y a instalar la app: conviene hacerlo una sola vez, con el dominio defi
 ## Compartir la app (QR y enlace)
 
 Panel → **Compartir** (permiso `share`; al principio solo el superadmin, que puede dárselo a otros en «Permisos»). Hay dos tarjetas:
-**para pasajeros** (`https://ktrachogo.com/`) y **para conductores** (`https://ktrachogo.com/?registro=conductor`, que abre el registro con
+**para pasajeros** (`https://ktrachogo.com/?registro=pasajero`, que abre el registro) y **para conductores** (`https://ktrachogo.com/?registro=conductor`, que abre el registro con
 «Soy conductor» ya elegido). Cada una tiene una imagen de 1080×1350 con el logo y el QR (corrección alta, con el símbolo al centro;
 comprobado que se lee también en tamaño chico), y los botones **Compartir imagen** (en el celular abre el menú de compartir, donde está
 WhatsApp; en la computadora la descarga), **Descargar imagen**, **Copiar enlace** y **Enviar por WhatsApp** (abre WhatsApp con el mensaje y
 el enlace). La dirección sale de `PUBLIC_URL` (si es https); si no, de la del sitio donde se abrió el panel (`GET /api/admin/share`).
 Prueba: `test/phase24.mjs`.
+
+### Entrada para gente nueva
+
+- **La primera vez en un aparato** (sin sesión guardada, sin enlace de registro y sin aviso), la entrada pregunta «¿Es tu primera vez aquí?» con
+  **Soy nuevo · Crear mi cuenta** y **Ya tengo cuenta · Entrar**. Se recuerda en `localStorage` (`jalon-has-account`) al entrar, al elegir
+  «Ya tengo cuenta» o si ya había una sesión abierta: después va directo a «Entrar».
+- **Si falla la entrada** («Teléfono o contraseña incorrectos») aparece «¿Todavía no tienes cuenta?» con **Crear mi cuenta**, que abre el
+  registro con el teléfono ya escrito. No se dice si el teléfono existe (para que nadie averigüe qué números tienen cuenta).
+- El registro tiene «¿Ya tienes cuenta? Entrar». El enlace de «Invita y gana» sigue siendo `/?ref=CÓDIGO`.
+
+Prueba: `test/welcome-ui.mjs` (y la bienvenida en `test/e2e.mjs`).
 
 ## Códigos promocionales
 

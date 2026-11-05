@@ -3,6 +3,17 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-05-bienvenida',
+    date: '2026-11-05',
+    title: 'Más fácil crear tu cuenta',
+    for: ['all'],
+    items: [
+      'La primera vez que abres Ktracho GO te preguntamos si eres nuevo o ya tienes cuenta, para llevarte directo a donde necesitas.',
+      'Si te equivocas al entrar, te ofrecemos crear tu cuenta con tu teléfono ya escrito.',
+      'Personal: el enlace y el QR para pasajeros de «Compartir la app» ahora abren directo «Crear cuenta», igual que el de conductores.',
+    ],
+  },
+  {
     id: '2026-11-05-mas-pestanas',
     date: '2026-11-05',
     title: 'Mi cuenta, ficha de usuario y Referidos por pestañas',

@@ -170,7 +170,7 @@ export default function Share({ call, onError }) {
   if (!links) return <Loading />;
   return (
     <>
-      <p className="muted">Comparte Ktracho GO por WhatsApp, en estados o impreso. El de conductores abre el registro con «Soy conductor» ya elegido.</p>
+      <p className="muted">Comparte Ktracho GO por WhatsApp, en estados o impreso. Los dos abren directo «Crear cuenta» (el de conductores con «Soy conductor» ya elegido), para que nadie intente entrar sin haberse registrado.</p>
       <div className="share-grid">
         {KINDS.map((k) => <ShareCard key={k.key} kind={k} url={links[k.key]} />)}
       </div>
