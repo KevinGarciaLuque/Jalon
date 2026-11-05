@@ -171,15 +171,13 @@ export default function Auth({ onAuth: done, notice }) {
 
   return (
     <div className="auth">
+      {/* Volver a la pantalla de inicio («Soy nuevo» o «Ya tengo cuenta»), arriba a la derecha */}
+      {!challenge && <button type="button" className="link auth-home" onClick={() => go('welcome')} aria-label="Volver al inicio">← Inicio</button>}
       <AuthLogo />
       <p className="tagline">Tú pones el precio. Tu conductor llega.</p>
       {/* method/action y los name: así el llavero del iPhone (y los gestores de contraseñas) reconocen el formulario y ofrecen guardar la contraseña */}
       <form onSubmit={submit} className="card" method="post" action="/" autoComplete="on">
-        <div className="auth-head">
-          {/* Volver a la pantalla de inicio («Soy nuevo» o «Ya tengo cuenta») */}
-          {!challenge && <button type="button" className="link auth-home" onClick={() => go('welcome')} aria-label="Volver al inicio">← Inicio</button>}
-          <b>{title}</b>
-        </div>
+        <b>{title}</b>
 
         {mode === 'register' && step === 1 && (
           <>
