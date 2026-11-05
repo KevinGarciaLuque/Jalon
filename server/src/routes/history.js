@@ -17,7 +17,7 @@ app.get('/api/rides/mine', authUser, async (req, res) => {
   const filter = FILTERS[req.query.status] || '1 = 1';
   const before = Number(req.query.before) || 0;
   const [rows] = await pool.query(
-    `SELECT r.id, r.status, r.cancelled_by, r.category, r.origin_text, r.dest_text, r.distance_km, r.offered_price, r.final_price, r.discount,
+    `SELECT r.id, r.status, r.cancelled_by, r.category, r.origin_text, r.dest_text, r.distance_km, r.offered_price, r.final_price, r.discount, r.tip,
             r.created_at, r.completed_at, o.name AS other_name,
             (SELECT stars FROM ratings WHERE ride_id = r.id AND rater_id = ?) AS my_stars,
             (SELECT stars FROM ratings WHERE ride_id = r.id AND ratee_id = ?) AS their_stars
@@ -28,7 +28,7 @@ app.get('/api/rides/mine', authUser, async (req, res) => {
   );
   const col = req.user.role === 'driver' ? 'driver_id' : 'passenger_id';
   const [[month]] = await pool.query(
-    `SELECT COUNT(*) AS n, COALESCE(SUM(final_price${req.user.role === 'driver' ? '' : ' - COALESCE(discount, 0)'}), 0) AS total FROM rides
+    `SELECT COUNT(*) AS n, COALESCE(SUM(final_price${req.user.role === 'driver' ? '' : ' - COALESCE(discount, 0)'} + COALESCE(tip, 0)), 0) AS total FROM rides
      WHERE ${col} = ? AND status = 'completed' AND DATE_FORMAT(${HN('completed_at')}, '%Y-%m') = DATE_FORMAT(${HN('NOW()')}, '%Y-%m')`, [id]
   );
   res.json({
@@ -57,6 +57,7 @@ app.get('/api/rides/:id/detail', authUser, async (req, res) => {
     route: r.route_json ? JSON.parse(r.route_json) : null,
     track, realKm: track.length > 1 ? trackKm(track) : null, realMin: r.real_seconds != null ? Math.round(r.real_seconds / 60) : null,
     offeredPrice: Number(r.offered_price), finalPrice: r.final_price == null ? null : Number(r.final_price), discount: r.discount == null ? 0 : Number(r.discount),
+    tip: r.tip == null ? null : Number(r.tip),
     me: me === r.passenger_id ? 'passenger' : 'driver',
     other: me === r.passenger_id ? (r.driver_name ? { name: r.driver_name, vehicle: r.vehicle, plate: r.plate } : null) : { name: r.passenger_name },
     myRating: ratings.find((x) => x.rater_id === me) || null,

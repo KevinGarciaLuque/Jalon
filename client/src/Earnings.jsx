@@ -84,7 +84,7 @@ export default function Earnings({ token, onClose }) {
               <span className="muted">Te quedaron · {range}</span>
               <b className="num">{lempiras(data.net)}</b>
               <span className="muted small">
-                Cobrado {lempiras(data.gross + data.rentals.gross)}{data.commission + data.rentals.commission > 0 ? ` − comisión de Ktracho GO ${lempiras(data.commission + data.rentals.commission)}` : ''}
+                Cobrado {lempiras(data.gross + data.rentals.gross)}{data.commission + data.rentals.commission > 0 ? ` − comisión de Ktracho GO ${lempiras(data.commission + data.rentals.commission)}` : ''}{data.tips > 0 ? ` + propinas ${lempiras(data.tips)}` : ''}
               </span>
             </div>
             <div className="stats">
@@ -93,6 +93,7 @@ export default function Earnings({ token, onClose }) {
               <div><b>{data.rides ? lempiras(data.avgPerRide) : '—'}</b><span>Promedio por viaje</span></div>
               <div><b>{data.hours}</b><span>Horas conectado</span></div>
               <div><b>{data.perHour == null ? '—' : lempiras(data.perHour)}</b><span>Por hora conectado</span></div>
+              {data.tips > 0 && <div><b>{lempiras(data.tips)}</b><span>Propinas (sin comisión)</span></div>}
               {data.rentals.count > 0 && <div><b>{lempiras(data.rentals.gross)}</b><span>Alquileres ({data.rentals.count})</span></div>}
             </div>
             <Bars data={data} />

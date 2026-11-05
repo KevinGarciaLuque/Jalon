@@ -34,6 +34,7 @@ export const SETTING_DEFAULTS = {
   referral_welcome: '30', // descuento del primer viaje para el pasajero invitado (0 = sin bienvenida)
   referral_driver_rides: '5', // viajes que debe terminar un conductor invitado para que se pague el premio
   referral_monthly_max: '10', // premios por persona al mes
+  tips_enabled: '1', // el pasajero puede dejar propina en efectivo al terminar (sin comisión)
 };
 
 export const money = (n) => Math.round(Number(n) * 100) / 100;
@@ -95,6 +96,7 @@ export function validateSettings(input, current) {
     referral_welcome: () => num('referral_welcome', 0, 500, 'La bienvenida del invitado'),
     referral_driver_rides: () => num('referral_driver_rides', 1, 50, 'Los viajes del conductor invitado'),
     referral_monthly_max: () => num('referral_monthly_max', 1, 100, 'Los premios por mes'),
+    tips_enabled: () => { values.tips_enabled = [false, '0', 0].includes(input.tips_enabled) ? '0' : '1'; return null; },
     // Tarifas: base, por km, por minuto y mínima de cada categoría
     ...Object.fromEntries(CATEGORIES.flatMap((c) => [
       [`fare_${c}_base`, () => num(`fare_${c}_base`, 0, 1000, `La tarifa base de ${CATEGORY_LABEL[c]}`)],

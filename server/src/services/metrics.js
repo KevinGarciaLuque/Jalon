@@ -39,6 +39,7 @@ async function kpis(from, to) {
        (SELECT COUNT(*) FROM rides WHERE ${inDay('created_at')}) AS requested,
        (SELECT COUNT(*) FROM rides WHERE status = 'completed' AND ${inDay('completed_at')}) AS completed,
        (SELECT COALESCE(SUM(final_price), 0) FROM rides WHERE status = 'completed' AND ${inDay('completed_at')}) AS gmv,
+       (SELECT COALESCE(SUM(tip), 0) FROM rides WHERE status = 'completed' AND ${inDay('completed_at')}) AS tips,
        (SELECT COUNT(*) FROM rides WHERE status = 'cancelled' AND ${inDay('updated_at')}) AS cancelled,
        (SELECT COUNT(DISTINCT driver_id) FROM rides WHERE status = 'completed' AND ${inDay('completed_at')}) AS active_drivers,
        (SELECT COUNT(*) FROM users WHERE role = 'passenger' AND ${inDay('created_at')}) AS new_passengers,
@@ -49,13 +50,13 @@ async function kpis(from, to) {
           FROM rental_bookings b WHERE b.status = 'completed' AND b.payment = 'transfer' AND b.owner_driver_id IS NOT NULL AND ${inDay('b.ended_at')}) AS commission_transfer,
        (SELECT AVG(TIMESTAMPDIFF(SECOND, r.created_at, (SELECT MIN(o.created_at) FROM offers o WHERE o.ride_id = r.id)))
           FROM rides r WHERE ${inDay('r.created_at')} AND EXISTS (SELECT 1 FROM offers o WHERE o.ride_id = r.id)) AS first_offer_seconds`,
-    [from, to, from, to, from, to, from, to, from, to, from, to, from, to, from, to, from, to, from, to, from, to]
+    [from, to, from, to, from, to, from, to, from, to, from, to, from, to, from, to, from, to, from, to, from, to, from, to]
   );
   const done = Number(r.completed) + Number(r.cancelled);
   return {
     requested: Number(r.requested), completed: Number(r.completed), cancelled: Number(r.cancelled),
     cancelRate: done ? Math.round((Number(r.cancelled) / done) * 100) : null,
-    gmv: money(r.gmv), commission: money(Number(r.commission_cash) + Number(r.commission_transfer)),
+    gmv: money(r.gmv), tips: money(r.tips), commission: money(Number(r.commission_cash) + Number(r.commission_transfer)),
     activeDrivers: Number(r.active_drivers), newPassengers: Number(r.new_passengers), newDrivers: Number(r.new_drivers), approvedDrivers: Number(r.approved_drivers),
     firstOfferSeconds: r.first_offer_seconds == null ? null : Math.round(Number(r.first_offer_seconds)),
   };

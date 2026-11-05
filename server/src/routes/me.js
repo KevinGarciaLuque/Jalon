@@ -17,7 +17,8 @@ import { startSession, authUser, passengerOnly, isStaff, audit, publicUser, twoF
 import { closeSession } from '../services/activity.js';
 import { permsFor } from '../perms.js';
 import { push, pushStaff } from '../notify.js';
-import { getRide, activeRideFor } from '../services/rides.js';
+import { getRide, activeRideFor, rideView } from '../services/rides.js';
+import { giveTip } from '../services/tips.js';
 import { promoOf } from '../services/promos.js';
 import { referralsOn } from '../services/referrals.js';
 import { anonymizeUser } from '../services/accounts.js';
@@ -417,6 +418,17 @@ app.post('/api/rides/:id/rate', authUser, async (req, res) => {
     if (e.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'Ya calificaste este viaje' });
     throw e;
   }
+});
+
+// Propina en efectivo al terminar el viaje: una sola vez y solo en los primeros minutos (services/tips.js)
+app.post('/api/rides/:id/tip', authUser, passengerOnly, async (req, res) => {
+  const ride = await getRide(Number(req.params.id));
+  const r = await giveTip(ride, req.user.id, req.body?.amount);
+  if (!r.ok) return res.status(r.status).json({ error: r.error });
+  const view = await rideView(await getRide(ride.id));
+  io.to(room(ride.passenger_id)).to(room(ride.driver_id)).emit('ride:state', view);
+  push(ride.driver_id, { title: `💚 Te dejaron L ${r.amount} de propina`, body: `Viaje #${ride.id} · cobra L ${Math.round(view.toPay + r.amount)} en efectivo. La propina es toda tuya.`, tag: `tip-${ride.id}`, url: '/' });
+  res.json({ ok: true, ride: view });
 });
 
 // Enlace para que un familiar siga el viaje en vivo (solo mientras el viaje está en curso)

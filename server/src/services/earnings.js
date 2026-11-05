@@ -43,7 +43,7 @@ export async function earnings(driverId, period) {
   const { from, to, today } = await periodRange(period);
   const inRange = `DATE(${HN('r.completed_at')}) BETWEEN ? AND ?`;
   const [[t]] = await pool.query(
-    `SELECT COUNT(*) AS rides, COALESCE(SUM(r.final_price), 0) AS gross, COALESCE(SUM(r.distance_km), 0) AS km,
+    `SELECT COUNT(*) AS rides, COALESCE(SUM(r.final_price), 0) AS gross, COALESCE(SUM(r.distance_km), 0) AS km, COALESCE(SUM(r.tip), 0) AS tips,
             COALESCE((SELECT -SUM(w.amount) FROM wallet_entries w JOIN rides x ON x.id = w.ride_id
                       WHERE w.user_id = ? AND w.kind = 'commission' AND x.driver_id = ? AND DATE(${HN('x.completed_at')}) BETWEEN ? AND ?), 0) AS commission
      FROM rides r WHERE r.driver_id = ? AND r.status = 'completed' AND ${inRange}`,
@@ -71,11 +71,12 @@ export async function earnings(driverId, period) {
   const gross = money(t.gross);
   const commission = money(t.commission);
   const rentalCommission = money(Number(rent.commission) + Number(rent.transfer_commission));
-  const net = money(gross - commission + Number(rent.gross) - rentalCommission);
+  const tips = money(t.tips); // las propinas son todas del conductor
+  const net = money(gross - commission + tips + Number(rent.gross) - rentalCommission);
   const hours = Math.round((seconds / 3600) * 10) / 10;
   return {
     period, from, to, today,
-    rides: Number(t.rides), gross, commission, km: Math.round(Number(t.km) * 10) / 10,
+    rides: Number(t.rides), gross, commission, tips, km: Math.round(Number(t.km) * 10) / 10,
     avgPerRide: t.rides ? money(gross / t.rides) : 0,
     rentals: { count: Number(rent.n), gross: money(rent.gross), commission: rentalCommission },
     net, hours, perHour: seconds >= 600 ? money(net / (seconds / 3600)) : null, // con menos de 10 min conectado no se calcula

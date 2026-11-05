@@ -614,6 +614,18 @@ el permiso `settings`). Necesita la **comisión encendida**, igual que los códi
 Tablas: `referrals`; columnas `users.referral_code` y `promo_codes.user_id`; movimiento `referral` en `wallet_entries`.
 Pruebas: `test/phase41.mjs` y, en pantalla, `test/referral-ui.mjs`.
 
+## Propinas
+
+Al terminar el viaje, el pasajero puede dejarle propina en efectivo al conductor (`POST /api/rides/:id/tip`, en `server/src/services/tips.js`).
+
+- Montos enteros de L 1 a L 500, **una sola vez por viaje** y solo en los **primeros 15 minutos** después de terminar (mientras siguen juntos). Se guarda con un `UPDATE` condicional, así que un doble toque no la duplica.
+- Se anota en `rides.tip` y `rides.tipped_at`. **No pasa por el saldo** ni lleva comisión: la comisión se sigue calculando solo sobre `final_price`.
+- La vista del viaje trae `tip` y `tipOpen`. El conductor la ve al instante (`ride:state`) y recibe un aviso.
+- Aparece en Ganancias (`tips`, sumada a lo que le quedó), en el historial y el recibo, y en Indicadores.
+- Interruptor `tips_enabled` en Ajustes (encendido por defecto).
+
+Pruebas: `test/phase42.mjs` y `test/tip-ui.mjs`.
+
 ## Campanita de notificaciones
 
 Todos (pasajero, conductor, soporte, administrador y superadmin) tienen una 🔔 en el encabezado con el número de avisos sin leer.

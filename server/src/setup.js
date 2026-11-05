@@ -771,6 +771,9 @@ await conn.query(`
 `);
 // Códigos personales (premios de referidos): solo los puede usar esa persona
 await addColumn('promo_codes', 'user_id', 'INT NULL');
+// Propinas: el pasajero la da en efectivo al terminar y queda anotada (es toda del conductor, sin comisión)
+await addColumn('rides', 'tip', 'DECIMAL(10,2) NULL');
+await addColumn('rides', 'tipped_at', 'TIMESTAMP NULL');
 
 console.log(`Base de datos "${DB_NAME}" lista.`);
 await conn.end();

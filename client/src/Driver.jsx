@@ -200,7 +200,8 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
               <div className="offer">
                 <div>
                   <b>{STATUS[ride.status]}</b>
-                  {ride.status === 'completed' && <div className="muted">Cobrar en efectivo: {lempiras(ride.toPay ?? ride.final_price)}{ride.discount > 0 ? ` · Ktracho GO te puso ${lempiras(ride.discount)} en tu saldo` : ''}</div>}
+                  {ride.status === 'completed' && <div className="muted">Cobrar en efectivo: {lempiras((ride.toPay ?? ride.final_price) + (ride.tip || 0))}{ride.discount > 0 ? ` · Ktracho GO te puso ${lempiras(ride.discount)} en tu saldo` : ''}</div>}
+                  {ride.status === 'completed' && ride.tip > 0 && <div className="tip-done" role="status">💚 Te dejó <b>{lempiras(ride.tip)}</b> de propina (ya va en el total). Es toda tuya.</div>}
                 </div>
                 <button className="primary sm" onClick={() => setRide(null)}>OK</button>
               </div>

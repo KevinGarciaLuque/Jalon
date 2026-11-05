@@ -5,6 +5,7 @@ import { useGeo, apiGet, apiPost, promoDiscount, lempiras, minutes, useChat, use
 import { CarMarker, FitTo, MapControls, RouteLine, icons, rotateOptions, showAt } from './mapParts.jsx';
 import ReportForm from './ReportForm.jsx';
 import Rentals from './Rentals.jsx';
+import Tip from './Tip.jsx';
 import { AddressSearch, Avatar, Chat, PriceStepper, Rate, SafetyBar, Stars, TimeRing, Grab } from './components.jsx';
 
 function Recenter({ pos }) {
@@ -574,8 +575,10 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
             <b>{ride.status === 'cancelled' ? CANCELLED[ride.cancelled_by] || STATUS.cancelled : STATUS[ride.status]}</b>
             {ride.status === 'completed' && (
               <>
-                <p>Total a pagar en efectivo: <b>{lempiras(ride.toPay ?? ride.final_price)}</b>{ride.discount > 0 && <span className="muted small"> (precio {lempiras(ride.final_price)} − {lempiras(ride.discount)} del código {ride.promo?.code})</span>}</p>
+                <p>Total a pagar en efectivo: <b>{lempiras((ride.toPay ?? ride.final_price) + (ride.tip || 0))}</b>{ride.discount > 0 && <span className="muted small"> (precio {lempiras(ride.final_price)} − {lempiras(ride.discount)} del código {ride.promo?.code})</span>}</p>
+                {ride.tip > 0 && <p className="tip-done" role="status">💚 Le dejaste <b>{lempiras(ride.tip)}</b> de propina: viaje {lempiras(ride.toPay ?? ride.final_price)} + propina {lempiras(ride.tip)}</p>}
                 {ride.driver && <Rate token={token} rideId={ride.id} who={ride.driver.name} title="¡Llegaste!" />}
+                {ride.driver && ride.tipOpen && <Tip token={token} ride={ride} onDone={setRide} />}
                 {chat.chatable && !chat.closed && (
                   <button onClick={chat.open ? chat.closeChat : chat.openChat}>💬 ¿Olvidaste algo? Escribe al conductor{chat.unread ? ` (${chat.unread})` : ''}</button>
                 )}

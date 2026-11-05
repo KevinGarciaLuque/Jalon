@@ -3,6 +3,17 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-05-propinas',
+    date: '2026-11-05',
+    title: 'Propinas para tu conductor',
+    for: ['passenger', 'driver', 'staff'],
+    items: [
+      'Pasajeros: al llegar puedes dejarle propina a tu conductor (L 10, L 20, L 50 u otra cantidad). Se la das en efectivo junto con el viaje y ves el nuevo total.',
+      'Conductores: ves la propina al instante y te llega un aviso. Es toda tuya: Ktracho GO no le cobra comisión. En Ganancias aparece aparte.',
+      'Personal: las propinas se pueden apagar en Ajustes y el total aparece en Indicadores.',
+    ],
+  },
+  {
     id: '2026-11-04-invita-y-gana',
     date: '2026-11-04',
     title: 'Invita y gana',

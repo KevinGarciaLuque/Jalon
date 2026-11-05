@@ -118,6 +118,7 @@ export default function Metrics({ call, can, onError }) {
           <div className="stats kpis">
             <div><b>{m.kpis.completed}</b><span>Viajes completados</span><Delta now={m.kpis.completed} before={m.previous.completed} /></div>
             <div><b>{lempiras(m.kpis.gmv)}</b><span>Movido en viajes</span><Delta now={m.kpis.gmv} before={m.previous.gmv} /></div>
+            <div><b>{lempiras(m.kpis.tips)}</b><span>Propinas a conductores</span><Delta now={m.kpis.tips} before={m.previous.tips} /></div>
             <div><b>{lempiras(m.kpis.commission)}</b><span>Comisión de Ktracho GO</span><Delta now={m.kpis.commission} before={m.previous.commission} /></div>
             <div><b>{m.kpis.cancelRate == null ? '—' : `${m.kpis.cancelRate}%`}</b><span>Cancelados ({m.kpis.cancelled})</span><Delta now={m.kpis.cancelRate} before={m.previous.cancelRate} goodUp={false} points /></div>
             <div><b>{m.kpis.requested}</b><span>Solicitudes</span><Delta now={m.kpis.requested} before={m.previous.requested} /></div>

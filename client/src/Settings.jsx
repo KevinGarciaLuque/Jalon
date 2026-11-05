@@ -110,6 +110,12 @@ export default function Settings({ call, onError }) {
         <label>Cada cuántas horas se pide la selfie<input inputMode="numeric" value={s.driver_selfie_hours} onChange={set('driver_selfie_hours')} /></label>
       )}
 
+      <b>Propinas</b>
+      <label className="check">
+        <input type="checkbox" checked={s.tips_enabled !== '0'} onChange={set('tips_enabled')} />
+        <span><b>Dejar que el pasajero dé propina</b> al terminar el viaje (en efectivo, en los primeros 15 minutos). La propina es toda del conductor: no se le cobra comisión.</span>
+      </label>
+
       <b>Mapa</b>
       <label className="check">
         <input type="checkbox" checked={s.map_rotation !== '0'} onChange={set('map_rotation')} />

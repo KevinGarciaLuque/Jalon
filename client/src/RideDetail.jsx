@@ -60,6 +60,7 @@ export default function RideDetail({ rideId, token, onClose, onReceipt, onReport
                 <div><i className="dot-o" />{r.origin.text || 'Punto de recogida'}</div>
                 <div><i className="dot-d" />{r.dest.text || 'Destino en el mapa'}</div>
               </div>
+              {r.tip > 0 && <div className="tip-done">💚 Propina de {lempiras(r.tip)} en efectivo{r.me === 'driver' ? ' (toda tuya, sin comisión)' : ''}</div>}
               {r.other && <div className="muted">{r.me === 'passenger' ? 'Conductor' : 'Pasajero'}: <b>{r.other.name}</b>{r.other.vehicle ? ` · ${r.other.vehicle} · ${r.other.plate}` : ''}</div>}
             </div>
 

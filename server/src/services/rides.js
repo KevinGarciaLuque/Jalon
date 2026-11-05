@@ -9,6 +9,7 @@ import { push } from '../notify.js';
 import { openSafetyCheck } from './safety.js';
 import { promoOf, rideDiscount } from './promos.js';
 import { money } from '../wallet.js';
+import { tipOpen } from './tips.js';
 
 export async function getRide(id) {
   const [rows] = await pool.query('SELECT * FROM rides WHERE id = ?', [id]);
@@ -50,6 +51,8 @@ export async function rideView(ride) {
     promo: promo ? { code: promo.code, description: promo.description } : null,
     discount,
     toPay: money(Math.max(0, Number(ride.final_price ?? ride.offered_price) - discount)),
+    tip: ride.tip != null ? money(ride.tip) : null, // propina en efectivo (aparte de toPay; sin comisión)
+    tipOpen: await tipOpen(ride), // el pasajero todavía puede dejar propina
     pinRequired: !!start_pin, // el PIN lo ve solo el pasajero (GET /api/rides/:id/pin)
     stops: ride.stops_json ? JSON.parse(ride.stops_json) : [], // paradas en el camino, en orden
     pinLocked: Number(pin_attempts) >= PIN_TRIES,
