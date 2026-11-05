@@ -9,6 +9,7 @@ import { Avatar, Chat, PriceStepper, PushToggle, Rate, SafetyBar, Stars, TimeRin
 import ReportForm from './ReportForm.jsx';
 import DriverDocs from './DriverDocs.jsx';
 import DriverSelfie from './DriverSelfie.jsx';
+import PermsBar from './PermsBar.jsx';
 
 function Recenter({ pos }) {
   const map = useMap();
@@ -35,7 +36,7 @@ const POWER = <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke
 const QUICK = ['Ya llegué', 'Estoy afuera', 'Voy en camino', 'Llego en 5 minutos', 'No te encuentro'];
 
 export default function Driver({ socket, token, status, userId, perms = [], onWallet }) {
-  const { pos, setPos, denied, course } = useGeo();
+  const { pos, setPos, denied, course, retry: retryGeo } = useGeo();
   const [online, setOnline] = useState(false);
   const [requests, setRequests] = useState([]);
   const [sent, setSent] = useState({}); // rideId -> { price, until } de la oferta hecha (vale unos segundos)
@@ -150,6 +151,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
 
   return (
     <div className="screen">
+      <PermsBar token={token} role="driver" geoDenied={denied} onGeoRetry={retryGeo} hidden={!!active} />
       <div className="map">
         {pos && (
           <MapContainer center={[pos.lat, pos.lng]} zoom={15} style={{ height: '100%' }} {...rotateOptions()}>

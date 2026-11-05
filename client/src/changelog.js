@@ -3,6 +3,17 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-05-permisos',
+    date: '2026-11-05',
+    title: 'Te avisamos si tu ubicación o tus notificaciones están apagadas',
+    for: ['passenger', 'driver'],
+    items: [
+      'Si tu ubicación (GPS) está apagada o bloqueada, una barra arriba te ofrece activarla o te explica cómo hacerlo en tu celular.',
+      'Si tienes las notificaciones apagadas, puedes activarlas con un toque para enterarte de tus viajes aunque cierres la app. En iPhone te explicamos cómo agregarla a la pantalla de inicio.',
+      '«Ahora no» la esconde por 3 días, y nunca aparece durante un viaje.',
+    ],
+  },
+  {
     id: '2026-11-05-logo-circular',
     date: '2026-11-05',
     title: 'Nuevo logo de Ktracho GO',

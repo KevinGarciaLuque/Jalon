@@ -6,6 +6,7 @@ import { CarMarker, FitTo, MapControls, RouteLine, icons, rotateOptions, showAt 
 import ReportForm from './ReportForm.jsx';
 import Rentals from './Rentals.jsx';
 import Tip from './Tip.jsx';
+import PermsBar from './PermsBar.jsx';
 import { AddressSearch, Avatar, Chat, PriceStepper, Rate, SafetyBar, Stars, TimeRing, Grab } from './components.jsx';
 
 function Recenter({ pos }) {
@@ -161,7 +162,7 @@ function PromoField({ token, price, promo, onChange }) {
 }
 
 export default function Passenger({ socket, token, userId, perms = [], gender = null }) {
-  const { pos, setPos, denied, course } = useGeo();
+  const { pos, setPos, denied, course, retry: retryGeo } = useGeo();
   const [drivers, setDrivers] = useState([]);
   const [origin, setOrigin] = useState(null); // punto de recogida elegido a mano; null = mi GPS
   const [dest, setDest] = useState(null);
@@ -365,6 +366,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
 
   return (
     <div className="screen">
+      <PermsBar token={token} role="passenger" geoDenied={denied} onGeoRetry={retryGeo} hidden={!!active} />
       <div className="map">
         {pos && (
           <MapContainer center={[pos.lat, pos.lng]} zoom={15} style={{ height: '100%' }} {...rotateOptions()}>

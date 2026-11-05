@@ -90,12 +90,14 @@ export function useGeo() {
   const [denied, setDenied] = useState(false);
   // Rumbo (grados desde el norte) y velocidad (m/s) que da el GPS al moverse; null si no los da (quieto o en computadora)
   const [course, setCourse] = useState({ heading: null, speed: null });
+  const [tries, setTries] = useState(0); // retry(): volver a pedir la ubicación (después de activarla)
   useEffect(() => {
     if (!navigator.geolocation) { setPos(DEFAULT_POS); setDenied(true); return; }
     const id = navigator.geolocation.watchPosition(
       (p) => {
         lastFix = { lat: p.coords.latitude, lng: p.coords.longitude };
         setPos(lastFix);
+        setDenied(false);
         const { heading, speed } = p.coords;
         setCourse({ heading: Number.isFinite(heading) ? heading : null, speed: Number.isFinite(speed) ? speed : null });
       },
@@ -103,8 +105,8 @@ export function useGeo() {
       { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 }
     );
     return () => navigator.geolocation.clearWatch(id);
-  }, []);
-  return { pos, setPos, denied, course };
+  }, [tries]);
+  return { pos, setPos, denied, course, retry: () => setTries((n) => n + 1) };
 }
 
 // "Instalar app": Chrome/Android avisa con beforeinstallprompt; iPhone no tiene botón y hay que explicarlo

@@ -41,7 +41,10 @@ export default function UpdateBar() {
     window.location.reload();
   }
 
-  if (!fresh || later) return null;
+  // Mientras se ve, la barra de permisos se esconde para no encimarse
+  const shown = fresh && !later;
+  useEffect(() => { document.body.toggleAttribute('data-update', shown); return () => document.body.removeAttribute('data-update'); }, [shown]);
+  if (!shown) return null;
   return (
     <div className="update-bar" role="status">
       <span>✨ Hay una versión nueva de Ktracho GO</span>

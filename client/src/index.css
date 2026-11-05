@@ -725,6 +725,17 @@ button.drive-in-mute { position: absolute; top: 8px; right: 8px; width: auto; mi
 .update-bar > span { flex: 1; min-width: 180px; font-weight: 600; }
 .update-bar .link { padding: 4px; }
 
+/* ---- Barra de permisos: ubicación y notificaciones apagadas ---- */
+.perms-bar { position: fixed; z-index: 2800; left: 50%; transform: translateX(-50%); top: calc(max(10px, env(safe-area-inset-top)) + 66px); width: min(560px, calc(100% - 24px)); display: grid; grid-template-columns: auto 1fr; gap: 8px 10px; align-items: center; padding: 10px 14px; background: var(--card); color: var(--text); border: 1px solid var(--brand); border-radius: var(--r-2); box-shadow: var(--shadow); animation: fade-in var(--slow) ease-out; }
+body[data-update] .perms-bar { display: none; }
+.perms-bar .perms-icon { font-size: 20px; line-height: 1; }
+.perms-bar .perms-text { font-weight: 600; font-size: 14px; line-height: 1.35; }
+.perms-bar .perms-actions { grid-column: 1 / -1; display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+.perms-bar .perms-actions .link { padding: 4px; }
+.perms-bar .perms-steps { grid-column: 1 / -1; margin: 0; padding: 10px 0 0 20px; border-top: 1px solid var(--line); display: grid; gap: 6px; line-height: 1.4; }
+.perms-bar .perms-retry { list-style: none; margin-left: -20px; }
+.perms-bar .perms-error { grid-column: 1 / -1; }
+
 /* ---- Entrar con Face ID / huella ---- */
 .or { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
 .or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
