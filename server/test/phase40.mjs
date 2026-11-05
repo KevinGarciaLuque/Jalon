@@ -138,7 +138,8 @@ try {
   const list = (await http('GET', 'admin/promos', SA)).promos.find((p) => p.id === fix.id);
   check('la lista dice cuántas veces se usó y cuánto puso Ktracho GO', list.used === 1 && list.total_discount === 30 && list.active === 0, JSON.stringify(list));
   check('el Registro anota quién creó el código', (await http('GET', 'admin/audit', SA)).some((a) => a.action === 'promo.create' && a.details?.code === FIX));
-  check('un viaje sin código sigue igual', (await emitAck(B.s, 'ride:request', { origin, dest, price: 80 }))?.ok === true);
+  // El que canceló quedó libre (el otro sigue con su viaje pedido con el código)
+  check('un viaje sin código sigue igual', (await emitAck(winner.s, 'ride:request', { origin, dest, price: 80 }))?.ok === true);
 } catch (e) {
   check('la prueba terminó sin errores', false, e.stack);
 } finally {
