@@ -811,6 +811,13 @@ header { gap: 8px; background: linear-gradient(135deg, var(--card), var(--bg)); 
 /* «Escríbenos» en Recuperar contraseña: con el color de la marca */
 .auth .card .muted a { color: var(--brand); font-weight: 700; }
 /* Primera vez: «¿Eres nuevo?» con dos botones grandes */
+.intro-card { display: grid; gap: 10px; margin-top: 14px; scroll-margin-top: 16px; }
+.intro-card p { margin: 0; }
+.intro-card .intro-title { font-size: 18px; }
+.intro-steps { list-style: none; margin: 2px 0 0; padding: 0; display: grid; gap: 10px; }
+.intro-steps li { display: flex; gap: 12px; align-items: flex-start; font-size: 14px; line-height: 1.4; }
+.intro-ico { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: color-mix(in srgb, var(--brand) 16%, transparent); font-size: 17px; }
+.intro-driver { padding-top: 10px; border-top: 1px solid var(--line); line-height: 1.4; }
 .welcome-card { text-align: center; }
 .welcome-card .welcome-title { font-size: 20px; }
 .welcome-card p { margin: 0; }

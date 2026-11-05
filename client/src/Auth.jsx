@@ -157,7 +157,19 @@ export default function Auth({ onAuth: done, notice }) {
           </button>
           <button onClick={() => go('login')}>Ya tengo cuenta · Entrar</button>
           {install.canInstall && <button type="button" className="link" onClick={install.prompt}>📲 Instalar la app</button>}
+          <button type="button" className="link" onClick={() => document.getElementById('intro-title')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>¿Cómo funciona? Míralo aquí ↓</button>
         </div>
+        {/* Para quien no conoce la app: de qué trata, en 3 pasos */}
+        <section className="card intro-card" aria-labelledby="intro-title">
+          <b id="intro-title" className="intro-title">¿Qué es Ktracho GO?</b>
+          <p className="muted small">Viajes en tu ciudad donde <b>tú pones el precio</b>.</p>
+          <ol className="intro-steps">
+            <li><span className="intro-ico" aria-hidden="true">📍</span><span><b>Dinos a dónde vas</b> y cuánto quieres pagar: carro, moto o carro amplio.</span></li>
+            <li><span className="intro-ico" aria-hidden="true">🚗</span><span><b>Los conductores cercanos te hacen ofertas.</b> Tú eliges con quién ir por su precio, calificación y vehículo.</span></li>
+            <li><span className="intro-ico" aria-hidden="true">✅</span><span><b>Viaja seguro</b> y paga en efectivo al llegar. Ves al conductor en el mapa, compartes tu viaje y tienes botón de ayuda.</span></li>
+          </ol>
+          <p className="intro-driver small"><span aria-hidden="true">🚙</span> <b>¿Tienes carro o moto?</b> Regístrate como conductor y gana dinero en tus horarios.</p>
+        </section>
       </div>
     );
   }

@@ -36,8 +36,15 @@ try {
   // ---------- Primera vez ----------
   const a = await fresh();
   check('la primera vez pregunta si es nuevo', (await see(a, '¡Bienvenido a Ktracho GO!')) && (await see(a, '¿Es tu primera vez aquí?')));
+  check('explica qué es la app en 3 pasos', (await see(a, '¿Qué es Ktracho GO?')) && (await a.$$('.intro-steps li')).length === 3 && (await see(a, '¿Tienes carro o moto?')));
+  check('la bienvenida no se sale de la pantalla', !(await a.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)));
   check('sin formulario de entrada todavía', !(await a.$('input[placeholder="Contraseña"]')));
+  check('los botones se ven sin bajar', await a.$eval('button.primary.big', (b) => b.getBoundingClientRect().bottom <= window.innerHeight));
   await shot(a, 'bienvenida');
+  await press(a, '¿Cómo funciona? Míralo aquí');
+  await wait(900);
+  check('«¿Cómo funciona?» baja a la explicación', await a.$eval('.intro-card', (t) => { const r = t.getBoundingClientRect(); return r.top >= 0 && r.bottom <= window.innerHeight + 1; }));
+  await shot(a, 'bienvenida-intro');
   await press(a, 'Soy nuevo · Crear mi cuenta');
   check('«Soy nuevo» abre «Crear cuenta»', (await see(a, 'Crear cuenta')) && !!(await a.$('input[placeholder="Nombre"]')));
   check('el registro ofrece «¿Ya tienes cuenta? Entrar»', await see(a, '¿Ya tienes cuenta? Entrar'));
