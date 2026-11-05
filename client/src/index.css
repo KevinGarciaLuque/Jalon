@@ -285,6 +285,14 @@ button.go { min-height: 54px; font-size: 17px; display: flex; align-items: cente
 label.upload { display: block; text-align: center; padding: 12px; }
 .settings label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
 .settings .check { flex-direction: row; align-items: flex-start; }
+/* Ajustes por pestañas: cada sección es una columna; lo oculto se oculta aunque tenga display propio */
+.settings > section { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.settings > section > b:not(:first-child) { margin-top: 8px; }
+.settings[hidden], .settings > section[hidden], [role="tabpanel"][hidden] { display: none; }
+.settings-tabs { margin-bottom: 10px; }
+.settings-tabs .tab-dirty { color: var(--warn, #d97706); font-weight: 700; }
+.settings-tabs button.on .tab-dirty { color: inherit; }
+.settings-save { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid var(--line); }
 
 /* ---- Adaptable: teléfono, tablet y escritorio ---- */
 html, body { overflow-x: hidden; }

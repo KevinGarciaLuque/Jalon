@@ -3,6 +3,16 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-05-ajustes-pestanas',
+    date: '2026-11-05',
+    title: 'Ajustes por pestañas',
+    for: ['staff'],
+    items: [
+      'Personal: Ajustes ahora está ordenado en pestañas (Comisión y saldo, Tarifas, Viajes, Seguridad, Alquiler y Cuentas bancarias), sin una página larga.',
+      'Si cambias algo y te vas a otra pestaña, queda marcada con • y te avisa que tienes cambios sin guardar. «Guardar ajustes» guarda todo junto.',
+    ],
+  },
+  {
     id: '2026-11-05-propinas',
     date: '2026-11-05',
     title: 'Propinas para tu conductor',
