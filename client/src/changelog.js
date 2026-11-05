@@ -3,6 +3,17 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-05-mas-pestanas',
+    date: '2026-11-05',
+    title: 'Mi cuenta, ficha de usuario y Referidos por pestañas',
+    for: ['passenger', 'driver', 'staff'],
+    items: [
+      'Mi cuenta ahora está ordenada en pestañas: Perfil, Mis viajes (PIN, contactos y lugares), Seguridad y Mis datos.',
+      'Personal: la ficha de cada usuario tiene pestañas Resumen, Vehículo, Saldo, Viajes, Historial y Permisos (según la persona), sin bajar tanto.',
+      'Personal: Referidos separa las Invitaciones de las Reglas.',
+    ],
+  },
+  {
     id: '2026-11-05-ajustes-pestanas',
     date: '2026-11-05',
     title: 'Ajustes por pestañas',

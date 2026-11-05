@@ -93,6 +93,8 @@ const profile = async (page, item) => {
   await (await page.waitForSelector(`.profile-pop ::-p-text(${item})`, { timeout: 5000 })).click();
 };
 const entered = (page) => page.waitForSelector('button.menu-btn', { timeout: 15000 }).then(() => true, () => false);
+// Abre una pestaña de una pantalla (Mi cuenta, ficha de usuario…)
+const tabTo = async (page, text) => { await settled(page); const t = await page.waitForSelector(`.page-tabs [role="tab"]::-p-text(${text})`, { timeout: 15000 }); await t.click(); await new Promise((r) => setTimeout(r, 200)); };
 const see = (page, text, timeout = 15000) =>
   page.waitForSelector(`::-p-text(${text})`, { timeout }).then(() => true, () => false);
 const shot = (page, name) => page.screenshot({ path: path.join(SHOTS, `${name}.png`) });
@@ -160,6 +162,8 @@ try {
   check('se abre Mi cuenta', await see(pass, 'Mi cuenta'));
   // PIN de viaje opcional: la pasajera lo activa (más abajo se usa al iniciar el viaje)
   await settled(pass); // Mi cuenta entra deslizándose: si se toca antes, el clic cae fuera
+  check('Mi cuenta tiene pestañas', await see(pass, 'Perfil') && await see(pass, 'Mis datos'));
+  await tabTo(pass, 'Mis viajes');
   await (await pass.waitForSelector('label.check ::-p-text(Usar PIN en mis viajes)', { timeout: 15000 })).evaluate((l) => { l.scrollIntoView({ block: 'center' }); l.click(); });
   check('la pasajera activa «Usar PIN en mis viajes»', await pass.waitForFunction(() => [...document.querySelectorAll('label.check')].some((l) => l.textContent.includes('Usar PIN') && l.querySelector('input').checked), { timeout: 5000 }).then(() => true, () => false));
   await pass.waitForSelector('input[placeholder^="Nombre (ej."]'); // aparece cuando termina de cargar la lista de contactos
@@ -167,7 +171,9 @@ try {
   await pass.type('input[placeholder="Teléfono (8 dígitos)"]', `71${rnd.slice(0, 6)}`);
   await click(pass, 'Agregar');
   check('se agrega un contacto de confianza a quien llegará el enlace del viaje', await see(pass, `71${rnd.slice(0, 6)}`));
+  await tabTo(pass, 'Mis datos');
   check('Mi cuenta ofrece descargar los datos y eliminar la cuenta', (await see(pass, 'Descargar mis datos')) && (await see(pass, 'Eliminar mi cuenta')));
+  await tabTo(pass, 'Seguridad');
   check('y cerrar la sesión en los demás dispositivos', await see(pass, 'Cerrar sesión en los demás dispositivos'));
   await pass.type('input[placeholder="Contraseña actual"]', 'secreto1');
   await pass.type('input[placeholder="Contraseña nueva"]', 'secreto2-nueva');
@@ -460,7 +466,10 @@ try {
   await section(staffPage, 'Usuarios');
   await staffPage.waitForSelector('.ucard.click', { timeout: 15000 });
   await staffPage.click('.ucard.click');
-  check('soporte abre la ficha de un usuario', await see(staffPage, 'Últimos viajes'));
+  check('soporte abre la ficha de un usuario (por pestañas)', await see(staffPage, 'Resumen'));
+  await tabTo(staffPage, 'Viajes');
+  check('la pestaña Viajes muestra sus últimos viajes', await see(staffPage, 'Últimos viajes'));
+  await tabTo(staffPage, 'Resumen');
   const supportActions = await staffPage.$$eval('.actions-bar button', (bs) => bs.map((b) => b.textContent)).catch(() => []);
   check('soporte no ve botones para editar, aprobar ni bloquear', supportActions.length === 0, `(${supportActions})`);
   await shot(staffPage, '0f-soporte-ficha');

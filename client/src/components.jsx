@@ -197,6 +197,20 @@ export function AddressSearch({ token, near, placeholder, value, onPick, icon })
 
 // Calificar al otro participante después del viaje
 // Marca: el símbolo del logo y el nombre (el nombre va como texto: se lee bien en modo oscuro y lo leen los lectores de pantalla)
+// Pestañas (píldoras que se acomodan en varias filas). tabs: [[clave, etiqueta, marca?]]; la marca es un número o «•» junto a la etiqueta.
+// Cada panel lleva id={`${id}-panel-${clave}`} y role="tabpanel" para que el lector de pantalla los relacione.
+export function Tabs({ id, tabs, value, onChange, label }) {
+  return (
+    <div className="seg tabs page-tabs" role="tablist" aria-label={label}>
+      {tabs.map(([k, text, badge]) => (
+        <button key={k} type="button" role="tab" id={`${id}-tab-${k}`} aria-selected={value === k} aria-controls={`${id}-panel-${k}`} className={value === k ? 'on' : ''} onClick={() => onChange(k)}>
+          {text}{badge ? <span className={`tab-badge${typeof badge === 'number' ? '' : ' warn'}`}> {badge}</span> : null}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function Brand({ size = 'sm' }) {
   return <span className={`brand ${size}`}><img src={markImg} alt="" /><b>Ktracho <i>GO</i></b></span>;
 }

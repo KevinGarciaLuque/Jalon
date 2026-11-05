@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { lempiras, CATEGORY_LABEL } from './lib.js';
-import { Empty, Loading, Stars, VehicleFields } from './components.jsx';
+import { Empty, Loading, Stars, Tabs, VehicleFields } from './components.jsx';
 import DocsModal from './DocsModal.jsx';
 
 export const ROLE_LABEL = { passenger: 'Pasajero', driver: 'Conductor', admin: 'Administrador', superadmin: 'Superadministrador', support: 'Soporte' };
@@ -162,6 +162,7 @@ export default function UserDetail({ userId, me, perms, call, token, onClose, on
   const [temp, setTemp] = useState(null);
   const [showDocs, setShowDocs] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [tab, setTab] = useState('summary');
 
   const load = useCallback(() => call(`users/${userId}`).then(setData).catch((e) => setError(e.message)), [call, userId]);
   useEffect(() => { load(); }, [load]);
@@ -228,6 +229,19 @@ export default function UserDetail({ userId, me, perms, call, token, onClose, on
     run(() => call(`users/${u.id}/reset-2fa`, {}));
   };
 
+  // Pestañas: solo las que aplican a esta persona y a quien mira
+  const showPerms = staffTarget && touchable && can('staff.manage');
+  const TABS = [
+    ['summary', 'Resumen'],
+    u.role === 'driver' && ['vehicle', '🚗 Vehículo', v ? null : '!'],
+    wallet && ['wallet', '💰 Saldo'],
+    ['rides', '🧾 Viajes', rides.length || null],
+    history && ['history', '📋 Historial', history.length || null],
+    showPerms && ['perms', '🔒 Permisos'],
+  ].filter(Boolean);
+  const current = TABS.some(([k]) => k === tab) ? tab : 'summary';
+  const panel = (k) => ({ role: 'tabpanel', id: `ud-panel-${k}`, 'aria-labelledby': `ud-tab-${k}`, className: 'tabpanel', hidden: current !== k });
+
   return (
     <div className="overlay top">
       <div className="overlay-head">
@@ -236,7 +250,9 @@ export default function UserDetail({ userId, me, perms, call, token, onClose, on
       </div>
       <div className="overlay-body wide">
         {error && <div className="error">{error}</div>}
+        {TABS.length > 1 && <Tabs id="ud" tabs={TABS} value={current} onChange={setTab} label={`Secciones de la ficha de ${u.name}`} />}
 
+        <section {...panel('summary')}>
         <div className="req">
           <div className="row between">
             <span><span className={`pill ${u.status}`}>{u.deleted_at ? 'Eliminada' : STATUS_LABEL[u.status]}</span> <b>{ROLE_LABEL[u.role]}</b>{u.role === 'driver' && !!u.passenger_mode && <span className="muted"> · Ahora en modo pasajero</span>}</span>
@@ -303,9 +319,12 @@ export default function UserDetail({ userId, me, perms, call, token, onClose, on
           </div>
         )}
 
-        {touchable && can('staff.manage') && <PersonPerms userId={u.id} call={call} onError={setError} />}
+        </section>
+
+        {showPerms && <section {...panel('perms')}><PersonPerms userId={u.id} call={call} onError={setError} /></section>}
 
         {u.role === 'driver' && (
+          <section {...panel('vehicle')}>
           <div className="req">
             <div className="row between">
               <b>Vehículo</b>
@@ -328,9 +347,11 @@ export default function UserDetail({ userId, me, perms, call, token, onClose, on
               </>
             )}
           </div>
+          </section>
         )}
 
         {wallet && (
+          <section {...panel('wallet')}>
           <div className="req">
             <div className="row between">
               <b>💰 Saldo: L {wallet.balance.toFixed(2)}</b>
@@ -342,9 +363,12 @@ export default function UserDetail({ userId, me, perms, call, token, onClose, on
                 <b className={Number(e.amount) < 0 ? 'neg' : 'pos'}>{Number(e.amount) > 0 ? '+' : ''}{Number(e.amount).toFixed(2)}</b>
               </div>
             ))}
+            {!wallet.entries.length && <p className="muted small">Sin movimientos todavía.</p>}
           </div>
+          </section>
         )}
 
+        <section {...panel('rides')}>
         <b>Últimos viajes</b>
         {rides.length === 0 && <Empty title="Todavía no tiene viajes" />}
         {rides.map((r) => (
@@ -353,9 +377,11 @@ export default function UserDetail({ userId, me, perms, call, token, onClose, on
             <div className="muted small">{when(r.created_at)} · {r.distance_km.toFixed(1)} km · {r.status}{r.cancelled_by ? ` (${r.cancelled_by})` : ''}{r.other_name ? ` · con ${r.other_name}` : ''}</div>
           </div>
         ))}
+        </section>
 
         {history && (
-          <>
+          <section {...panel('history')}>
+            <div className="req">
             <b>Movimientos del personal sobre esta cuenta</b>
             {history.length === 0 && <p className="muted">Sin movimientos.</p>}
             {history.map((h) => (
@@ -363,7 +389,8 @@ export default function UserDetail({ userId, me, perms, call, token, onClose, on
                 {when(h.created_at)} · <b>{h.actor}</b>: {ACTION_LABEL[h.action] || h.action} {detailText(h.action, h.details)}
               </div>
             ))}
-          </>
+            </div>
+          </section>
         )}
       </div>
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { apiGet, apiPost, apiPut, useInstall } from './lib.js';
-import { PushToggle, PasswordInput } from './components.jsx';
+import { PushToggle, PasswordInput, Tabs } from './components.jsx';
 import { SavedPlaces, TrustedContacts } from './PersonalLists.jsx';
 import { Panel } from './Menu.jsx';
 import { PasskeySection } from './PasskeyParts.jsx';
@@ -77,6 +77,7 @@ export default function Account({ user, token, onToken, onClose, onLogout, force
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState({ ok: true, text: '' });
   const [codes, setCodes] = useState(null); // códigos de respaldo nuevos
+  const [tab, setTab] = useState('profile');
   const isStaff = STAFF.includes(user.role);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const min = isStaff ? 10 : 8;
@@ -148,6 +149,15 @@ export default function Account({ user, token, onToken, onClose, onLogout, force
     }
   }
 
+  // Pestañas (con la contraseña temporal no hay: solo se muestra el cambio de contraseña)
+  const TABS = [
+    ['profile', '👤 Perfil'],
+    user.role === 'passenger' && ['trips', '🧭 Mis viajes'],
+    ['security', '🔒 Seguridad'],
+    !isStaff && ['data', '📄 Mis datos'],
+  ].filter(Boolean);
+  const panel = (k) => ({ role: 'tabpanel', id: `acc-panel-${k}`, 'aria-labelledby': `acc-tab-${k}`, className: 'tabpanel', hidden: !forced && tab !== k });
+
   return (
     <Panel onClose={forced ? null : onClose} labelledBy="account-title">
       <div className="overlay-head">
@@ -161,8 +171,11 @@ export default function Account({ user, token, onToken, onClose, onLogout, force
           <div className="muted">{ROLE[user.role]} · {user.phone}</div>
           {user.vehicle && <div className="muted">{user.vehicle} · {user.plate}</div>}
         </div>
+        {!forced && <Tabs id="acc" tabs={TABS} value={tab} onChange={(k) => { setTab(k); setNote({ ok: true, text: '' }); }} label="Secciones de mi cuenta" />}
 
-        {!forced && (install.canInstall || install.ios) && (
+        {!forced && (
+        <section {...panel('profile')}>
+        {(install.canInstall || install.ios) && (
           <div className="req">
             <b>📲 Instalar Ktracho GO en tu celular</b>
             {install.canInstall ? (
@@ -173,10 +186,24 @@ export default function Account({ user, token, onToken, onClose, onLogout, force
           </div>
         )}
 
-        {!forced && user.role === 'passenger' && <PinSection user={user} />}
-        {!forced && !isStaff && <GenderSection user={user} />}
-        {!forced && <PasskeySection token={token} />}
+        {!isStaff && <GenderSection user={user} />}
+        <div className="req">
+          <b>Notificaciones</b>
+          <PushToggle token={token} why={isStaff ? 'Recibe en tu celular las emergencias y las solicitudes de conductores.' : user.role === 'driver' ? 'Entérate de viajes cercanos y de que te aceptaron, aunque tengas la app cerrada.' : 'Entérate de las ofertas y de la llegada de tu conductor, aunque tengas la app cerrada.'} />
+        </div>
+        </section>
+        )}
 
+        {!forced && user.role === 'passenger' && (
+          <section {...panel('trips')}>
+            <PinSection user={user} />
+            <TrustedContacts token={token} />
+            <SavedPlaces token={token} />
+          </section>
+        )}
+
+        <section {...panel('security')}>
+        {!forced && <PasskeySection token={token} />}
         <form className="req" onSubmit={changePassword}>
           <b>Cambiar contraseña</b>
           <PasswordInput autoComplete="current-password" aria-label="Contraseña actual" placeholder="Contraseña actual" value={f.current} onChange={set('current')} required />
@@ -204,32 +231,24 @@ export default function Account({ user, token, onToken, onClose, onLogout, force
             )}
 
             <div className="req">
-              <b>Notificaciones</b>
-              <PushToggle token={token} why={isStaff ? 'Recibe en tu celular las emergencias y las solicitudes de conductores.' : user.role === 'driver' ? 'Entérate de viajes cercanos y de que te aceptaron, aunque tengas la app cerrada.' : 'Entérate de las ofertas y de la llegada de tu conductor, aunque tengas la app cerrada.'} />
-            </div>
-
-            {user.role === 'passenger' && (
-              <>
-                <TrustedContacts token={token} />
-                <SavedPlaces token={token} />
-              </>
-            )}
-
-            <div className="req">
               <b>Seguridad de tu sesión</b>
               <button onClick={logoutAll}>Cerrar sesión en los demás dispositivos</button>
             </div>
-
-            {!isStaff && (
-              <div className="req">
-                <b>Tus datos</b>
-                <button onClick={exportData}>⬇ Descargar mis datos</button>
-                <button className="danger" onClick={deleteAccount}>Eliminar mi cuenta</button>
-              </div>
-            )}
-            {note.text && <div className={note.ok ? 'hint ok' : 'error'}>{note.text}</div>}
           </>
         )}
+        </section>
+
+        {!forced && !isStaff && (
+          <section {...panel('data')}>
+            <div className="req">
+              <b>Tus datos</b>
+              <p className="muted small">Descarga un archivo con todo lo que Ktracho GO guarda de ti, o elimina tu cuenta.</p>
+              <button onClick={exportData}>⬇ Descargar mis datos</button>
+              <button className="danger" onClick={deleteAccount}>Eliminar mi cuenta</button>
+            </div>
+          </section>
+        )}
+        {!forced && note.text && <div className={note.ok ? 'hint ok' : 'error'}>{note.text}</div>}
 
         <p className="muted small">
           <a href="/terminos" target="_blank" rel="noreferrer">Términos de uso</a> · <a href="/privacidad" target="_blank" rel="noreferrer">Política de privacidad</a>

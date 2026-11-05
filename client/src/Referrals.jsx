@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Empty, Loading } from './components.jsx';
+import { Empty, Loading, Tabs } from './components.jsx';
 import { lempiras } from './lib.js';
 
 // Referidos: las reglas (solo el superadmin lo enciende) y quién invitó a quién
@@ -11,6 +11,7 @@ export default function Referrals({ call, onError, superadmin }) {
   const [form, setForm] = useState(null);
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
+  const [tab, setTab] = useState('list');
   const load = useCallback(() => call('referrals').then((d) => {
     setData(d);
     setForm({ referral_reward: d.reward, referral_welcome: d.welcome, referral_driver_rides: d.driverRides, referral_monthly_max: d.monthlyMax });
@@ -33,9 +34,13 @@ export default function Referrals({ call, onError, superadmin }) {
   }
   if (!data) return <Loading />;
   const { totals } = data;
+  const panel = (k) => ({ role: 'tabpanel', id: `ref-panel-${k}`, 'aria-labelledby': `ref-tab-${k}`, className: 'tabpanel', hidden: tab !== k });
 
   return (
     <>
+      <Tabs id="ref" tabs={[['list', '🎁 Invitaciones', totals.total || null], ['rules', '⚙ Reglas', !data.enabled || !data.commissionEnabled ? '•' : null]]} value={tab} onChange={setTab} label="Secciones de los referidos" />
+
+      <section {...panel('rules')}>
       {!data.commissionEnabled && (
         <div className="hint danger" role="alert">
           ⚠ La comisión está apagada: los referidos no funcionan. Los premios son descuentos que se le pagan al conductor en su saldo, y ese saldo solo sirve con la comisión activa (Ajustes).
@@ -67,7 +72,10 @@ export default function Referrals({ call, onError, superadmin }) {
             : <span className="muted small grow">Solo el superadministrador puede encenderlos o apagarlos.</span>}
         </div>
       </form>
+      </section>
 
+      <section {...panel('list')}>
+      {!data.enabled && <div className="hint">Los referidos están apagados. <button type="button" className="link" onClick={() => setTab('rules')}>Ver las reglas</button></div>}
       <div className="row wrap stats-row">
         <div className="req grow"><span className="muted small">Invitaciones</span><b>{totals.total}</b></div>
         <div className="req grow"><span className="muted small">Premiadas</span><b>{totals.rewarded}</b></div>
@@ -92,6 +100,7 @@ export default function Referrals({ call, onError, superadmin }) {
           </div>
         );
       })}
+      </section>
     </>
   );
 }

@@ -52,6 +52,7 @@ try {
   // Mi cuenta muestra el aparato
   await (await page.waitForSelector('button.avatar-btn')).evaluate((b) => b.click());
   await clickText(page, '.profile-pop [role="menuitem"]', 'Mi perfil');
+  await clickText(page, '.page-tabs [role="tab"]', 'Seguridad');
   check('Mi cuenta muestra el aparato con Face ID / huella', !!(await page.waitForSelector('[aria-labelledby="pk-title"] .row', { timeout: 15000 }).catch(() => null)) && (await page.$$eval('[aria-labelledby="pk-title"] .row', (rs) => rs.length)) === 1);
   await wait(400);
   await shot(page, 'pk-2-mi-cuenta');
@@ -69,6 +70,7 @@ try {
   // Quitar el aparato desde Mi cuenta
   await (await page.waitForSelector('button.avatar-btn')).evaluate((b) => b.click());
   await clickText(page, '.profile-pop [role="menuitem"]', 'Mi perfil');
+  await clickText(page, '.page-tabs [role="tab"]', 'Seguridad');
   await clickText(page, '[aria-labelledby="pk-title"] button', 'Quitar');
   check('se puede quitar desde Mi cuenta', !!(await page.waitForSelector('[aria-labelledby="pk-title"] ::-p-text(Todavía no lo tienes activado)', { timeout: 15000 }).catch(() => null)));
 } catch (e) {

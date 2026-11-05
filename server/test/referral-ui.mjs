@@ -97,6 +97,9 @@ try {
   if (!(await admin.$('nav.sidebar'))) { await menu.evaluate((b) => b.click()); await admin.waitForSelector('.drawer'); await wait(400); }
   await (await admin.waitForSelector('::-p-text(Referidos)', { timeout: 15000 })).evaluate((b) => b.closest('button').click());
   check('la pestaña Referidos muestra quién invitó a quién', (await see(admin, 'Marta UI')) && (await see(admin, 'Nico UI')));
+  await shot(admin, 'referidos-panel-lista');
+  await (await admin.waitForSelector('.page-tabs [role="tab"]::-p-text(Reglas)')).click();
+  await wait(200);
   check('el superadmin tiene el botón para apagarlos', await see(admin, 'Apagar los referidos'));
   check('muestra las reglas para cambiar', await see(admin, 'Premio para quien invita'));
   await wait(300);
