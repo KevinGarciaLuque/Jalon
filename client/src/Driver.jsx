@@ -10,7 +10,9 @@ import ReportForm from './ReportForm.jsx';
 import DriverDocs from './DriverDocs.jsx';
 import DriverSelfie from './DriverSelfie.jsx';
 import PermsBar from './PermsBar.jsx';
-import { playRideAlert, unlockRideAlert, rideSoundOn, setRideSound } from './rideAlert.js';
+import { playRideAlert, playTipSound, unlockRideAlert, rideSoundOn, setRideSound } from './rideAlert.js';
+import Tips from './Tips.jsx';
+import TipCelebration from './TipCelebration.jsx';
 
 function Recenter({ pos }) {
   const map = useMap();
@@ -56,6 +58,9 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
   const [compact, setCompact] = useState(false); // en el celular, la hoja de abajo se puede achicar para ver más mapa
   const [showRental, setShowRental] = useState(false); // alquiler de su carro por días
   const [showEarnings, setShowEarnings] = useState(false); // mis ganancias por día, semana o mes
+  const [showTips, setShowTips] = useState(false); // «Mis propinas» (desde el menú)
+  const [tipCele, setTipCele] = useState(null); // el pasajero acaba de dejar propina
+  const tipSeen = useRef({}); // propina que ya conocía de cada viaje (para celebrar solo la nueva)
   const [menuNote, setMenuNote] = useState(''); // por qué no se abrió algo del menú
   const [pin, setPin] = useState(''); // el PIN que le dice el pasajero para iniciar el viaje
   const [selfie, setSelfie] = useState(false); // le toca tomarse una selfie para conectarse
@@ -75,6 +80,17 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
   useEffect(() => { if (status !== 'pending') loadWallet(); }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
   const lowBalance = showsWallet && wallet.balance < wallet.minBalance;
   // Ganancias de hoy: al abrir y cada vez que termina un viaje
+  // Llegó la propina de un viaje que ya estaba viendo sin propina: celebración con sonido (no al reabrir la app con una vieja)
+  useEffect(() => {
+    if (!ride) return;
+    const before = tipSeen.current[ride.id];
+    const tip = Number(ride.tip) || 0;
+    if (before !== undefined && before === 0 && tip > 0) {
+      playTipSound();
+      setTipCele({ amount: tip, passenger: ride.passenger?.name?.trim().split(/\s+/)[0] || '', toCollect: (ride.toPay ?? ride.final_price) + tip });
+    }
+    tipSeen.current[ride.id] = tip;
+  }, [ride?.id, ride?.tip]); // eslint-disable-line react-hooks/exhaustive-deps
   const doneRideId = ride?.status === 'completed' ? ride.id : 0;
   useEffect(() => {
     if (status === 'active') apiGet('driver/earnings?period=day', token).then(setToday).catch(() => {});
@@ -84,6 +100,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
     const go = (e) => {
       if (e.detail === 'wallet') { loadWallet(); setShowWallet(true); }
       if (e.detail === 'earnings') setShowEarnings(true);
+      if (e.detail === 'tips') setShowTips(true);
       // Desde el menú: el alquiler por días se arregla sin estar disponible ni en un viaje (igual que el botón de abajo)
       if (e.detail === 'rental') { if (online || ride) setMenuNote('Para alquilar tu carro por días, termina el viaje y desconéctate primero.'); else setShowRental(true); }
     };
@@ -203,6 +220,8 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
 
       <div className={`sheet${compact ? ' compact' : ''}${online && !active && requests.length ? ' has-requests' : ''}`}>
         <Grab compact={compact} setCompact={setCompact} />
+        {showTips && <Tips token={token} onClose={() => setShowTips(false)} />}
+        {tipCele && <TipCelebration tip={tipCele} onClose={() => setTipCele(null)} />}
         {denied && <div className="hint">Sin GPS: arrastra tu carro para simular tu posición.</div>}
 
         {!active && (

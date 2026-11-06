@@ -70,3 +70,45 @@ app.get('/api/driver/earnings', authUser, driverOnly, async (req, res) => {
   const period = ['day', 'week', 'month'].includes(req.query.period) ? req.query.period : 'day';
   res.json(await earnings(req.user.id, period));
 });
+
+// Mis propinas (conductor): lo de hoy, este mes y en total, y la lista de cada propina (de 20 en 20, lo más nuevo primero).
+// range: 'month' (este mes), 'last' (mes pasado) o 'all'. Las fechas son de Honduras.
+app.get('/api/driver/tips', authUser, driverOnly, async (req, res) => {
+  const id = req.user.id;
+  const range = ['month', 'last', 'all'].includes(req.query.range) ? req.query.range : 'month';
+  const offset = Math.max(0, Math.min(10000, Number.parseInt(req.query.offset, 10) || 0));
+  const day = `DATE(${HN('r.tipped_at')})`;
+  const today = `DATE(${HN('NOW()')})`;
+  const monthStart = `DATE_FORMAT(${today}, '%Y-%m-01')`;
+  const where = {
+    month: `${day} >= ${monthStart}`,
+    last: `${day} >= ${monthStart} - INTERVAL 1 MONTH AND ${day} < ${monthStart}`,
+    all: '1 = 1',
+  }[range];
+  const [[s]] = await pool.query(
+    `SELECT COALESCE(SUM(IF(${day} = ${today}, r.tip, 0)), 0) AS today, COALESCE(SUM(IF(${day} = ${today}, 1, 0)), 0) AS today_n,
+            COALESCE(SUM(IF(${day} >= ${monthStart}, r.tip, 0)), 0) AS month, COALESCE(SUM(IF(${day} >= ${monthStart}, 1, 0)), 0) AS month_n,
+            COALESCE(SUM(r.tip), 0) AS total, COUNT(*) AS total_n
+     FROM rides r WHERE r.driver_id = ? AND r.tip > 0`, [id]
+  );
+  const [[inRange]] = await pool.query(
+    `SELECT COALESCE(SUM(r.tip), 0) AS amount, COUNT(*) AS n, COUNT(DISTINCT r.passenger_id) AS people FROM rides r WHERE r.driver_id = ? AND r.tip > 0 AND ${where}`, [id]
+  );
+  const [rows] = await pool.query(
+    `SELECT r.id, r.tip, r.tipped_at, r.dest_text, r.final_price, u.name AS passenger
+     FROM rides r LEFT JOIN users u ON u.id = r.passenger_id
+     WHERE r.driver_id = ? AND r.tip > 0 AND ${where}
+     ORDER BY r.tipped_at DESC, r.id DESC LIMIT ? OFFSET ?`, [id, PAGE + 1, offset]
+  );
+  res.json({
+    range,
+    summary: {
+      today: money(s.today), todayCount: Number(s.today_n), month: money(s.month), monthCount: Number(s.month_n), total: money(s.total), totalCount: Number(s.total_n),
+    },
+    inRange: { amount: money(inRange.amount), count: Number(inRange.n), people: Number(inRange.people) },
+    // Del pasajero solo el primer nombre (privacidad)
+    tips: rows.slice(0, PAGE).map((r) => ({ rideId: r.id, amount: money(r.tip), at: r.tipped_at, dest: r.dest_text || null, fare: money(r.final_price), passenger: (r.passenger || 'Pasajero').split(/\s+/)[0] })),
+    more: rows.length > PAGE,
+    nextOffset: offset + PAGE,
+  });
+});

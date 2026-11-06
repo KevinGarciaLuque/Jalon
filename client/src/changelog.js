@@ -3,6 +3,17 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-06-mis-propinas',
+    date: '2026-11-06',
+    title: 'Mis propinas y celebración al recibirlas',
+    for: ['driver'],
+    items: [
+      'Nuevo en el menú: «Mis propinas», con lo de hoy, este mes y en total, y el historial de cada propina (pasajero, destino y hora).',
+      'Cuando un pasajero te deja propina con la app abierta, sale una tarjeta «¡Te dejaron propina!» con el monto y cuánto cobrar en total, suena un «cha-ching» y vibra.',
+      'El botón «🔔 Sonido» también silencia el sonido de las propinas.',
+    ],
+  },
+  {
     id: '2026-11-06-sonido-solicitudes',
     date: '2026-11-06',
     title: 'Suena cuando llega una solicitud',

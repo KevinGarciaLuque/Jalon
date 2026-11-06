@@ -58,7 +58,7 @@ if (!external) {
 }
 
 let failed = false;
-for (const t of (process.env.ONLY || 'sw-unit,maps-unit,flow,phase3,phase4,phase5b,phase6,phase7,phase7b,phase7c,phase8a,phase8b,phase8c,phase8d,phase9,phase10,phase11,phase12,phase13,phase14,phase15,phase16,phase17,phase18,phase19,phase20,phase21,rekey-unit,phase22,phase23,phase24,phase25,phase26,phase27,phase28,phase29,phase30,phase31,phase32,phase33,phase34,phase35,phase36,phase37,phase38,phase39,phase40,phase41,phase42,phase43,monitor,race,expiry').split(',')) {
+for (const t of (process.env.ONLY || 'sw-unit,maps-unit,flow,phase3,phase4,phase5b,phase6,phase7,phase7b,phase7c,phase8a,phase8b,phase8c,phase8d,phase9,phase10,phase11,phase12,phase13,phase14,phase15,phase16,phase17,phase18,phase19,phase20,phase21,rekey-unit,phase22,phase23,phase24,phase25,phase26,phase27,phase28,phase29,phase30,phase31,phase32,phase33,phase34,phase35,phase36,phase37,phase38,phase39,phase40,phase41,phase42,phase43,phase44,monitor,race,expiry').split(',')) {
   const r = spawnSync(process.execPath, [`test/${t}.mjs`], { stdio: 'inherit', env });
   if (r.status !== 0) failed = true;
 }

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Avatar, Stars } from './components.jsx';
-import { money2, useInstall } from './lib.js';
+import { apiGet, money2, useInstall } from './lib.js';
 
 // Íconos de línea (heredan el color del texto): se ven igual en todos los celulares, a diferencia de los emojis
 const PATHS = {
@@ -35,6 +35,7 @@ const PATHS = {
   doc: 'M7 3h7l4 4v14H7zM14 3v4h4M10 12h5M10 16h5',
   inbox: 'M4 13l2.5-8h11L20 13v6H4zM4 13h4.5l1 2.5h5l1-2.5H20',
   tag: 'M3.5 12.5V4.5a1 1 0 0 1 1-1h8l8 8-9 9-8-8zM8 8h.01',
+  heart: 'M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.2a4.3 4.3 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20z',
   gift: 'M20 12v9H4v-9M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 1 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 1 0 0-5C13 2 12 7 12 7z',
 };
 export function Icon({ name, size = 22 }) {
@@ -73,6 +74,12 @@ export default function Menu({ user, hasBell, go, sections, current, wallet, pin
   const touch = useRef(null);
   const install = useInstall();
   const staff = STAFF.includes(user.role);
+  // Conductor: las propinas del mes al lado de «Mis propinas» (se piden al abrir el menú)
+  const [tipsMonth, setTipsMonth] = useState(null);
+  const tipsOn = user.role === 'driver' && user.status === 'active';
+  useEffect(() => {
+    if (open && tipsOn) apiGet('driver/tips?range=month').then((d) => setTipsMonth(d.summary.month)).catch(() => {});
+  }, [open, tipsOn]);
   const perms = user.perms || [];
 
   function close(then) {
@@ -118,6 +125,7 @@ export default function Menu({ user, hasBell, go, sections, current, wallet, pin
     bellItem,
     user.role === 'driver' && wallet && { key: 'wallet', icon: 'wallet', label: 'Mi saldo y recargas', note: money2(wallet.balance), low: wallet.low },
     user.role === 'driver' && user.status === 'active' && { key: 'earnings', icon: 'earnings', label: 'Mis ganancias' },
+    tipsOn && { key: 'tips', icon: 'heart', label: 'Mis propinas', note: tipsMonth > 0 ? money2(tipsMonth) : null },
     { key: 'history', icon: 'history', label: 'Historial de viajes' },
     user.referrals && { key: 'invite', icon: 'gift', label: 'Invita y gana' },
     user.canDrive && (user.role === 'driver' ? { key: 'mode', icon: 'user', label: 'Cambiar a modo pasajero' }

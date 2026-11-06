@@ -648,6 +648,12 @@ Al terminar el viaje, el pasajero puede dejarle propina en efectivo al conductor
 
 Pruebas: `test/phase42.mjs` y `test/tip-ui.mjs`.
 
+### Propinas del lado del conductor
+
+- **Mis propinas** (menú del conductor, con lo del mes al lado): hoy, este mes y total, y la lista de cada propina con el primer nombre del pasajero, destino, hora y precio del viaje. Filtros: este mes, mes pasado o todo (hora de Honduras). Ruta: `GET /api/driver/tips?range=month|last|all&offset=` (de 20 en 20).
+- **Celebración:** si la propina llega con la app abierta, sale una tarjeta «¡Te dejaron propina!» con el monto y cuánto cobrar en total; suena un «cha-ching» y vibra (se cierra sola a los 6 s). Solo para propinas nuevas: al reabrir la app no se repite. Respeta el silencio del botón «🔔 Sonido» y «menos movimiento» del celular.
+- Pruebas: `test/phase44.mjs` (servidor) y `test/tips-ui.mjs` (pantalla).
+
 ## Campanita de notificaciones
 
 Todos (pasajero, conductor, soporte, administrador y superadmin) tienen una 🔔 en el encabezado con el número de avisos sin leer.

@@ -58,3 +58,40 @@ export function playRideAlert() {
   window.dispatchEvent(new CustomEvent('ktracho:ride-alert', { detail: { sound, vibrate } }));
   return { sound, vibrate };
 }
+
+// Propina recibida: un «cha-ching» de monedas (notas brillantes que suben y un destello), distinto al de las solicitudes.
+// Respeta el mismo silencio que el aviso de solicitudes.
+function coins() {
+  if (!ctx || ctx.state !== 'running') return false;
+  const t0 = ctx.currentTime + 0.02;
+  const master = ctx.createGain();
+  master.gain.value = 0.45;
+  master.connect(ctx.destination);
+  const ping = (freq, at, len, type = 'triangle', peak = 0.8) => {
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = type;
+    o.frequency.value = freq;
+    const t = t0 + at;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(peak, t + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    o.connect(g).connect(master);
+    o.start(t);
+    o.stop(t + len + 0.02);
+  };
+  // «cha»: dos golpecitos metálicos; «ching»: un acorde brillante que se apaga despacio
+  ping(2093, 0, 0.09, 'square', 0.25);
+  ping(2637, 0.07, 0.09, 'square', 0.25);
+  [1568, 2093, 2637, 3136].forEach((f, i) => ping(f, 0.2 + i * 0.045, 0.7 - i * 0.08));
+  return true;
+}
+
+export function playTipSound() {
+  if (!rideSoundOn()) return { sound: false, vibrate: false };
+  const sound = coins();
+  let vibrate = false;
+  try { vibrate = !!navigator.vibrate?.([60, 50, 60, 50, 160]); } catch { /* sin vibración */ }
+  window.dispatchEvent(new CustomEvent('ktracho:tip-alert', { detail: { sound, vibrate } }));
+  return { sound, vibrate };
+}
