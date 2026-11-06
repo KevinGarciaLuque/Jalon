@@ -73,6 +73,9 @@ try {
   await page.type('input[aria-label="Placa"]', `SU${rnd.slice(0, 4)}`);
   await shot(page, 'modo-vehiculo');
   await (await page.$('button::-p-text(Guardar y entrar como conductor)')).click();
+  // La misma animación del carro que cae al mapa que ven los conductores al cambiar de modo
+  check('al entrar como conductor sale la animación del carro', await page.waitForSelector('.drive-in', { timeout: 8000 }).then(() => true, () => false));
+  await page.waitForSelector('.drive-in', { hidden: true, timeout: 12000 }).catch(() => {});
   await closeNotice(page);
   check('entra como conductor', await see(page, 'Modo de prueba: conductor'));
   check('con la pantalla del conductor', (await see(page, 'Ponerme disponible', 8000)) || (await see(page, 'disponible', 4000)));

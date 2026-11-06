@@ -271,14 +271,27 @@ export default function App() {
   // Superadmin: usar la app como pasajero o conductor, o volver al panel. La primera vez como conductor pide el vehículo.
   async function staffSwitch(mode, vehicle) {
     setStaffBusy(true);
+    // Como conductor: la misma animación del carro que cae al mapa (se descarga y el audio se abre en el mismo toque)
+    const toDriver = mode === 'driver' && session.user.staffMode !== 'driver';
+    const fx = toDriver && !reducedMotion() ? import('./driveIn.js').then((m) => { m.preload().catch(() => {}); return m; }) : null;
+    fx?.catch(() => {});
+    const audio = fx ? newAudio() : null;
+    if (fx) animating.current = true;
     try {
       const { user } = await apiPost('me/staff-mode', session.token, vehicle ? { mode, vehicle } : { mode });
       setNeedVehicle(false);
       setWallet(null);
       setAccountStatus(user.status);
       save({ ...session, user: { ...session.user, ...user } });
-      if (mode !== 'panel') setModeNotice(user.role);
+      if (fx && user.role === 'driver') setDriveIn({ fx, audio, info: { vehicle: user.vehicle, plate: user.plate } });
+      else {
+        animating.current = false;
+        audio?.close?.();
+        if (mode !== 'panel') setModeNotice(user.role);
+      }
     } catch (e) {
+      animating.current = false;
+      audio?.close?.();
       if (e.code === 'NEED_VEHICLE') setNeedVehicle(true);
       else if (vehicle) throw e; // el formulario del vehículo muestra el error
       else window.alert(e.message);

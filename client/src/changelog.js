@@ -45,6 +45,7 @@ export const CHANGELOG = [
     items: [
       'Superadmin: desde tu avatar, en «Usar la app como», elige Panel, Pasajero o Conductor para probar la app tal como la ven ellos.',
       'Mientras pruebas, una barra arriba te recuerda que los viajes son reales y tiene «Volver al panel».',
+      'Al entrar como conductor también ves la animación del carro que cae al mapa.',
       'La primera vez como conductor registras tu vehículo de prueba (sin documentos ni aprobación). La comisión se descuenta de tu saldo como a cualquier conductor.',
       'Arreglado: Ajustes ya no falla al guardar («Ajuste desconocido») después de cambiar los Permisos.',
     ],
