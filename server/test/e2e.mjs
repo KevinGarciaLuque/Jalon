@@ -254,7 +254,7 @@ try {
   // El pasajero sube su oferta mientras nadie acepta: el conductor ve el precio nuevo
   await click(pass, '+ L5');
   check('al subir el precio, el conductor ve la solicitud con el precio nuevo', await see(driver, `Aceptar L ${basePrice + 5}`));
-  check('y al pasajero le suena la moneda de «subir oferta»', (await pass.evaluate(() => window.__coins)).length === 1);
+  check('y al pasajero le suena la moneda de «subir oferta»', await pass.waitForFunction(() => window.__coins.length === 1, { timeout: 5000 }).then(() => true, () => false));
 
   check('conductor recibe la solicitud con el destino', await see(driver, 'Mall Multiplaza'));
   check('y la dirección donde debe recogerlo', await see(driver, 'Recoger en:'));

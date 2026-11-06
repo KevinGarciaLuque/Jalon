@@ -3,6 +3,17 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-06-viajes-en-curso',
+    date: '2026-11-06',
+    title: 'Mapa en vivo: avance de cada viaje',
+    for: ['staff'],
+    items: [
+      'Nueva lista «Viajes en curso» con una barra por viaje: aceptado → llegó → subió → destino, con el porcentaje recorrido y cuánto falta.',
+      'En rojo y primero los que tienen emergencia o «¿Todo bien?» sin responder; en amarillo los que van con mucho retraso o el conductor no llega a recoger.',
+      'Al tocar un viaje, el mapa muestra su ruta, el carro, el origen y el destino. Abajo, los viajes entre ciudades que salen en las próximas 24 horas.',
+    ],
+  },
+  {
     id: '2026-11-06-sonido-precio',
     date: '2026-11-06',
     title: 'Sonido de monedas al cambiar el precio',

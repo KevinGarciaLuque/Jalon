@@ -227,6 +227,8 @@ Pestaña **Mapa en vivo** del panel. Muestra a los conductores conectados en un 
 
 **Lo que no mide todavía:** horas conectado por día (solo cuánto lleva conectado ahora), el recorrido real del viaje (el mapa dibuja la línea recta entre origen y destino) ni métricas por fecha del negocio completo: eso sigue pendiente.
 
+**Viajes en curso (barra de progreso):** debajo del mapa, una tarjeta por viaje aceptado, con el conductor en camino o en curso: etapas (aceptado → llegó → subió → destino), porcentaje recorrido (la ubicación en vivo del conductor proyectada sobre la ruta; sin señal, se estima por el tiempo) y minutos que faltan. 🔴 primero los que tienen emergencia abierta o «¿Todo bien?» sin responder o con «necesito ayuda»; 🟡 los que van con mucho retraso, el conductor que no llega a recoger (más de 10 min o el doble de lo estimado) o la espera de más de 10 min. Al tocar uno, el mapa dibuja su ruta. También lista los viajes entre ciudades que salen en las próximas 24 h. No guarda nada nuevo: `server/src/services/liveRides.js` (se agrega a `GET /api/admin/monitor`). Prueba: `test/live-rides-ui.mjs`.
+
 ## Contraseñas del personal y salidas de emergencia
 
 - **Restablecer contraseñas:** en la ficha de cualquier usuario, el botón «🔑 Restablecer contraseña» genera una contraseña temporal que se muestra **una sola vez**; la persona debe cambiarla al entrar y sus sesiones se cierran. El superadmin lo puede hacer con administradores, soporte, conductores y pasajeros; un administrador, solo con conductores y pasajeros. Queda en el Registro.

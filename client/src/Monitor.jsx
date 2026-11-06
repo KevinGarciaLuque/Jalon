@@ -24,6 +24,32 @@ const waitIcon = L.divIcon({ className: '', html: '<div class="mk wait"><span cl
 const ago = (s) => (s == null ? '—' : s < 60 ? `hace ${s} s` : s < 3600 ? `hace ${Math.round(s / 60)} min` : `hace ${Math.round(s / 3600)} h`);
 const mins = (m) => (m == null ? '—' : m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`);
 const when = (d) => new Date(d).toLocaleString('es-HN', { dateStyle: 'short', timeStyle: 'short' });
+const hour = (d) => new Date(d).toLocaleTimeString('es-HN', { hour: 'numeric', minute: '2-digit' });
+
+// Barra de progreso de un viaje: aceptado → llegó → subió → destino. El tramo del viaje es el más largo y se llena según la ruta recorrida.
+const DOTS = [['Aceptado', 0], ['Llegó', 20], ['Subió', 35], ['Destino', 100]];
+const fillOf = (r) => (r.status === 'accepted' ? 10 : r.status === 'arrived' ? 27 : 35 + 0.65 * r.progress);
+function RideProgress({ r, on, onPick }) {
+  const fill = fillOf(r);
+  const eta = r.etaMin == null ? null : r.status === 'accepted' ? `llega a recoger en ~${r.etaMin} min` : r.status === 'started' ? `llega al destino en ~${r.etaMin} min` : null;
+  return (
+    <button className={`lr-card ${r.level}${on ? ' on' : ''}`} onClick={onPick} aria-label={`Viaje ${r.id}: ${RIDE[r.status]}${r.status === 'started' ? ` ${r.progress} %` : ''}`}>
+      <div className="row between">
+        <span className="lr-who"><b>#{r.id}{r.kind === 'intercity' && ' 🛣'}</b> {r.passenger} → {r.dest.text?.split(',')[0] || 'destino'}</span>
+        <b>{lempiras(r.price)}</b>
+      </div>
+      <div className="lr-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(fill)}>
+        <i className="lr-fill" style={{ width: `${fill}%` }} />
+        {DOTS.map(([label, x], i) => <i key={label} className={`lr-dot${i <= r.stage ? ' done' : ''}${i === r.stage + 1 ? ' next' : ''}`} style={{ left: `${x}%` }} />)}
+      </div>
+      <div className="lr-labels">
+        {DOTS.map(([label, x], i) => <span key={label} className={i === r.stage ? 'now' : ''} style={{ left: `${x}%` }}>{i === 2 && r.status === 'started' ? `En viaje ${r.progress} %` : label}</span>)}
+      </div>
+      <div className="muted small">{r.driver} · {r.plate}{eta && ` · ${eta}`}{!r.signal && ' · sin señal del conductor'}</div>
+      {(r.alert || r.warn) && <div className={`lr-alert ${r.level}`}>{r.level === 'danger' ? '🔴' : '🟡'} {r.alert || r.warn}</div>}
+    </button>
+  );
+}
 
 // Encuadra el mapa solo cuando cambia `trigger` (al abrir, al elegir un conductor o con «Ver todos»): así el mapa no salta mientras lo mueves
 function Fit({ points, trigger }) {
@@ -42,6 +68,7 @@ export default function Monitor({ call, onError }) {
   const [sel, setSel] = useState(null); // id del conductor elegido
   const [ficha, setFicha] = useState(null);
   const [fit, setFit] = useState(0); // cada cambio vuelve a encuadrar el mapa
+  const [selRide, setSelRide] = useState(null); // viaje elegido en «Viajes en curso»
   const first = useRef(true);
   const fichaRef = useRef(null);
 
@@ -74,12 +101,22 @@ export default function Monitor({ call, onError }) {
   if (!snap) return <Loading label="Cargando mapa…" />;
   const drivers = snap.drivers.filter((d) => filter === 'all' || d.state === filter);
   const chosen = snap.drivers.find((d) => d.id === sel);
+  const rides = snap.rides || [];
+  const ride = rides.find((r) => r.id === selRide) || (chosen?.ride && rides.find((r) => r.id === chosen.ride.id)) || null;
   const withPos = drivers.filter((d) => d.lat != null && d.lng != null);
-  const points = chosen?.ride
+  const points = ride
+    ? [...(ride.driverAt ? [[ride.driverAt.lat, ride.driverAt.lng]] : []), [ride.origin.lat, ride.origin.lng], [ride.dest.lat, ride.dest.lng]]
+    : chosen?.ride
     ? [[chosen.lat, chosen.lng], [chosen.ride.origin.lat, chosen.ride.origin.lng], [chosen.ride.dest.lat, chosen.ride.dest.lng]]
     : chosen ? [[chosen.lat, chosen.lng]] : withPos.map((d) => [d.lat, d.lng]);
 
-  const pick = (id) => { setSel(sel === id ? null : id); setFit((n) => n + 1); };
+  const pick = (id) => { setSelRide(null); setSel(sel === id ? null : id); setFit((n) => n + 1); };
+  // Elegir un viaje: el mapa muestra su ruta, el carro, el origen y el destino (y la ficha del conductor si está conectado)
+  const pickRide = (r) => {
+    if (selRide === r.id) { setSelRide(null); setSel(null); } else { setSelRide(r.id); setSel(snap.drivers.some((d) => d.id === r.driverId) ? r.driverId : null); }
+    setFit((n) => n + 1);
+  };
+  const danger = rides.filter((r) => r.level === 'danger').length;
 
   return (
     <div className="monitor">
@@ -88,13 +125,14 @@ export default function Monitor({ call, onError }) {
         <div><b className="busy">{snap.counts.busy}</b><span>En viaje</span></div>
         <div><b className="away">{snap.counts.away}</b><span>Sin conexión (con avisos)</span></div>
         <div className={snap.counts.waiting ? 'alert' : ''}><b>{snap.counts.waiting}</b><span>Solicitudes esperando</span></div>
+        <div className={danger ? 'alert danger' : ''}><b>{rides.length}</b><span>Viajes en curso{danger ? ` · ${danger} con alerta` : ''}</span></div>
       </div>
 
       <div className="chips">
         {[['all', 'Todos'], ['free', 'Libres'], ['busy', 'En viaje'], ['away', 'Sin conexión']].map(([k, label]) => (
           <button key={k} className={filter === k ? 'on' : ''} onClick={() => setFilter(k)}>{label}</button>
         ))}
-        <button onClick={() => { setSel(null); setFit((n) => n + 1); }}>Ver todos en el mapa</button>
+        <button onClick={() => { setSel(null); setSelRide(null); setFit((n) => n + 1); }}>Ver todos en el mapa</button>
       </div>
 
       <div className="monlayout">
@@ -106,11 +144,14 @@ export default function Monitor({ call, onError }) {
               <Marker key={d.id} position={[d.lat, d.lng]} icon={driverIcon(d.state, d.plate, d.id === sel)} eventHandlers={{ click: () => pick(d.id) }} />
             ))}
             {snap.waiting.map((w) => <Marker key={`w${w.id}`} position={[w.lat, w.lng]} icon={waitIcon} />)}
-            {chosen?.ride && (
+            {ride && (
               <>
-                <Marker position={[chosen.ride.origin.lat, chosen.ride.origin.lng]} icon={icons.me} />
-                <Marker position={[chosen.ride.dest.lat, chosen.ride.dest.lng]} icon={icons.dest} />
-                <Polyline positions={[[chosen.ride.origin.lat, chosen.ride.origin.lng], [chosen.ride.dest.lat, chosen.ride.dest.lng]]} pathOptions={{ dashArray: '6 8' }} />
+                <Marker position={[ride.origin.lat, ride.origin.lng]} icon={icons.me} />
+                <Marker position={[ride.dest.lat, ride.dest.lng]} icon={icons.dest} />
+                {ride.route?.length > 1
+                  ? <Polyline positions={ride.route} pathOptions={{ color: '#14802f', weight: 4, opacity: 0.8 }} />
+                  : <Polyline positions={[[ride.origin.lat, ride.origin.lng], [ride.dest.lat, ride.dest.lng]]} pathOptions={{ dashArray: '6 8' }} />}
+                {ride.driverAt && !withPos.some((d) => d.id === ride.driverId) && <Marker position={[ride.driverAt.lat, ride.driverAt.lng]} icon={driverIcon('busy', ride.plate, true)} />}
               </>
             )}
             <Fit points={points} trigger={fit} />
@@ -132,6 +173,25 @@ export default function Monitor({ call, onError }) {
           <p className="muted small">Se actualiza solo cada {REFRESH_MS / 1000} segundos. Cada vez que consultas este mapa queda anotado en el Registro.</p>
         </div>
       </div>
+
+      <section className="live-rides" aria-labelledby="lr-title">
+        <b id="lr-title">Viajes en curso ({rides.length})</b>
+        {rides.length === 0 && <p className="muted small">No hay viajes en curso ahora. Aquí verás el avance de cada uno, con alertas si algo va mal.</p>}
+        <div className="lr-grid">
+          {rides.map((r) => <RideProgress key={r.id} r={r} on={ride?.id === r.id} onPick={() => pickRide(r)} />)}
+        </div>
+        {snap.upcoming?.length > 0 && (
+          <>
+            <b>🛣 Viajes entre ciudades que salen pronto</b>
+            {snap.upcoming.map((u) => (
+              <div key={u.id} className="row between small lr-soon">
+                <span><b>{hour(u.departAt)}</b> · {u.origin?.split(',')[0]} → {u.dest?.split(',')[0]} · {u.passenger} con {u.driver} ({u.plate})</span>
+                <span className="muted">{u.inMinutes <= 30 ? 'sale ya' : u.inMinutes < 60 ? `en ${u.inMinutes} min` : `en ${Math.round(u.inMinutes / 60)} h`} · {lempiras(u.price)}</span>
+              </div>
+            ))}
+          </>
+        )}
+      </section>
 
       {chosen && !ficha && <Loading label="Cargando ficha…" />}
       {ficha && (

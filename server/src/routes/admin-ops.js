@@ -14,6 +14,7 @@ import { cancelRide } from '../services/rides.js';
 import { tellWallet } from '../services/balance.js';
 import { activeAccounts } from '../services/bankAccounts.js';
 import { periodRange, connectedSeconds } from '../services/earnings.js';
+import { liveRides } from '../services/liveRides.js';
 
 // ---------- Monitoreo de conductores (permiso 'monitor') ----------
 const RIDE_LIVE = "('accepted','arrived','started')";
@@ -66,6 +67,7 @@ app.get('/api/admin/monitor', staffOnly('monitor'), async (req, res) => {
     counts: { free: out.filter((d) => d.state === 'free').length, busy: out.filter((d) => d.state === 'busy').length, away: out.filter((d) => d.state === 'away').length, waiting: waiting.length },
     drivers: out,
     waiting: waiting.map((w) => ({ ...w, price: Number(w.price) })),
+    ...(await liveRides()), // viajes en curso con su progreso y alertas, y los viajes entre ciudades que salen pronto
   });
 });
 
