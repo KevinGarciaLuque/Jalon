@@ -35,6 +35,12 @@ export const SETTING_DEFAULTS = {
   referral_driver_rides: '5', // viajes que debe terminar un conductor invitado para que se pague el premio
   referral_monthly_max: '10', // premios por persona al mes
   tips_enabled: '1', // el pasajero puede dejar propina en efectivo al terminar (sin comisión)
+  // Viajes entre ciudades (apagado hasta que el superadmin lo active). Precio sugerido = base + por km, nunca menos que la mínima
+  intercity_enabled: '0',
+  intercity_base: '100',
+  intercity_km: '7',
+  intercity_minimum: '250',
+  intercity_commission_percent: '10',
 };
 
 export const money = (n) => Math.round(Number(n) * 100) / 100;
@@ -97,6 +103,11 @@ export function validateSettings(input, current) {
     referral_driver_rides: () => num('referral_driver_rides', 1, 50, 'Los viajes del conductor invitado'),
     referral_monthly_max: () => num('referral_monthly_max', 1, 100, 'Los premios por mes'),
     tips_enabled: () => { values.tips_enabled = [false, '0', 0].includes(input.tips_enabled) ? '0' : '1'; return null; },
+    intercity_enabled: () => { values.intercity_enabled = [true, '1', 1].includes(input.intercity_enabled) ? '1' : '0'; return null; },
+    intercity_base: () => num('intercity_base', 0, 2000, 'La tarifa base entre ciudades'),
+    intercity_km: () => num('intercity_km', 0, 100, 'El precio por km entre ciudades'),
+    intercity_minimum: () => num('intercity_minimum', 0, 10000, 'La tarifa mínima entre ciudades'),
+    intercity_commission_percent: () => num('intercity_commission_percent', 0, 50, 'La comisión entre ciudades'),
     // Tarifas: base, por km, por minuto y mínima de cada categoría
     ...Object.fromEntries(CATEGORIES.flatMap((c) => [
       [`fare_${c}_base`, () => num(`fare_${c}_base`, 0, 1000, `La tarifa base de ${CATEGORY_LABEL[c]}`)],

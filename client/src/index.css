@@ -1021,3 +1021,51 @@ input.switch:disabled { opacity: .5; cursor: default; }
 .check:has(> input.switch) { justify-content: space-between; gap: 12px; cursor: pointer; }
 .switch-line { color: var(--text); font-weight: 600; padding: 4px 0; }
 @media (prefers-reduced-motion: reduce) { input.switch, input.switch::before { transition: none; } }
+
+/* ---- Viajes entre ciudades ---- */
+.trip-kind button { min-height: 40px; border-radius: 999px; font-size: 14px; padding: 8px 10px; }
+.ic-entry { display: flex; align-items: center; gap: 12px; text-align: left; font-weight: 400; border-radius: var(--r-2); padding: 10px 14px; }
+.ic-entry > span:first-child { font-size: 22px; }
+.ic-entry .grow { display: flex; flex-direction: column; }
+.ic-entry > span:last-child { font-size: 22px; color: var(--muted); }
+.ic-panel .overlay-body { gap: 12px; }
+.ic-form { display: flex; flex-direction: column; gap: 10px; }
+.ic-form label:not(.check) { display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--muted); }
+.ic-seats { align-items: center; }
+.stepper { display: inline-flex; align-items: center; gap: 4px; }
+.stepper button { min-height: 40px; width: 40px; padding: 0; border-radius: 999px; font-size: 20px; line-height: 1; }
+.stepper b { min-width: 28px; text-align: center; font-size: 18px; font-variant-numeric: tabular-nums; }
+.ic-quote { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+.ic-quote p { margin: 0; }
+.ic-card { border: 1px solid var(--line); border-radius: var(--r-2); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; background: var(--card); }
+.ic-card.mine { border-color: var(--brand); }
+.ic-card p { margin: 0; }
+.ic-price { font-family: var(--font-display); font-size: 20px; font-weight: 800; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.ic-price .muted { font-family: var(--font-text); font-size: 14px; font-weight: 600; }
+.ic-when { font-size: 15px; }
+.ic-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.ic-tag { font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: var(--mango-soft); color: var(--mango-ink); }
+.ic-tag.private { background: var(--brand-soft); color: var(--brand); }
+.ic-tag.women { background: #fce7f3; color: #9d174d; }
+.ic-route { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; position: relative; }
+.ic-route li { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; }
+.ic-pt { flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 12px; font-weight: 800; color: #fff; }
+.ic-pt.a { background: var(--brand); }
+.ic-pt.b { background: var(--mango); color: #3a2a0c; }
+.ic-actions { display: flex; flex-direction: column; gap: 8px; }
+.ic-accept { display: flex; flex-direction: column; align-items: center; line-height: 1.2; font-size: 17px; }
+.ic-accept span { font-size: 13px; font-weight: 500; opacity: .9; }
+.ic-offer-form, .ic-myoffer { display: flex; flex-direction: column; gap: 8px; }
+.ic-offer-form label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--muted); }
+.ic-myoffer > span { font-size: 14px; background: var(--brand-soft); border-radius: var(--r-1); padding: 8px 10px; }
+.ic-offers { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.ic-offers li { display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--line); padding-top: 8px; }
+.ic-offers .grow { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ic-offer-side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.ic-offer-side b { font-size: 17px; font-variant-numeric: tabular-nums; }
+.ic-driver { display: flex; flex-direction: column; gap: 2px; background: var(--brand-soft); border-radius: var(--r-1); padding: 8px 10px; }
+.ic-badge { display: inline-grid; place-items: center; min-width: 20px; height: 20px; margin-left: 6px; padding: 0 6px; border-radius: 999px; background: var(--mango); color: #3a2a0c; font-size: 12px; font-weight: 800; }
+button.link.danger { color: var(--danger); }
+.ic-card a.sm { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--r-1); color: var(--text); font-weight: 600; text-decoration: none; font-size: 14px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ic-tag.women { background: #4a1530; color: #fbcfe8; } }
+.ic-form .seg button { font-size: 14px; padding: 10px 8px; }

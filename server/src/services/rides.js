@@ -165,6 +165,10 @@ export async function kickUser(userId) {
     [userId, userId]
   );
   for (const r of rows) await cancelRide(r.id, 'admin');
+  // Viajes entre ciudades: los suyos se cancelan; los que tenía reservados como conductor vuelven a publicarse para otro conductor
+  await pool.query("UPDATE rides SET status = 'cancelled', cancelled_by = 'admin' WHERE passenger_id = ? AND status IN ('board','booked')", [userId]);
+  await pool.query("UPDATE rides SET status = 'board', driver_id = NULL, final_price = NULL, start_pin = NULL, reminded = 0 WHERE driver_id = ? AND status = 'booked'", [userId]);
+  await pool.query("UPDATE offers SET status = 'rejected' WHERE driver_id = ? AND status = 'pending'", [userId]);
   drivers.delete(userId);
   passengers.delete(userId);
   io.in(room(userId)).disconnectSockets(true);

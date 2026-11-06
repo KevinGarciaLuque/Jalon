@@ -14,6 +14,7 @@ import { expireRequests } from './routes/recharges.js';
 import { escalateSafety } from './services/safety.js';
 import { purgeSelfies } from './routes/selfies.js';
 import { scheduleBackups } from './services/backups.js';
+import { intercitySweep } from './routes/intercity.js';
 
 // Las ofertas vencidas se revisan cada OFFER_SWEEP_MS (5 s por defecto)
 setInterval(() => expireOffers().catch(reportError), Number(process.env.OFFER_SWEEP_MS || 5000)).unref();
@@ -72,6 +73,9 @@ export async function releaseScheduled() {
   }
 }
 setInterval(() => releaseScheduled().catch(reportError), Number(process.env.SCHEDULE_SWEEP_MS || 30000)).unref();
+
+// Viajes entre ciudades: vencimientos, recordatorios y el paso a viaje normal un rato antes de la salida
+setInterval(() => intercitySweep().catch(reportError), Number(process.env.SCHEDULE_SWEEP_MS || 30000)).unref();
 
 // Al reiniciar (p. ej. en cada despliegue) las solicitudes que siguen buscando conductor se vuelven a cargar en memoria:
 // los conductores las reciben al reconectarse y el vencimiento normal (REQUEST_TTL_MIN) cancela las que ya eran viejas.

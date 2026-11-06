@@ -138,7 +138,7 @@ export default function App() {
       .then(({ user }) => setSession((cur) => {
         if (!cur || cur.user.id !== user.id) return cur;
         setAccountStatus(user.status); // p. ej. lo aprobaron mientras la app estaba cerrada
-        const next = { ...cur, user: { ...cur.user, perms: user.perms, mustAcceptTerms: user.mustAcceptTerms, termsVersion: user.termsVersion, rating: user.rating, mapRotation: user.mapRotation, referrals: !!user.referrals, gender: user.gender, genderVerified: user.genderVerified, ridePin: user.ridePin, role: user.role, canDrive: user.canDrive, passengerMode: user.passengerMode, isSuperadmin: !!user.isSuperadmin, staffMode: user.staffMode || null } };
+        const next = { ...cur, user: { ...cur.user, perms: user.perms, mustAcceptTerms: user.mustAcceptTerms, termsVersion: user.termsVersion, rating: user.rating, mapRotation: user.mapRotation, referrals: !!user.referrals, intercity: !!user.intercity, gender: user.gender, genderVerified: user.genderVerified, ridePin: user.ridePin, role: user.role, canDrive: user.canDrive, passengerMode: user.passengerMode, isSuperadmin: !!user.isSuperadmin, staffMode: user.staffMode || null } };
         localStorage.setItem('jalon', JSON.stringify(next));
         return next;
       }))
@@ -360,8 +360,8 @@ export default function App() {
         </div>
       )}
       {socket && !staff && !session.user.mustChangePassword && (session.user.role === 'driver'
-        ? <Driver socket={socket} token={session.token} userId={session.user.id} status={accountStatus} perms={session.user.perms || []} onWallet={setWallet} />
-        : <Passenger socket={socket} token={session.token} userId={session.user.id} perms={session.user.perms || []} gender={session.user.gender} />)}
+        ? <Driver socket={socket} token={session.token} userId={session.user.id} status={accountStatus} perms={session.user.perms || []} onWallet={setWallet} intercity={!!session.user.intercity} />
+        : <Passenger socket={socket} token={session.token} userId={session.user.id} perms={session.user.perms || []} gender={session.user.gender} intercity={!!session.user.intercity} />)}
       {(showAccount || session.user.mustChangePassword) && (
         <Account
           forced={!!session.user.mustChangePassword}

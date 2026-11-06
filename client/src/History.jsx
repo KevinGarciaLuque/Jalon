@@ -8,7 +8,7 @@ import { Panel } from './Menu.jsx';
 
 const STATUS = {
   requested: 'Solicitado', accepted: 'Aceptado', arrived: 'Llegó', started: 'En curso',
-  completed: 'Completado', cancelled: 'Cancelado', scheduled: 'Programado',
+  completed: 'Completado', cancelled: 'Cancelado', scheduled: 'Programado', board: 'Publicado (entre ciudades)', booked: 'Reservado (entre ciudades)',
 };
 const FILTERS = [['all', 'Todos'], ['completed', 'Completados'], ['cancelled', 'Cancelados']];
 

@@ -47,7 +47,7 @@ export default function Settings({ call, onError }) {
   const KEYS = {
     commission: ['commission_enabled', 'commission_percent', 'welcome_credit', 'min_balance', 'topup_min', 'topup_max'],
     fares: Object.keys(s).filter((k) => k.startsWith('fare_')),
-    rides: ['tips_enabled', 'map_rotation'],
+    rides: ['tips_enabled', 'map_rotation', 'intercity_enabled', 'intercity_base', 'intercity_km', 'intercity_minimum', 'intercity_commission_percent'],
     security: ['staff_2fa_required', 'ride_pin_required', 'ride_safety_checks', 'driver_selfie_required', 'driver_selfie_hours'],
     rentals: ['rental_enabled', 'rental_price_min', 'rental_price_max', 'rental_max_days', 'rental_advance_days'],
     banks: [],
@@ -126,6 +126,19 @@ export default function Settings({ call, onError }) {
             <input type="checkbox" role="switch" className="switch" checked={on('map_rotation')} onChange={set('map_rotation')} />
             <span><b>El mapa puede girar</b> según hacia dónde va la persona (como Waze) y con dos dedos. Si en algún celular da problemas, apágalo: el mapa queda con el norte arriba (se aplica al volver a abrir la app).</span>
           </label>
+          <b>Viajes entre ciudades</b>
+          <label className="check">
+            <input type="checkbox" role="switch" className="switch" checked={s.intercity_enabled === '1'} onChange={set('intercity_enabled')} />
+            <span><b>Activar los viajes entre ciudades</b>: el pasajero publica su viaje a otra ciudad (fecha, personas y precio) y los conductores aceptan la tarifa u ofrecen otra tarifa y hora. Es viaje privado, en efectivo.</span>
+          </label>
+          <p className="muted small">Precio sugerido = base + por km, redondeado de 5 en 5 y nunca menos que la mínima. El pasajero puede ofrecer otro precio.</p>
+          <div className="row wrap">
+            <label className="grow">Tarifa base (L)<input inputMode="decimal" value={s.intercity_base} onChange={set('intercity_base')} /></label>
+            <label className="grow">Por km (L)<input inputMode="decimal" value={s.intercity_km} onChange={set('intercity_km')} /></label>
+            <label className="grow">Mínima (L)<input inputMode="decimal" value={s.intercity_minimum} onChange={set('intercity_minimum')} /></label>
+          </div>
+          <label>Comisión de los viajes entre ciudades (%)<input inputMode="decimal" value={s.intercity_commission_percent} onChange={set('intercity_commission_percent')} /></label>
+          <p className="muted small">Se cobra solo si «Cobrar comisión» está activo (pestaña Comisión y saldo).</p>
         </section>
 
         <section role="tabpanel" id="set-panel-security" aria-labelledby="set-tab-security" hidden={tab !== 'security'}>

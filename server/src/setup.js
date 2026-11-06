@@ -639,7 +639,9 @@ await addColumn('users', 'gender_verified', 'TINYINT(1) NOT NULL DEFAULT 0');
 await addColumn('rides', 'women_only', 'TINYINT(1) NOT NULL DEFAULT 0');
 
 // ---- Etapa 10: viajes programados, paradas, viaje para otra persona y punto de referencia ----
-await conn.query("ALTER TABLE rides MODIFY status ENUM('scheduled','requested','accepted','arrived','started','completed','cancelled') NOT NULL DEFAULT 'requested'");
+// Viajes entre ciudades: 'board' (publicado, esperando ofertas) y 'booked' (reservado con un conductor). Van al final de la lista:
+// agregar valores al final de un ENUM no cambia los datos ni copia la tabla.
+await conn.query("ALTER TABLE rides MODIFY status ENUM('scheduled','requested','accepted','arrived','started','completed','cancelled','board','booked') NOT NULL DEFAULT 'requested'");
 await addColumn('rides', 'scheduled_for', 'DATETIME NULL');
 await addColumn('rides', 'stops_json', 'TEXT NULL');
 await addColumn('rides', 'rider_name', 'VARCHAR(80) NULL');
@@ -777,5 +779,17 @@ await addColumn('promo_codes', 'user_id', 'INT NULL');
 await addColumn('rides', 'tip', 'DECIMAL(10,2) NULL');
 await addColumn('rides', 'tipped_at', 'TIMESTAMP NULL');
 
+// ---- Viajes entre ciudades (etapa 1: viaje privado). Solo se agrega: los viajes de antes quedan como 'city' y funcionan igual ----
+await addColumn('rides', 'kind', "ENUM('city','intercity') NOT NULL DEFAULT 'city'");
+await addColumn('rides', 'seats', 'TINYINT NOT NULL DEFAULT 1'); // cuántos viajan
+await addColumn('rides', 'luggage', 'TINYINT(1) NOT NULL DEFAULT 0'); // llevan maletas
+await addColumn('rides', 'reminded', 'TINYINT NOT NULL DEFAULT 0'); // avisos ya enviados: 1 = un día antes, 2 = una hora antes
+await addColumn('offers', 'depart_at', 'DATETIME NULL'); // hora de salida que propone el conductor
+{
+  const [ix] = await conn.query("SELECT 1 FROM information_schema.statistics WHERE table_schema = ? AND table_name = 'rides' AND index_name = 'by_kind_status'", [DB_NAME]);
+  if (!ix.length) await conn.query('ALTER TABLE rides ADD KEY by_kind_status (kind, status, scheduled_for)');
+}
+
 console.log(`Base de datos "${DB_NAME}" lista.`);
 await conn.end();
+

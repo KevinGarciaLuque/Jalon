@@ -654,6 +654,25 @@ Pruebas: `test/phase42.mjs` y `test/tip-ui.mjs`.
 - **Celebración:** si la propina llega con la app abierta, sale una tarjeta «¡Te dejaron propina!» con el monto y cuánto cobrar en total; suena un «cha-ching» y vibra (se cierra sola a los 6 s). Solo para propinas nuevas: al reabrir la app no se repite. Respeta el silencio del botón «🔔 Sonido» y «menos movimiento» del celular.
 - Pruebas: `test/phase44.mjs` (servidor) y `test/tips-ui.mjs` (pantalla).
 
+## Viajes entre ciudades (etapa 1: viaje privado)
+
+Viajes largos reservados con anticipación (Tegucigalpa → Comayagua, San Pedro Sula…). **Viene apagado**: se enciende en Ajustes → Viajes,
+donde también van la tarifa (base + por km, mínima) y la **comisión propia** de estos viajes (se cobra si «Cobrar comisión» está activo).
+
+- **Pasajero:** en la pantalla de pedir viaje, «🏙 En la ciudad / 🛣 Entre ciudades» (también en el menú). Publica origen, destino, salida
+  (fecha y hora, o «lo antes posible»), cuántos viajan (más de 4 = carro amplio), si lleva maletas, «Solo conductoras» y una nota.
+  El precio sugerido lo calcula el servidor con la ruta. En «Mis viajes» ve las ofertas (la más barata primero) y elige una.
+- **Conductor:** «Viajes entre ciudades» (botón en su pantalla y en el menú): los viajes publicados que puede tomar según su vehículo,
+  con «Aceptar tarifa» (a la hora pedida) u «Ofrecer tarifa y hora». En «Mis reservas» ve los suyos y puede soltarlos («Ya no puedo»:
+  el viaje se vuelve a publicar y se avisa al pasajero). No puede tener dos reservas con menos de 3 horas entre las salidas.
+- **Estados:** `board` (publicado) → `booked` (reservado) → 30 minutos antes de la salida pasa a `accepted` y desde ahí es un viaje
+  normal (llegué, PIN, chat, emergencia, comisión, calificación). Recordatorios a los dos un día antes y una hora antes.
+  Los publicados que nadie tomó se cancelan solos (con hora: al pasar la salida; «lo antes posible»: a las 3 horas).
+- **Migración (solo agrega):** en `rides` las columnas `kind` ('city' por defecto: los viajes de antes no cambian), `seats`, `luggage`,
+  `reminded` y el índice `by_kind_status`; en `offers`, `depart_at`; y los estados `board` y `booked` al final del ENUM de `status`.
+- Código: `server/src/routes/intercity.js` (rutas `/api/intercity/*` y la tarea `intercitySweep`), `client/src/Intercity.jsx`.
+  Pruebas: `test/phase45.mjs` (servidor) y `test/intercity-ui.mjs` (pantalla).
+
 ## Campanita de notificaciones
 
 Todos (pasajero, conductor, soporte, administrador y superadmin) tienen una 🔔 en el encabezado con el número de avisos sin leer.

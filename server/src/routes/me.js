@@ -228,6 +228,7 @@ app.get('/api/me', authUser, async (req, res) => {
   const user = publicUser(req.user, isStaff(req.user.role) && (await twoFactorRequired()), await permsFor(req.user));
   user.mapRotation = (await getSettings(pool)).map_rotation !== '0'; // el mapa puede girar (lo apaga el superadmin en Ajustes)
   if (!isStaff(req.user.role)) user.referrals = await referralsOn(); // «Invita y gana» en el menú
+  if (!isStaff(req.user.role)) user.intercity = (await getSettings(pool)).intercity_enabled === '1'; // «Viajes entre ciudades»
   // Pasajeros y conductores ven su calificación en el menú
   if (!isStaff(req.user.role)) {
     const [[r]] = await pool.query('SELECT AVG(stars) AS avg, COUNT(*) AS n FROM ratings WHERE ratee_id = ?', [req.user.id]);
@@ -240,6 +241,8 @@ app.get('/api/me', authUser, async (req, res) => {
 async function modeBlocker(u, toDriver) {
   const [[ride]] = await pool.query("SELECT id FROM rides WHERE (passenger_id = ? OR driver_id = ?) AND status IN ('requested','accepted','arrived','started') LIMIT 1", [u.id, u.id]);
   if (ride) return 'Tienes un viaje en curso. Termínalo o cancélalo antes de cambiar de modo.';
+  const [[ic]] = await pool.query("SELECT id FROM rides WHERE (passenger_id = ? OR driver_id = ?) AND kind = 'intercity' AND status IN ('board','booked') LIMIT 1", [u.id, u.id]);
+  if (ic) return 'Tienes un viaje entre ciudades publicado o reservado. Cancélalo antes de cambiar de modo.';
   if (toDriver) {
     const [[sch]] = await pool.query("SELECT COUNT(*) AS n FROM rides WHERE passenger_id = ? AND status = 'scheduled'", [u.id]);
     if (sch.n) return 'Tienes un viaje programado. Cancélalo antes de volver a modo conductor.';

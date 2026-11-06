@@ -13,6 +13,7 @@ import PermsBar from './PermsBar.jsx';
 import { playRideAlert, playTipSound, unlockRideAlert, rideSoundOn, setRideSound } from './rideAlert.js';
 import Tips from './Tips.jsx';
 import TipCelebration from './TipCelebration.jsx';
+import { IntercityBoard } from './Intercity.jsx';
 
 function Recenter({ pos }) {
   const map = useMap();
@@ -38,7 +39,7 @@ const POWER = <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke
 
 const QUICK = ['Ya llegué', 'Estoy afuera', 'Voy en camino', 'Llego en 5 minutos', 'No te encuentro'];
 
-export default function Driver({ socket, token, status, userId, perms = [], onWallet }) {
+export default function Driver({ socket, token, status, userId, perms = [], onWallet, intercity = false }) {
   const { pos, setPos, denied, course, retry: retryGeo } = useGeo();
   const [online, setOnline] = useState(false);
   const [sound, setSound] = useState(rideSoundOn); // sonido al llegar una solicitud (se puede silenciar)
@@ -59,6 +60,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
   const [showRental, setShowRental] = useState(false); // alquiler de su carro por días
   const [showEarnings, setShowEarnings] = useState(false); // mis ganancias por día, semana o mes
   const [showTips, setShowTips] = useState(false); // «Mis propinas» (desde el menú)
+  const [showIntercity, setShowIntercity] = useState(false); // «Viajes entre ciudades»
   const [tipCele, setTipCele] = useState(null); // el pasajero acaba de dejar propina
   const tipSeen = useRef({}); // propina que ya conocía de cada viaje (para celebrar solo la nueva)
   const [menuNote, setMenuNote] = useState(''); // por qué no se abrió algo del menú
@@ -101,6 +103,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
       if (e.detail === 'wallet') { loadWallet(); setShowWallet(true); }
       if (e.detail === 'earnings') setShowEarnings(true);
       if (e.detail === 'tips') setShowTips(true);
+      if (e.detail === 'intercity' && intercity) setShowIntercity(true);
       // Desde el menú: el alquiler por días se arregla sin estar disponible ni en un viaje (igual que el botón de abajo)
       if (e.detail === 'rental') { if (online || ride) setMenuNote('Para alquilar tu carro por días, termina el viaje y desconéctate primero.'); else setShowRental(true); }
     };
@@ -221,6 +224,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
       <div className={`sheet${compact ? ' compact' : ''}${online && !active && requests.length ? ' has-requests' : ''}`}>
         <Grab compact={compact} setCompact={setCompact} />
         {showTips && <Tips token={token} onClose={() => setShowTips(false)} />}
+        {showIntercity && <IntercityBoard token={token} socket={socket} pos={pos} onClose={() => setShowIntercity(false)} />}
         {tipCele && <TipCelebration tip={tipCele} onClose={() => setTipCele(null)} />}
         {denied && <div className="hint">Sin GPS: arrastra tu carro para simular tu posición.</div>}
 
@@ -295,6 +299,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
             )}
             {lowBalance && <div className="hint danger">Tu saldo está por debajo del mínimo: recarga para volver a recibir viajes.</div>}
             {showEarnings && <Earnings token={token} onClose={() => setShowEarnings(false)} />}
+            {status === 'active' && intercity && !active && !requests.length && <button type="button" className="ic-entry" onClick={() => setShowIntercity(true)}><span aria-hidden="true">🛣</span> <span className="grow"><b>Viajes entre ciudades</b><span className="muted small">Viajes largos publicados por pasajeros</span></span><span aria-hidden="true">›</span></button>}
             {status === 'active' && !online && perms.includes('rent.offer') && <button className="sm left" onClick={() => setShowRental(true)}>Alquiler de mi carro por días</button>}
             {online ? null : (
               <div className="ask-bar">

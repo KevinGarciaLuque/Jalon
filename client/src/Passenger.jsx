@@ -5,6 +5,7 @@ import { useGeo, apiGet, apiPost, promoDiscount, lempiras, minutes, useChat, use
 import { CarMarker, FitTo, MapControls, RouteLine, icons, rotateOptions, showAt } from './mapParts.jsx';
 import ReportForm from './ReportForm.jsx';
 import Rentals from './Rentals.jsx';
+import Intercity from './Intercity.jsx';
 import Tip from './Tip.jsx';
 import PermsBar from './PermsBar.jsx';
 import { NearbyLine, CategoryCards, PriceMeter, QuickPlaces, etaMinutes } from './RideOptions.jsx';
@@ -162,7 +163,7 @@ function PromoField({ token, price, promo, onChange }) {
   );
 }
 
-export default function Passenger({ socket, token, userId, perms = [], gender = null }) {
+export default function Passenger({ socket, token, userId, perms = [], gender = null, intercity = false }) {
   const { pos, setPos, denied, course, retry: retryGeo } = useGeo();
   const [drivers, setDrivers] = useState([]);
   const [origin, setOrigin] = useState(null); // punto de recogida elegido a mano; null = mi GPS
@@ -192,13 +193,26 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
   const [error, setError] = useState('');
   const [compact, setCompact] = useState(false); // en el celular, la hoja de abajo se puede achicar para ver más mapa
   const [renting, setRenting] = useState(false); // pantalla de alquilar un carro por días
+  const [longTrip, setLongTrip] = useState(false); // «Viajes entre ciudades»
+  const [icTrips, setIcTrips] = useState([]); // mis viajes entre ciudades publicados o reservados
   const [safety, setSafety] = useState(null); // «¿Todo bien?» durante el viaje
   const [womenOnly, setWomenOnly] = useState(false); // «Solo conductoras» (para pasajeras)
   useEffect(() => {
-    const go = (e) => { if (e.detail === 'rentals' && perms.includes('rent')) setRenting(true); };
+    const go = (e) => {
+      if (e.detail === 'rentals' && perms.includes('rent')) setRenting(true);
+      if (e.detail === 'intercity' && intercity) setLongTrip(true);
+    };
     window.addEventListener('ktracho:go', go);
     return () => window.removeEventListener('ktracho:go', go);
-  }, [perms]);
+  }, [perms, intercity]);
+  // Viajes entre ciudades: los suyos (para el aviso de ofertas en la pantalla principal)
+  useEffect(() => {
+    if (!intercity) return undefined;
+    const load = () => apiGet('intercity/mine', token).then((d) => setIcTrips(d.trips)).catch(() => {});
+    load();
+    socket?.on('intercity:update', load);
+    return () => socket?.off('intercity:update', load);
+  }, [intercity, socket, token]);
 
   const chat = useChat(socket, ride, userId);
   const active = ride && ['requested', 'accepted', 'arrived', 'started'].includes(ride.status);
@@ -401,6 +415,20 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
 
         {!active && !ended && (
           <>
+            {intercity && (
+              <div className="seg trip-kind" role="tablist" aria-label="Tipo de viaje">
+                <button role="tab" aria-selected="true" className="on">🏙 En la ciudad</button>
+                <button role="tab" aria-selected="false" onClick={() => setLongTrip(true)}>🛣 Entre ciudades</button>
+              </div>
+            )}
+            {icTrips.length > 0 && !dest && (
+              <button type="button" className="ic-entry" onClick={() => setLongTrip(true)}>
+                <span aria-hidden="true">🛣</span>
+                <span className="grow"><b>Tus viajes entre ciudades ({icTrips.length})</b>
+                  <span className="muted small">{icTrips.some((t) => t.status === 'booked') ? 'Tienes un viaje reservado' : 'Buscando conductor'}{((n) => n > 0 && ` · ${n} oferta${n === 1 ? '' : 's'} para elegir`)(icTrips.reduce((n, t) => n + t.offers.length, 0))}</span></span>
+                <span aria-hidden="true">›</span>
+              </button>
+            )}
             <NearbyLine count={near.length} capped={drivers.length >= 25} label={CATEGORY_LABEL[category]} eta={etaMinutes(from, near)} />
             {/* Con destino, los tipos de viaje (con su precio) van arriba para que se vean sin bajar */}
             {dest && preview && <CategoryCards value={category} onChange={pickCategory} drivers={drivers} from={from} prices={preview.prices} />}
@@ -579,6 +607,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
         )}
       </div>
       {renting && <Rentals token={token} socket={socket} onClose={() => setRenting(false)} />}
+      {longTrip && <Intercity token={token} socket={socket} pos={pos} gender={gender} onClose={() => setLongTrip(false)} />}
       {(safety || ride?.safetyCheck) && ride?.status === 'started' && <SafetyCheck key={(safety || ride.safetyCheck).eventId} check={safety || ride.safetyCheck} socket={socket} onDone={() => { setSafety(null); setRide((r) => (r ? { ...r, safetyCheck: null } : r)); }} />}
     </div>
   );

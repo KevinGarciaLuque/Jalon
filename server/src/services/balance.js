@@ -21,9 +21,11 @@ export const tellWallet = (userId, balance, extra = {}) => io.to(room(userId)).e
 export async function chargeCommission(ride) {
   const s = await getSettings(pool);
   if (s.commission_enabled !== '1' || !ride.driver_id || !(Number(ride.final_price) > 0)) return;
-  const amount = commissionFor(ride.final_price, s.commission_percent);
+  // Los viajes entre ciudades tienen su propia comisión (Ajustes → Viajes)
+  const percent = ride.kind === 'intercity' ? s.intercity_commission_percent : s.commission_percent;
+  const amount = commissionFor(ride.final_price, percent);
   if (!(amount > 0)) return;
-  const balance = await postEntry(pool, { userId: ride.driver_id, amount: -amount, kind: 'commission', rideId: ride.id, note: `Comisión ${Number(s.commission_percent)}% del viaje #${ride.id}` });
+  const balance = await postEntry(pool, { userId: ride.driver_id, amount: -amount, kind: 'commission', rideId: ride.id, note: `Comisión ${Number(percent)}% del viaje #${ride.id}` });
   if (balance === null) return; // esa comisión ya estaba cobrada
   tellWallet(ride.driver_id, balance, { change: -amount, kind: 'commission', rideId: ride.id });
   if (balance < Number(s.min_balance)) dropForLowBalance(ride.driver_id, balance, Number(s.min_balance));

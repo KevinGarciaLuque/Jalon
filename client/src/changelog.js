@@ -3,6 +3,16 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-06-entre-ciudades-panel',
+    date: '2026-11-06',
+    title: 'Viajes entre ciudades (apagado hasta que lo actives)',
+    for: ['staff'],
+    items: [
+      'Se activa en Ajustes → Viajes, con su tarifa (base, por km y mínima) y su propia comisión.',
+      'En la lista de viajes aparecen como «Publicado» o «Reservado (entre ciudades)» hasta 30 minutos antes de salir.',
+    ],
+  },
+  {
     id: '2026-11-06-interruptores',
     date: '2026-11-06',
     title: 'Interruptores más fáciles de usar',

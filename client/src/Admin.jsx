@@ -18,7 +18,7 @@ import UserDetail, { TempPassword, ROLE_LABEL, STATUS_LABEL, ACTION_LABEL, detai
 
 const RIDE_STATUS = {
   requested: 'Solicitado', accepted: 'Aceptado', arrived: 'Llegó', started: 'En curso',
-  completed: 'Completado', cancelled: 'Cancelado',
+  completed: 'Completado', cancelled: 'Cancelado', scheduled: 'Programado', board: 'Publicado (entre ciudades)', booked: 'Reservado (entre ciudades)',
 };
 const CANCELLED_BY = { passenger: 'pasajero', driver: 'conductor', admin: 'personal', system: 'sistema' };
 // Secciones del panel: se eligen en el menú ☰ (o en la barra fija de la izquierda en computadora)
