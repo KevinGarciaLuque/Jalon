@@ -36,6 +36,8 @@ async function openAs(session, geo, name) {
   // El menú nativo de compartir no se puede manejar en modo automático: se prueba la copia al portapapeles
   await page.evaluateOnNewDocument(() => {
     Object.defineProperty(navigator, 'share', { value: undefined });
+    window.__coins = [];
+    window.addEventListener('ktracho:raise-coin', (e) => window.__coins.push(e.detail));
     // El portapapeles real exige foco de la ventana; se captura el texto que la app intenta copiar
     navigator.clipboard.writeText = async (t) => { window.__copied = t; };
   });
@@ -252,6 +254,7 @@ try {
   // El pasajero sube su oferta mientras nadie acepta: el conductor ve el precio nuevo
   await click(pass, '+ L5');
   check('al subir el precio, el conductor ve la solicitud con el precio nuevo', await see(driver, `Aceptar L ${basePrice + 5}`));
+  check('y al pasajero le suena la moneda de «subir oferta»', (await pass.evaluate(() => window.__coins)).length === 1);
 
   check('conductor recibe la solicitud con el destino', await see(driver, 'Mall Multiplaza'));
   check('y la dirección donde debe recogerlo', await see(driver, 'Recoger en:'));

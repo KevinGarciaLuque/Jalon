@@ -95,3 +95,65 @@ export function playTipSound() {
   window.dispatchEvent(new CustomEvent('ktracho:tip-alert', { detail: { sound, vibrate } }));
   return { sound, vibrate };
 }
+
+// ---- Sonidos al cambiar el precio ----
+// Respetan el interruptor «Sonido de los avisos» de la campana (mismo para pasajero y conductor).
+const BELL_KEY = 'ktracho:bell-sound';
+export const appSoundOn = () => { try { return localStorage.getItem(BELL_KEY) !== 'off'; } catch { return true; } };
+
+function ping(freq, at, len, { type = 'triangle', peak = 0.6, glide = 0, gain = 0.3 } = {}) {
+  const t = ctx.currentTime + 0.01 + at;
+  const master = ctx.createGain();
+  master.gain.value = gain;
+  master.connect(ctx.destination);
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(freq, t);
+  if (glide) o.frequency.exponentialRampToValueAtTime(freq * glide, t + len);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(peak, t + 0.005);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+  o.connect(g).connect(master);
+  o.start(t);
+  o.stop(t + len + 0.02);
+}
+
+// −5 / +5: una monedita corta («tic» metálico). Subiendo, el tono sube un poco; bajando, baja.
+// Si se toca muy seguido no se amontonan (como mucho uno cada 70 ms).
+let lastTick = 0;
+export function playPriceTick(up) {
+  let sound = false;
+  let vibrate = false;
+  if (appSoundOn() && Date.now() - lastTick >= 70) {
+    lastTick = Date.now();
+    unlockRideAlert();
+    if (ctx && ctx.state === 'running') {
+      const base = up ? 2350 : 1980;
+      ping(base, 0, 0.07, { glide: up ? 1.12 : 0.89, peak: 0.7, gain: 0.22 });
+      ping(base * 1.5, 0.012, 0.05, { type: 'sine', peak: 0.35, gain: 0.22 }); // brillo de la moneda
+      sound = true;
+    }
+    try { vibrate = !!navigator.vibrate?.(8); } catch { /* sin vibración (iPhone) */ }
+  }
+  window.dispatchEvent(new CustomEvent('ktracho:price-tick', { detail: { up: !!up, sound, vibrate } }));
+  return { sound, vibrate };
+}
+
+// «Subir oferta» mientras busca conductor: una moneda más clara (dos notas que suben), más corta que el «cha-ching» de las propinas
+export function playRaiseCoin() {
+  let sound = false;
+  let vibrate = false;
+  if (appSoundOn()) {
+    unlockRideAlert();
+    if (ctx && ctx.state === 'running') {
+      ping(1568, 0, 0.12, { type: 'square', peak: 0.25, gain: 0.3 });
+      ping(2349, 0.08, 0.32, { peak: 0.8, gain: 0.3 });
+      ping(3136, 0.12, 0.28, { type: 'sine', peak: 0.4, gain: 0.3 });
+      sound = true;
+    }
+    try { vibrate = !!navigator.vibrate?.([20, 40, 20]); } catch { /* sin vibración */ }
+  }
+  window.dispatchEvent(new CustomEvent('ktracho:raise-coin', { detail: { sound, vibrate } }));
+  return { sound, vibrate };
+}

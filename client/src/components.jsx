@@ -2,6 +2,7 @@ import markImg from './assets/logo-marca.webp';
 import arrivedImg from './assets/valoracion.webp';
 import { useEffect, useRef, useState } from 'react';
 import { apiGet, apiPost, pushState, enablePush, disablePush, CATEGORIES } from './lib.js';
+import { playPriceTick } from './rideAlert.js';
 
 // Mientras llegan los datos: líneas que brillan en lugar de un texto suelto. `label` lo leen los lectores de pantalla.
 // Barrita de la hoja de abajo (celular): queda fija arriba aunque se desplace el contenido.
@@ -133,12 +134,12 @@ export function PriceStepper({ value, onChange, step = 5, min = 10, label = 'Pre
   const n = Number(value) || 0;
   return (
     <div className="price">
-      <button type="button" aria-label={`Bajar ${step} lempiras`} onClick={() => onChange(String(Math.max(min, n - step)))}>−{step}</button>
+      <button type="button" aria-label={`Bajar ${step} lempiras`} onClick={() => { const v = Math.max(min, n - step); if (v !== n) playPriceTick(false); onChange(String(v)); }}>−{step}</button>
       <label className="amt">
         <span aria-hidden="true">L</span>
         <input aria-label={label} inputMode="numeric" value={value} style={{ width: `${Math.max(2, String(value).length) + 0.6}ch` }} onChange={(e) => onChange(e.target.value.replace(/\D/g, ''))} />
       </label>
-      <button type="button" aria-label={`Subir ${step} lempiras`} onClick={() => onChange(String(n + step))}>+{step}</button>
+      <button type="button" aria-label={`Subir ${step} lempiras`} onClick={() => { playPriceTick(true); onChange(String(n + step)); }}>+{step}</button>
     </div>
   );
 }

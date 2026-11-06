@@ -8,6 +8,7 @@ import Rentals from './Rentals.jsx';
 import Intercity from './Intercity.jsx';
 import Tip from './Tip.jsx';
 import PermsBar from './PermsBar.jsx';
+import { playRaiseCoin } from './rideAlert.js';
 import { NearbyLine, CategoryCards, PriceMeter, QuickPlaces, etaMinutes } from './RideOptions.jsx';
 import { AddressSearch, Avatar, Chat, PriceStepper, Rate, SafetyBar, Stars, TimeRing, Grab } from './components.jsx';
 
@@ -367,7 +368,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
   };
   const liveOffers = offers.filter((o) => o.expiresAt > now);
   // Mientras nadie acepta, se puede subir la oferta: los conductores cercanos ven el precio nuevo
-  const raise = (inc) => socket.emit('ride:raise', { rideId: ride.id, price: Number(ride.offered_price) + inc }, (res) => setError(res?.error || ''));
+  const raise = (inc) => socket.emit('ride:raise', { rideId: ride.id, price: Number(ride.offered_price) + inc }, (res) => { setError(res?.error || ''); if (res?.ok) playRaiseCoin(); });
   const routeLine = active ? ride.route : preview?.coords;
   const fitPoints = routeLine?.length > 1 ? routeLine : from && dest && !active ? [[from.lat, from.lng], [dest.lat, dest.lng]] : [];
   const ended = ride && !active;

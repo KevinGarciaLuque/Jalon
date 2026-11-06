@@ -51,6 +51,7 @@ try {
   await page.setGeolocation(HERE);
   if (process.env.THEME) await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: process.env.THEME }]);
   // Fija la hora a las 6 de la tarde: debe sugerir «¿Casa?» primero
+  await page.evaluateOnNewDocument(() => { window.__ticks = []; window.addEventListener('ktracho:price-tick', (e) => window.__ticks.push(e.detail)); });
   await page.evaluateOnNewDocument(() => { const H = Date.prototype.getHours; Date.prototype.getHours = function () { return this.getTime() > 0 ? 18 : H.call(this); }; });
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto(CLIENT, { waitUntil: 'domcontentloaded' });
@@ -87,10 +88,21 @@ try {
   const up = await page.$('button[aria-label="Subir 5 lempiras"]');
   for (let i = 0; i < 8; i++) await up.click();
   await wait(400);
+  const ticksUp = await page.evaluate(() => window.__ticks);
+  check('cada +5 suena la monedita (tono que sube)', ticksUp.length === 8 && ticksUp.every((t) => t.up) && ticksUp.some((t) => t.sound), JSON.stringify(ticksUp.slice(0, 2)));
+  check('si lo toca muy seguido no se amontonan', ticksUp.filter((t) => t.sound).length >= 1);
   check('si sube el precio dice «Te aceptan rápido»', (await text(page, '.price-meter .pm-title')) === 'Te aceptan rápido', await text(page, '.price-meter .pm-title'));
   await shot(page, 'pedir-rapido');
   const down = await page.$('button[aria-label="Bajar 5 lempiras"]');
   for (let i = 0; i < 16; i++) await down.click();
+  await wait(400);
+  const ticksDown = (await page.evaluate(() => window.__ticks)).slice(8);
+  check('cada −5 suena la monedita (tono que baja)', ticksDown.length >= 1 && ticksDown.every((t) => !t.up), String(ticksDown.length));
+  await page.evaluate(() => { localStorage.setItem('ktracho:bell-sound', 'off'); window.__ticks = []; });
+  await up.click();
+  check('con «Sonido de los avisos» apagado no suena', (await page.evaluate(() => window.__ticks))[0]?.sound === false);
+  await page.evaluate(() => localStorage.removeItem('ktracho:bell-sound'));
+  await down.click(); // vuelve al precio de antes
   await wait(400);
   check('si lo baja mucho dice «Puede tardar»', (await text(page, '.price-meter .pm-title')) === 'Puede tardar', await text(page, '.price-meter .pm-title'));
   await shot(page, 'pedir-tarda');

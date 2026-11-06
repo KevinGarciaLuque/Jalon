@@ -3,6 +3,17 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-06-sonido-precio',
+    date: '2026-11-06',
+    title: 'Sonido de monedas al cambiar el precio',
+    for: ['passenger', 'driver'],
+    items: [
+      'Al tocar −5 o +5 en el precio suena una monedita: el tono sube cuando subes y baja cuando bajas (en Android también vibra un poquito).',
+      'Pasajeros: al tocar «Subir oferta» mientras buscas conductor suena una moneda más clara.',
+      'Si no quieres sonidos, apágalos en la campana 🔔 → «Sonido de los avisos».',
+    ],
+  },
+  {
     id: '2026-11-06-activar-ubicacion',
     date: '2026-11-06',
     title: 'Te ayudamos a activar tu ubicación',
