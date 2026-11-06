@@ -650,6 +650,8 @@ await addColumn('rides', 'pickup_note', 'VARCHAR(160) NULL');
 await addColumn('users', 'passenger_mode', 'TINYINT(1) NOT NULL DEFAULT 0');
 // Cuándo un pasajero pidió ser conductor (si se le rechaza, vuelve a ser pasajero en vez de quedar bloqueado)
 await addColumn('users', 'driver_applied_at', 'DATETIME NULL');
+// Modo de prueba del superadmin: NULL = panel; 'passenger' o 'driver' = usa la app como pasajero o conductor
+await addColumn('users', 'staff_mode', 'VARCHAR(10) NULL');
 
 // ---- Recargas por solicitud: el conductor pide, el personal le asigna una de las cuentas por 24 horas ----
 // (la cuenta ya no se muestra a todos: solo a quien la pidió, mientras le sirve)

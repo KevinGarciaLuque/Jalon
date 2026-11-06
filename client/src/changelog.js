@@ -3,6 +3,18 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-06-modo-prueba',
+    date: '2026-11-06',
+    title: 'El superadmin puede usar la app como pasajero o conductor',
+    for: ['staff'],
+    items: [
+      'Superadmin: desde tu avatar, en «Usar la app como», elige Panel, Pasajero o Conductor para probar la app tal como la ven ellos.',
+      'Mientras pruebas, una barra arriba te recuerda que los viajes son reales y tiene «Volver al panel».',
+      'La primera vez como conductor registras tu vehículo de prueba (sin documentos ni aprobación). La comisión se descuenta de tu saldo como a cualquier conductor.',
+      'Arreglado: Ajustes ya no falla al guardar («Ajuste desconocido») después de cambiar los Permisos.',
+    ],
+  },
+  {
     id: '2026-11-05-permisos',
     date: '2026-11-05',
     title: 'Te avisamos si tu ubicación o tus notificaciones están apagadas',

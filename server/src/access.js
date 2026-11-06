@@ -47,8 +47,13 @@ export function requestToken(req) {
   if (cookie && !SAFE.has(req.method) && !wantsCookie(req)) throw fail(403, 'Petición no permitida');
   return cookie;
 }
-// Un conductor en modo pasajero se comporta como pasajero en toda la app (en la base de datos sigue siendo conductor)
-export const effectiveUser = (u) => (u.role === 'driver' && u.passenger_mode ? { ...u, role: 'passenger' } : u);
+// Un conductor en modo pasajero se comporta como pasajero en toda la app (en la base de datos sigue siendo conductor).
+// El superadmin en modo de prueba (staff_mode) se comporta como pasajero o conductor: sin acceso al panel hasta que vuelva.
+export const STAFF_MODES = ['passenger', 'driver'];
+export const effectiveUser = (u) => {
+  if (u.role === 'superadmin' && STAFF_MODES.includes(u.staff_mode)) return { ...u, role: u.staff_mode, staffRole: 'superadmin' };
+  return u.role === 'driver' && u.passenger_mode ? { ...u, role: 'passenger' } : u;
+};
 // La persona dueña del token, si sigue valiendo (no se cerró la sesión ni se cambió la contraseña)
 export async function userFromToken(token) {
   const payload = jwt.verify(token, JWT_SECRET);
@@ -71,9 +76,12 @@ export function checkPassword(password, { phone = '', role = 'passenger' } = {})
 // El superadmin puede apagar la verificación en dos pasos del personal desde Ajustes (por defecto es obligatoria)
 export const twoFactorRequired = async () => (await getSettings(pool)).staff_2fa_required !== '0';
 // `perms`: los módulos que puede usar (la app muestra u oculta, por ejemplo, el alquiler)
-export const publicUser = (u, require2fa = true, perms = []) => ({ id: u.id, name: u.name, phone: u.phone, email: u.email || null, role: effectiveUser(u).role, canDrive: u.role === 'driver' || !!u.passenger_mode, passengerMode: !!u.passenger_mode, status: u.status, vehicle: u.vehicle, plate: u.plate, gender: u.gender || null, genderVerified: !!u.gender_verified, ridePin: !!u.ride_pin, mustChangePassword: !!u.must_change_password, perms,
+export const publicUser = (u, require2fa = true, perms = []) => ({ id: u.id, name: u.name, phone: u.phone, email: u.email || null, role: effectiveUser(u).role, canDrive: u.role === 'driver' || !!u.passenger_mode,
+  // El superadmin puede usar la app como pasajero o conductor para probarla (null = está en el panel)
+  // (`u` puede venir ya convertido por effectiveUser: staffRole guarda que en realidad es el superadmin)
+  isSuperadmin: (u.staffRole || u.role) === 'superadmin', staffMode: (u.staffRole || u.role) === 'superadmin' && STAFF_MODES.includes(u.staff_mode) ? u.staff_mode : null, passengerMode: !!u.passenger_mode, status: u.status, vehicle: u.vehicle, plate: u.plate, gender: u.gender || null, genderVerified: !!u.gender_verified, ridePin: !!u.ride_pin, mustChangePassword: !!u.must_change_password, perms,
   // Pasajeros y conductores que aceptaron una versión anterior de los términos los vuelven a ver al abrir la app
-  mustAcceptTerms: ['passenger', 'driver'].includes(u.role) && u.terms_version !== TERMS_VERSION, termsVersion: TERMS_VERSION,
+  mustAcceptTerms: ['passenger', 'driver'].includes(u.staffRole || u.role) && u.terms_version !== TERMS_VERSION, termsVersion: TERMS_VERSION,
   // El personal debe tener la verificación en dos pasos activa para usar el panel (si está exigida)
   mustEnrollTwoFactor: require2fa && isStaff(u.role) && !u.totp_enabled, twoFactorEnabled: !!u.totp_enabled });
 

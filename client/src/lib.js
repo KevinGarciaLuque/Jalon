@@ -39,7 +39,7 @@ export async function api(path, body) {
     body: JSON.stringify(body),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Error');
+  if (!res.ok) throw Object.assign(new Error(data.error || 'Error'), { code: data.code, status: res.status });
   return data;
 }
 
@@ -59,7 +59,7 @@ async function request(method, path, token, body) {
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || 'Error');
+  if (!res.ok) throw Object.assign(new Error(data.error || 'Error'), { code: data.code, status: res.status });
   return data;
 }
 export const apiGet = (path, token) => request('GET', path, token);

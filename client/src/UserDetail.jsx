@@ -45,6 +45,7 @@ export const ACTION_LABEL = {
   'user.reset_password': 'Restableció la contraseña',
   'user.delete': 'Eliminó la cuenta',
   'user.mode': 'Cambió de modo (conductor / pasajero)',
+  'staff.mode': 'Cambió de modo de prueba (panel / pasajero / conductor)',
   'doc.reject': 'Rechazó un documento',
   'doc.view': 'Abrió los documentos',
   'chat.view': 'Leyó el chat de un viaje con emergencia o reporte',

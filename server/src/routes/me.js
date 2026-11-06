@@ -236,35 +236,80 @@ app.get('/api/me', authUser, async (req, res) => {
   res.json({ user });
 });
 
+// Antes de cambiar de modo: sin viajes en curso (y, para manejar, sin viajes programados como pasajero)
+async function modeBlocker(u, toDriver) {
+  const [[ride]] = await pool.query("SELECT id FROM rides WHERE (passenger_id = ? OR driver_id = ?) AND status IN ('requested','accepted','arrived','started') LIMIT 1", [u.id, u.id]);
+  if (ride) return 'Tienes un viaje en curso. Termínalo o cancélalo antes de cambiar de modo.';
+  if (toDriver) {
+    const [[sch]] = await pool.query("SELECT COUNT(*) AS n FROM rides WHERE passenger_id = ? AND status = 'scheduled'", [u.id]);
+    if (sch.n) return 'Tienes un viaje programado. Cancélalo antes de volver a modo conductor.';
+  }
+  return null;
+}
+// Deja de estar disponible: sale del mapa y se retiran las ofertas que tenía sin responder
+async function stopDriving(u) {
+  drivers.delete(u.id);
+  await closeSession(u.id).catch(() => {});
+  const [offers] = await pool.query('SELECT o.id, o.ride_id, r.passenger_id FROM offers o JOIN rides r ON r.id = o.ride_id WHERE o.driver_id = ? AND o.status = "pending"', [u.id]);
+  for (const o of offers) {
+    await pool.query('UPDATE offers SET status = "rejected" WHERE id = ? AND status = "pending"', [o.id]);
+    io.to(room(o.passenger_id)).emit('offer:expired', { offerId: o.id, rideId: o.ride_id });
+  }
+}
+// Sus conexiones se hicieron con el modo anterior: se avisa a sus otros aparatos y se cierran (la app se reconecta con el modo nuevo)
+async function announceMode(userId, user) {
+  const old = await io.in(room(userId)).fetchSockets();
+  for (const s of old) s.emit('account:mode', { role: user.role, canDrive: user.canDrive, passengerMode: user.passengerMode, staffMode: user.staffMode, perms: user.perms });
+  setTimeout(() => old.forEach((s) => s.disconnect(true)), 250);
+}
+
 // Un conductor cambia entre modo conductor y modo pasajero (misma cuenta, saldo y documentos)
 app.post('/api/me/mode', authUser, async (req, res) => {
   const u = req.user;
   const mode = req.body?.mode;
   if (!['driver', 'passenger'].includes(mode)) return res.status(400).json({ error: 'Modo inválido' });
+  if (u.staffRole) return res.status(403).json({ error: 'Usa «Cambiar de modo» del menú' });
   if (!u.passenger_mode && u.role !== 'driver') return res.status(403).json({ error: 'Solo para conductores' });
-  const [[ride]] = await pool.query("SELECT id FROM rides WHERE (passenger_id = ? OR driver_id = ?) AND status IN ('requested','accepted','arrived','started') LIMIT 1", [u.id, u.id]);
-  if (ride) return res.status(409).json({ error: 'Tienes un viaje en curso. Termínalo o cancélalo antes de cambiar de modo.' });
-  if (mode === 'driver') {
-    const [[sch]] = await pool.query("SELECT COUNT(*) AS n FROM rides WHERE passenger_id = ? AND status = 'scheduled'", [u.id]);
-    if (sch.n) return res.status(409).json({ error: 'Tienes un viaje programado. Cancélalo antes de volver a modo conductor.' });
-  } else {
-    // Deja de estar disponible: sale del mapa y se retiran las ofertas que tenía sin responder
-    drivers.delete(u.id);
-    await closeSession(u.id).catch(() => {});
-    const [offers] = await pool.query('SELECT o.id, o.ride_id, r.passenger_id FROM offers o JOIN rides r ON r.id = o.ride_id WHERE o.driver_id = ? AND o.status = "pending"', [u.id]);
-    for (const o of offers) {
-      await pool.query('UPDATE offers SET status = "rejected" WHERE id = ? AND status = "pending"', [o.id]);
-      io.to(room(o.passenger_id)).emit('offer:expired', { offerId: o.id, rideId: o.ride_id });
-    }
-  }
+  const blocked = await modeBlocker(u, mode === 'driver');
+  if (blocked) return res.status(409).json({ error: blocked });
+  if (mode === 'passenger') await stopDriving(u);
   await pool.query('UPDATE users SET passenger_mode = ? WHERE id = ?', [mode === 'passenger' ? 1 : 0, u.id]);
   await audit(u, 'user.mode', { target: u.id, details: { mode } });
   const [[row]] = await pool.query('SELECT * FROM users WHERE id = ?', [u.id]);
   const user = publicUser(row, false, await permsFor(effectiveUser(row)));
-  // Sus conexiones se hicieron con el modo anterior: se avisa a sus otros aparatos y se cierran (la app se reconecta con el modo nuevo)
-  const old = await io.in(room(u.id)).fetchSockets();
-  for (const s of old) s.emit('account:mode', { role: user.role, canDrive: user.canDrive, passengerMode: user.passengerMode, perms: user.perms });
-  setTimeout(() => old.forEach((s) => s.disconnect(true)), 250);
+  await announceMode(u.id, user);
+  res.json({ user });
+});
+
+// El superadmin usa la app como pasajero o conductor para probarla, y vuelve al panel ('panel').
+// Mientras está en modo de prueba no tiene acceso al panel. Para manejar necesita un vehículo (la primera vez lo registra aquí);
+// no sube documentos ni espera aprobación, pero sí paga la comisión de su saldo como cualquier conductor.
+app.post('/api/me/staff-mode', authUser, async (req, res) => {
+  const u = req.user;
+  const mode = req.body?.mode;
+  if (u.role !== 'superadmin' && u.staffRole !== 'superadmin') return res.status(403).json({ error: 'Solo el superadministrador' });
+  if (!['panel', 'passenger', 'driver'].includes(mode)) return res.status(400).json({ error: 'Modo inválido' });
+  const current = u.staffRole ? u.role : 'panel';
+  if (mode !== current) {
+    const blocked = await modeBlocker(u, mode === 'driver');
+    if (blocked) return res.status(409).json({ error: blocked });
+  }
+  if (mode === 'driver') {
+    const [[veh]] = await pool.query('SELECT id FROM vehicles WHERE driver_id = ?', [u.id]);
+    if (!veh || req.body?.vehicle) {
+      if (!req.body?.vehicle) return res.status(400).json({ error: 'Registra el vehículo con el que vas a probar', code: 'NEED_VEHICLE' });
+      const { vehicle: v, error } = readVehicle(req.body.vehicle);
+      if (error) return res.status(400).json({ error });
+      if (await plateTaken(pool, v.plate, u.id)) return res.status(409).json({ error: 'Esa placa ya está registrada' });
+      try { await saveVehicle(pool, u.id, v); } catch (e) { if (isPlateDup(e)) return res.status(409).json({ error: 'Esa placa ya está registrada' }); throw e; }
+    }
+  }
+  if (current === 'driver' && mode !== 'driver') await stopDriving(u);
+  await pool.query('UPDATE users SET staff_mode = ? WHERE id = ?', [mode === 'panel' ? null : mode, u.id]);
+  if (mode !== current) await audit(u, 'staff.mode', { target: u.id, details: { mode } });
+  const [[row]] = await pool.query('SELECT * FROM users WHERE id = ?', [u.id]);
+  const user = publicUser(row, await twoFactorRequired(), await permsFor(effectiveUser(row)));
+  await announceMode(u.id, user);
   res.json({ user });
 });
 
@@ -272,7 +317,7 @@ app.post('/api/me/mode', authUser, async (req, res) => {
 // para subir los documentos entra a «Mi solicitud de conductor» (modo conductor, sin poder ponerse disponible hasta que lo aprueben)
 app.post('/api/me/apply-driver', authUser, async (req, res) => {
   const u = req.user;
-  if (u.role !== 'passenger' || u.passenger_mode) return res.status(403).json({ error: 'Solo los pasajeros pueden pedir ser conductores' });
+  if (u.role !== 'passenger' || u.passenger_mode || u.staffRole) return res.status(403).json({ error: 'Solo los pasajeros pueden pedir ser conductores' });
   const { vehicle: v, error } = readVehicle(req.body);
   if (error) return res.status(400).json({ error });
   if (await plateTaken(pool, v.plate)) return res.status(409).json({ error: 'Esa placa ya está registrada' });

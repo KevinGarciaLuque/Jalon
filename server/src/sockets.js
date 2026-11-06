@@ -22,7 +22,7 @@ import { rentingNow } from './services/rentals.js';
 import { openSession, closeSession, recordPoint, forgetTrack } from './services/activity.js';
 import { checkSafety, answerSafety, forgetSafety } from './services/safety.js';
 import { needsSelfie } from './routes/selfies.js';
-import { readCookie, userFromToken } from './access.js';
+import { readCookie, userFromToken, effectiveUser } from './access.js';
 
 // «Mi ubicación» es como lo ve el pasajero; al conductor le sirve la dirección aproximada del punto.
 // Se busca con un tope de 2,5 s (y la caché de direcciones); si no se encuentra, «Ubicación del pasajero».
@@ -84,8 +84,9 @@ io.on('connection', async (socket) => {
   if (user.role === 'driver') {
     on('driver:online', async (pos) => {
       if (!isPoint(pos)) return;
-      const [[u]] = await pool.query('SELECT status, passenger_mode FROM users WHERE id = ?', [user.id]);
-      if (u?.passenger_mode) return; // ya cambió a modo pasajero: esta conexión se está cerrando
+      const [[row]] = await pool.query('SELECT * FROM users WHERE id = ?', [user.id]);
+      const u = row && effectiveUser(row);
+      if (u?.role !== 'driver') return; // ya cambió a modo pasajero (o el superadmin volvió al panel): esta conexión se está cerrando
       if (u?.status !== 'active') return socket.emit('driver:denied', { status: u?.status });
       const { lat, lng } = pos;
       const busy = await activeRideFor(user); // si se reconecta en pleno viaje, sigue ocupado

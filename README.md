@@ -99,6 +99,7 @@ El servicio mantiene en memoria las posiciones de los conductores, así que debe
 - Cada usuario tiene una ficha (datos, estadísticas, últimos viajes, documentos y movimientos del personal sobre su cuenta).
 - **Eliminar una cuenta** la anonimiza: se borran nombre, teléfono, vehículo, documentos y comentarios; los viajes se conservan sin direcciones para estadísticas y reclamos.
 - La pestaña **Registro** anota quién hizo qué (aprobar, bloquear, editar, restablecer contraseña, eliminar, cambiar roles, rechazar documentos, cancelar viajes, atender emergencias).
+- **Modo de prueba del superadmin:** desde el avatar → «Usar la app como» elige **Panel**, **Pasajero** o **Conductor** (columna `users.staff_mode`: vacía = panel). En pasajero o conductor ve exactamente la app de esa persona y no tiene acceso al panel; una barra arriba le recuerda que **los viajes son reales** y tiene «Volver al panel». La primera vez como conductor registra un vehículo (sin documentos ni aprobación); paga la comisión de su saldo como cualquier conductor. No se puede cambiar con un viaje en curso. Cada cambio queda en el Registro (`staff.mode`). Solo el superadmin; administradores y soporte no.
 - El administrador que ya existía pasa a ser superadministrador automáticamente al actualizar. `ADMIN_PHONE` y `ADMIN_PASSWORD` solo crean un superadmin si todavía no hay ninguno.
 
 ## Proveedor de mapas

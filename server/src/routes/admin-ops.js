@@ -3,7 +3,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { pool } from '../db.js';
 import { decryptBuffer } from '../secure.js';
-import { getSettings, clearSettingsCache, validateSettings, postEntry, money } from '../wallet.js';
+import { getSettings, clearSettingsCache, validateSettings, postEntry, money, SETTING_DEFAULTS } from '../wallet.js';
 import { UPLOADS, REPORT_TYPES } from '../config.js';
 import { app } from '../app.js';
 import { drivers } from '../live.js';
@@ -194,7 +194,10 @@ app.post('/api/admin/wallet/:userId/adjust', staffOnly('wallet.adjust'), async (
   res.json({ ok: true, balance });
 });
 
-app.get('/api/admin/settings', staffOnly('wallet'), async (_req, res) => res.json(await getSettings(pool)));
+// Solo los ajustes de la pantalla Ajustes: en la misma tabla también se guardan datos internos (p. ej. role_perms, los permisos por rol)
+// que no se editan ahí; si la pantalla los recibiera, los devolvería al guardar y el guardado fallaría («Ajuste desconocido»).
+const editable = (s) => Object.fromEntries(Object.keys(SETTING_DEFAULTS).map((k) => [k, s[k]]));
+app.get('/api/admin/settings', staffOnly('wallet'), async (_req, res) => res.json(editable(await getSettings(pool))));
 
 app.put('/api/admin/settings', staffOnly('settings'), async (req, res) => {
   const current = await getSettings(pool);
@@ -210,7 +213,7 @@ app.put('/api/admin/settings', staffOnly('settings'), async (req, res) => {
   for (const k of changed) await pool.query('INSERT INTO settings (name, value, updated_by) VALUES (?,?,?) ON DUPLICATE KEY UPDATE value = VALUES(value), updated_by = VALUES(updated_by)', [k, values[k], req.staff.id]);
   clearSettingsCache();
   if (changed.length) await audit(req.staff, 'settings.update', { details: { changed } });
-  res.json(await getSettings(pool));
+  res.json(editable(await getSettings(pool)));
 });
 
 // Reportes de los usuarios, con los datos de las dos personas del viaje para poder contactarlas

@@ -3,6 +3,7 @@ import News, { useNews } from './News.jsx';
 import Bell from './Bell.jsx';
 import Menu, { HelpPanel, NewsButton, ProfileMenu, Icon } from './Menu.jsx';
 import { Brand, Loading } from './components.jsx';
+import { TestModeBar, StaffVehicle } from './StaffMode.jsx';
 import { apiGet, apiPost, authFetch, API, lazyPage, mapPrefs, money2 } from './lib.js';
 
 // Cada pantalla se descarga cuando se usa: el panel solo lo baja el personal; el mapa, pasajeros y conductores
@@ -111,6 +112,8 @@ export default function App() {
   const [driveIn, setDriveIn] = useState(null); // animación del carro al activar el modo conductor
   const [showInvite, setShowInvite] = useState(false); // «Invita y gana» (referidos)
   const [showApply, setShowApply] = useState(false); // un pasajero pide ser conductor
+  const [needVehicle, setNeedVehicle] = useState(false); // el superadmin va a probar como conductor y no tiene vehículo
+  const [staffBusy, setStaffBusy] = useState(false);
   const animating = useRef(false); // mientras corre, el aviso de «otro aparato» no se repite aquí
   const wide = useWide();
   const { news, unseen, markSeen } = useNews(session?.user.role);
@@ -135,7 +138,7 @@ export default function App() {
       .then(({ user }) => setSession((cur) => {
         if (!cur || cur.user.id !== user.id) return cur;
         setAccountStatus(user.status); // p. ej. lo aprobaron mientras la app estaba cerrada
-        const next = { ...cur, user: { ...cur.user, perms: user.perms, mustAcceptTerms: user.mustAcceptTerms, termsVersion: user.termsVersion, rating: user.rating, mapRotation: user.mapRotation, referrals: !!user.referrals, gender: user.gender, genderVerified: user.genderVerified, ridePin: user.ridePin, role: user.role, canDrive: user.canDrive, passengerMode: user.passengerMode } };
+        const next = { ...cur, user: { ...cur.user, perms: user.perms, mustAcceptTerms: user.mustAcceptTerms, termsVersion: user.termsVersion, rating: user.rating, mapRotation: user.mapRotation, referrals: !!user.referrals, gender: user.gender, genderVerified: user.genderVerified, ridePin: user.ridePin, role: user.role, canDrive: user.canDrive, passengerMode: user.passengerMode, isSuperadmin: !!user.isSuperadmin, staffMode: user.staffMode || null } };
         localStorage.setItem('jalon', JSON.stringify(next));
         return next;
       }))
@@ -217,6 +220,7 @@ export default function App() {
   function openFromMenu(target) {
     if (target === 'account') return setShowAccount(true);
     if (target === 'mode') return switchMode();
+    if (target.startsWith('staffmode:')) return staffSwitch(target.slice(10));
     if (target === 'apply') return setShowApply(true);
     if (target === 'invite') return setShowInvite(true);
     if (target === 'help') return setShowHelp(true);
@@ -238,8 +242,8 @@ export default function App() {
 
   // Conductor: cambia entre modo conductor y modo pasajero. Al cambiar el rol, la app se reconecta y muestra la otra pantalla
   const applyMode = (m) => setSession((cur) => {
-    if (!cur || (cur.user.role === m.role && cur.user.passengerMode === m.passengerMode)) return cur;
-    const next = { ...cur, user: { ...cur.user, role: m.role, canDrive: m.canDrive, passengerMode: m.passengerMode, perms: m.perms } };
+    if (!cur || (cur.user.role === m.role && cur.user.passengerMode === m.passengerMode && (cur.user.staffMode || null) === (m.staffMode || null))) return cur;
+    const next = { ...cur, user: { ...cur.user, role: m.role, canDrive: m.canDrive, passengerMode: m.passengerMode, staffMode: m.staffMode || null, perms: m.perms } };
     localStorage.setItem('jalon', JSON.stringify(next));
     return next;
   });
@@ -264,6 +268,25 @@ export default function App() {
       window.alert(e.message);
     }
   }
+  // Superadmin: usar la app como pasajero o conductor, o volver al panel. La primera vez como conductor pide el vehículo.
+  async function staffSwitch(mode, vehicle) {
+    setStaffBusy(true);
+    try {
+      const { user } = await apiPost('me/staff-mode', session.token, vehicle ? { mode, vehicle } : { mode });
+      setNeedVehicle(false);
+      setWallet(null);
+      setAccountStatus(user.status);
+      save({ ...session, user: { ...session.user, ...user } });
+      if (mode !== 'panel') setModeNotice(user.role);
+    } catch (e) {
+      if (e.code === 'NEED_VEHICLE') setNeedVehicle(true);
+      else if (vehicle) throw e; // el formulario del vehículo muestra el error
+      else window.alert(e.message);
+    } finally {
+      setStaffBusy(false);
+    }
+  }
+
   // El pasajero envió su solicitud de conductor: pasa a la pantalla de conductor para subir sus documentos
   async function applied(user) {
     setShowApply(false);
@@ -314,6 +337,7 @@ export default function App() {
           ? <button className="link" onClick={() => logout()}>Salir</button>
           : <ProfileMenu user={menuProps.user} go={openFromMenu} onLogout={() => logout()} />}
       </header>
+      {session.user.staffMode && <TestModeBar mode={session.user.staffMode} busy={staffBusy} onBack={() => staffSwitch('panel')} />}
       {connError && <div className="banner">{connError}</div>}
       <Suspense fallback={<Loading />}>
       {panelOpen && (
@@ -322,7 +346,7 @@ export default function App() {
           <Admin token={session.token} onGate={onGate} onSections={(sections, current) => setAdminNav({ sections, current })} />
         </div>
       )}
-      {socket && !session.user.mustChangePassword && (session.user.role === 'driver'
+      {socket && !staff && !session.user.mustChangePassword && (session.user.role === 'driver'
         ? <Driver socket={socket} token={session.token} userId={session.user.id} status={accountStatus} perms={session.user.perms || []} onWallet={setWallet} />
         : <Passenger socket={socket} token={session.token} userId={session.user.id} perms={session.user.perms || []} gender={session.user.gender} />)}
       {(showAccount || session.user.mustChangePassword) && (
@@ -354,6 +378,7 @@ export default function App() {
         <PasskeyOffer userId={session.user.id} onClose={() => setPkOffer(false)} />
       )}
       {modeNotice && <ModeNotice mode={modeNotice} user={session.user} wallet={wallet} pending={accountStatus === 'pending'} onClose={() => setModeNotice(null)} />}
+      {needVehicle && <StaffVehicle onSave={(v) => staffSwitch('driver', v)} onClose={() => setNeedVehicle(false)} />}
       {showApply && <DriverApply token={session.token} onDone={applied} onClose={() => setShowApply(false)} />}
       {showNews && <News news={news} onClose={() => setShowNews(false)} />}
       {showInvite && <Invite token={session.token} onClose={() => setShowInvite(false)} />}

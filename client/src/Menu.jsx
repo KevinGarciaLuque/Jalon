@@ -123,7 +123,7 @@ export default function Menu({ user, hasBell, go, sections, current, wallet, pin
     user.canDrive && (user.role === 'driver' ? { key: 'mode', icon: 'user', label: 'Cambiar a modo pasajero' }
       : { key: 'mode', icon: 'car', label: user.status === 'pending' ? 'Mi solicitud de conductor' : 'Cambiar a modo conductor' }),
     // Un pasajero puede pedir ser conductor con su misma cuenta
-    user.role === 'passenger' && !user.canDrive && { key: 'apply', icon: 'car', label: 'Quiero ser conductor' },
+    user.role === 'passenger' && !user.canDrive && !user.staffMode && { key: 'apply', icon: 'car', label: 'Quiero ser conductor' },
     user.role === 'driver' && user.status === 'active' && perms.includes('rent.offer') && { key: 'rental', icon: 'key', label: 'Alquiler de mi carro' },
     user.role === 'passenger' && perms.includes('rent') && { key: 'rentals', icon: 'car', label: 'Alquilar un carro' },
   ].filter(Boolean);
@@ -161,7 +161,7 @@ export default function Menu({ user, hasBell, go, sections, current, wallet, pin
       <button className="drawer-profile" onClick={pick('account')} aria-label={`Mi perfil: ${user.name}`}>
         <span className="avatar-ring lg"><Avatar name={user.name} /></span>
         <b>{user.name}</b>
-        <span className="drawer-role">{ROLE_NAME[user.role]}</span>
+        <span className="drawer-role">{user.staffMode ? `Superadmin · modo ${user.staffMode === 'driver' ? 'conductor' : 'pasajero'}` : ROLE_NAME[user.role]}</span>
         {!staff && user.rating?.count > 0 && <span className="small"><Stars rating={user.rating} /></span>}
         <i className="drawer-rule" aria-hidden="true" />
       </button>
@@ -280,10 +280,22 @@ export function ProfileMenu({ user, go, onLogout }) {
               <span className="profile-who">
                 <b>{user.name}</b>
                 <span className="muted small">{user.email || user.phone}</span>
-                <span className="role-tag">{ROLE_NAME[user.role]}</span>
+                <span className="role-tag">{user.staffMode ? `Superadmin · modo ${user.staffMode === 'driver' ? 'conductor' : 'pasajero'}` : ROLE_NAME[user.role]}</span>
                 {!staff && user.rating?.count > 0 && <span className="small"><Stars rating={user.rating} /></span>}
               </span>
             </div>
+            {/* Superadmin: usar la app como pasajero o conductor para probarla */}
+            {user.isSuperadmin && (
+              <div className="staff-modes" role="group" aria-label="Usar la app como">
+                <span className="muted small">Usar la app como</span>
+                <div className="seg">
+                  {[['panel', 'Panel'], ['passenger', 'Pasajero'], ['driver', 'Conductor']].map(([k, label]) => {
+                    const on = (user.staffMode || 'panel') === k;
+                    return <button key={k} role="menuitemradio" aria-checked={on} className={on ? 'on' : ''} onClick={pick(() => !on && go(`staffmode:${k}`))}>{label}</button>;
+                  })}
+                </div>
+              </div>
+            )}
             <button role="menuitem" onClick={pick(() => go('account'))}><Icon name="user" /><span>Mi perfil</span></button>
             <button role="menuitem" onClick={pick(() => go('help'))}><Icon name="help" /><span>Ayuda y soporte</span></button>
             <hr />
