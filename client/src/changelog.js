@@ -11,6 +11,7 @@ export const CHANGELOG = [
       'Con la app abierta y estando disponible, cada solicitud nueva suena y hace vibrar el celular (en iPhone, solo el sonido).',
       'Si no lo quieres, toca «🔔 Sonido» junto a «Solicitudes cercanas» para silenciarlo. La app lo recuerda.',
       'Con la app cerrada te sigue llegando la notificación del celular, si la activaste.',
+      'Las solicitudes caben mejor: «Rechazar» y «Aceptar» se ven sin bajar, también en celulares pequeños. «Desconectarme» quedó arriba, junto a «En línea».',
     ],
   },
   {

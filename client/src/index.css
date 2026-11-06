@@ -944,3 +944,22 @@ header { gap: 8px; background: linear-gradient(135deg, var(--card), var(--bg)); 
 /* Aviso de solicitudes del conductor: sonido / silencio */
 .sound-toggle { border-radius: 999px; min-height: 34px; padding: 4px 12px; font-size: 13px; }
 .sound-toggle[aria-pressed="false"] { color: var(--muted); }
+
+/* Conductor con solicitudes: la hoja sube más y cada tarjeta es compacta, para que «Aceptar» se vea sin bajar */
+@media (max-width: 699px) and (orientation: portrait) {
+  .screen .sheet.has-requests:not(.compact) { max-height: 85%; }
+}
+.req .route-list { font-size: 14px; gap: 4px; }
+.req .route-list div { align-items: center; }
+.req .route-list .dot-o, .req .route-list .dot-d { margin-top: 0; }
+.req .route-list .addr { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.req .route-list .km { flex: none; white-space: nowrap; }
+.req .route-toggle { min-height: 32px; padding: 2px 0; font-size: 14px; }
+.drv-status .danger { min-height: 34px; padding: 4px 12px; font-size: 13px; }
+.req .price { padding: 4px 8px; }
+.req .price button { width: 40px; height: 40px; }
+.req .price .amt input { font-size: 26px; padding: 0; }
+/* La barra del modo de prueba en una sola línea (le quita poco alto a la pantalla) */
+.test-mode-bar { padding-top: 5px; padding-bottom: 5px; font-size: 13px; }
+.test-mode-bar > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.test-mode-bar button { min-height: 30px; padding: 2px 10px; font-size: 13px; }

@@ -38,7 +38,7 @@ try {
   const ctx = await browser.createBrowserContext();
   await ctx.overridePermissions(new URL(CLIENT).origin, ['geolocation']);
   const page = await ctx.newPage();
-  await page.setViewport({ width: 390, height: 844 });
+  await page.setViewport({ width: 390, height: Number(process.env.VIEW_H) || 844 });
   await page.setGeolocation({ latitude: 14.0712, longitude: -87.1935, accuracy: 10 });
   if (process.env.THEME) await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: process.env.THEME }]);
   page.on('pageerror', (e) => errors.push(e.message));
@@ -65,6 +65,31 @@ try {
   check('al llegar la solicitud el conductor oye el aviso', a1.length === 1 && a1[0].sound === true, JSON.stringify(a1));
   check('y la ve en la lista', await page.evaluate(() => document.body.innerText.includes('Solicitudes cercanas (1)')));
   await shot(page, 'aviso-solicitud');
+  // «Aceptar» debe verse sin bajar en la hoja (también en celulares bajitos)
+  await wait(600);
+  const acc = await page.evaluate(() => {
+    const b = [...document.querySelectorAll('.sheet button')].find((x) => /^Aceptar/.test(x.textContent.trim()));
+    const sh = document.querySelector('.sheet').getBoundingClientRect();
+    const r = b?.getBoundingClientRect();
+    return r ? { top: Math.round(r.top), bottom: Math.round(r.bottom), sheetTop: Math.round(sh.top), sheetBottom: Math.round(sh.bottom), vh: innerHeight } : null;
+  });
+  check('«Aceptar» se ve sin bajar', !!acc && acc.bottom <= Math.min(acc.sheetBottom, acc.vh) && acc.top >= acc.sheetTop, JSON.stringify(acc));
+  // También con la barra amarilla del modo de prueba del superadmin (le quita alto a la pantalla)
+  const withBar = await page.evaluate(async () => {
+    const bar = document.createElement('div');
+    bar.className = 'test-mode-bar';
+    bar.innerHTML = '<span><b>🧪 Modo de prueba: conductor.</b> Los viajes son reales.</span><button class="sm">Volver al panel</button>';
+    document.querySelector('.app').insertBefore(bar, document.querySelector('.app > header').nextSibling);
+    await new Promise((r) => setTimeout(r, 700));
+    const b = [...document.querySelectorAll('.sheet button')].find((x) => /^Aceptar/.test(x.textContent.trim()));
+    const sh = document.querySelector('.sheet').getBoundingClientRect();
+    const r = b.getBoundingClientRect();
+    await window.__shotHook?.();
+    const out = { top: Math.round(r.top), bottom: Math.round(r.bottom), sheetTop: Math.round(sh.top), sheetBottom: Math.round(sh.bottom), vh: innerHeight };
+    bar.remove();
+    return out;
+  });
+  check('y también con la barra del modo de prueba', withBar.bottom <= Math.min(withBar.sheetBottom, withBar.vh) && withBar.top >= withBar.sheetTop, JSON.stringify(withBar));
 
   // ---------- Silenciar ----------
   await page.evaluate(() => { window.__alerts = []; });

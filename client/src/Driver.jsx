@@ -201,7 +201,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
         )}
       </div>
 
-      <div className={`sheet${compact ? ' compact' : ''}`}>
+      <div className={`sheet${compact ? ' compact' : ''}${online && !active && requests.length ? ' has-requests' : ''}`}>
         <Grab compact={compact} setCompact={setCompact} />
         {denied && <div className="hint">Sin GPS: arrastra tu carro para simular tu posición.</div>}
 
@@ -243,6 +243,8 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
               <div className="drv-status">
                 <span className={`drv-dot${online ? ' on' : ''}`} aria-hidden="true" />
                 <b className="grow">{online ? 'En línea · buscando viajes' : 'Estás desconectado'}</b>
+                {/* En línea: «Desconectarme» pequeño aquí arriba, para dejarle espacio a las solicitudes */}
+                {online && !active && <button type="button" className="sm danger" onClick={toggle}>Desconectarme</button>}
                 {!online && <PushToggle token={token} compact why="Activa las notificaciones para recibir viajes cercanos y avisos aunque cierres la app." />}
               </div>
             )}
@@ -266,7 +268,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
               </div>
             )}
             {!online && showsWallet && <div className="muted small">Comisión {wallet.percent}% por viaje · mínimo {money2(wallet.minBalance)} para recibir viajes</div>}
-            {online && (showsWallet || today) && (
+            {online && (showsWallet || today) && !requests.length && (
               <div className="muted small drv-line">
                 {showsWallet && <span>Saldo <b>{money2(wallet.balance)}</b></span>}
                 {today && <span>Hoy <b>{money2(today.net)}</b></span>}
@@ -275,9 +277,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
             {lowBalance && <div className="hint danger">Tu saldo está por debajo del mínimo: recarga para volver a recibir viajes.</div>}
             {showEarnings && <Earnings token={token} onClose={() => setShowEarnings(false)} />}
             {status === 'active' && !online && perms.includes('rent.offer') && <button className="sm left" onClick={() => setShowRental(true)}>Alquiler de mi carro por días</button>}
-            {online ? (
-              <button className="danger" onClick={toggle}>Desconectarme</button>
-            ) : (
+            {online ? null : (
               <div className="ask-bar">
                 <button className="primary go" onClick={toggle} disabled={!pos || status === 'pending'}>{POWER} Ponerme disponible</button>
               </div>
@@ -310,10 +310,10 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
                       {r.pickup_note && <div className="small">📍 {r.pickup_note}</div>}
                       {r.stops?.length > 0 && <div className="small">Con {r.stops.length} parada{r.stops.length === 1 ? '' : 's'}: {r.stops.map((p) => p.text || 'en el mapa').join(' → ')}</div>}
                       <div className="route-list">
-                        <div><i className="dot-o" /><span><span className="sr-only">Recoger en: </span>{r.origin_text || 'Punto marcado en el mapa'} <span className="muted small">· a {away.toFixed(1)} km</span></span></div>
-                        <div><i className="dot-d" /><span><span className="sr-only">Destino: </span>{r.dest_text || 'Punto marcado en el mapa'} <span className="muted small">· {r.distance_km.toFixed(1)} km{r.duration_min ? `, ${minutes(r.duration_min)}` : ''}</span></span></div>
+                        <div><i className="dot-o" /><span className="addr" title={r.origin_text || ''}><span className="sr-only">Recoger en: </span>{r.origin_text || 'Punto marcado en el mapa'}</span><span className="muted small km">a {away.toFixed(1)} km</span></div>
+                        <div><i className="dot-d" /><span className="addr" title={r.dest_text || ''}><span className="sr-only">Destino: </span>{r.dest_text || 'Punto marcado en el mapa'}</span><span className="muted small km">{r.distance_km.toFixed(1)} km{r.duration_min ? `, ${minutes(r.duration_min)}` : ''}</span></div>
                       </div>
-                      <button className="sm" onClick={() => setPreviewId(r.id === previewId ? null : r.id)}>
+                      <button className="link left route-toggle" onClick={() => setPreviewId(r.id === previewId ? null : r.id)}>
                         {r.id === previewId ? 'Ocultar ruta' : 'Ver ruta en el mapa'}
                       </button>
                       {waiting ? (
