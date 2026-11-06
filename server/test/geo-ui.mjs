@@ -54,6 +54,34 @@ try {
   check('el pin del mapa se puede arrastrar', await p1.$eval('.leaflet-marker-draggable', () => true).catch(() => false));
   await wait(400);
   await shot(p1, 'geo-pasajero-sin-gps');
+  // «Cómo activar mi ubicación» abre la pantalla guiada
+  await (await p1.$('.hint button.link')).click();
+  check('«Cómo activar mi ubicación» abre la pantalla guiada', !!(await p1.waitForSelector('.geo-help', { timeout: 5000 }).catch(() => null)));
+  check('con pasos numerados y «Ya la activé, volver a intentar»', (await p1.$$('.geo-steps li')).length >= 2 && (await p1.$eval('.geo-help button.geo-go', (b) => b.innerText).catch(() => '')).includes('Ya la activé'));
+  await wait(400);
+  await shot(p1, 'geo-ayuda');
+  await (await p1.$('.geo-help button.geo-go')).click();
+  check('si sigue bloqueada, lo dice', !!(await p1.waitForSelector('.geo-help .hint.danger', { timeout: 20000 }).catch(() => null)));
+
+  // En iPhone salen los pasos de Ajustes → Localización
+  const ctxI = await browser.createBrowserContext();
+  const pi = await ctxI.newPage();
+  await pi.setUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1');
+  await pi.setViewport({ width: 390, height: 844 });
+  if (process.env.THEME) await pi.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: process.env.THEME }]);
+  pi.on('pageerror', (e) => errors.push(e.message));
+  await pi.goto(CLIENT, { waitUntil: 'domcontentloaded' });
+  await pi.evaluate((s) => { localStorage.setItem('jalon', JSON.stringify(s)); localStorage.setItem('jalon-perms-later-push', String(Date.now())); }, { token: P.token, user: P.user });
+  await pi.reload({ waitUntil: 'networkidle2' });
+  for (const label of ['Acepto', 'Aceptar', 'Entendido']) { const b = await pi.$(`button::-p-text(${label})`); if (b) { await b.evaluate((x) => x.click()); await wait(300); } }
+  await pi.waitForSelector('.perms-geo', { timeout: 15000 }).catch(() => null);
+  const barBtn = await pi.$('.perms-bar button.primary');
+  if (barBtn && !(await pi.$('.geo-help'))) await barBtn.click();
+  await pi.waitForSelector('.geo-help', { timeout: 20000 }).catch(() => null);
+  const ios = await pi.$eval('.geo-help', (e) => e.innerText).catch(() => '');
+  check('en iPhone los pasos son de Ajustes → Localización y Safari', ios.includes('Localización') && ios.includes('Sitios web de Safari') && ios.includes('Ubicación exacta'), ios.slice(0, 200));
+  await wait(400);
+  await shot(pi, 'geo-ayuda-iphone');
 
   // ---------- Pasajero con ubicación aproximada (iPhone sin «Ubicación exacta») ----------
   const p2 = await open({ token: P.token, user: P.user }, { latitude: 14.0400, longitude: -87.2200, accuracy: 3000 });

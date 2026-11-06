@@ -49,10 +49,17 @@ try {
   await shot(a, 'permisos-ubicacion');
   const t = await barText(a);
   if (/bloqueada/.test(t)) {
-    await (await a.$('.perms-bar button::-p-text(Cómo activarla)')).click();
-    await wait(300);
-    check('«Cómo activarla» muestra los pasos', (await a.$$('.perms-steps li')).length >= 3);
+    // Bloqueada: la pantalla guiada se abre sola (una vez por sesión) con los pasos para su celular
+    check('la pantalla «Activa tu ubicación» se abre sola', !!(await a.waitForSelector('.geo-help', { timeout: 5000 }).catch(() => null)));
+    check('con los pasos y el botón para comprobar', (await a.$$('.geo-steps li')).length >= 2 && !!(await a.$('.geo-help button.geo-go')));
+    await wait(400);
     await shot(a, 'permisos-ubicacion-pasos');
+    await (await a.$('.geo-help .overlay-head button')).evaluate((x) => x.click());
+    await a.waitForSelector('.geo-help', { hidden: true, timeout: 3000 }).catch(() => {});
+    await (await a.$('.perms-bar button::-p-text(Cómo activarla)')).click();
+    check('«Cómo activarla» la vuelve a abrir', !!(await a.waitForSelector('.geo-help', { timeout: 3000 }).catch(() => null)));
+    await (await a.$('.geo-help .overlay-head button')).evaluate((x) => x.click());
+    await a.waitForSelector('.geo-help', { hidden: true, timeout: 3000 }).catch(() => {});
   } else {
     check('ofrece activar la ubicación', /Activa tu ubicación/.test(t) && !!(await a.$('.perms-bar button::-p-text(Activar)')));
   }

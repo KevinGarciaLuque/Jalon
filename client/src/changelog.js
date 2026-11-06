@@ -3,6 +3,16 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-06-activar-ubicacion',
+    date: '2026-11-06',
+    title: 'Te ayudamos a activar tu ubicación',
+    for: ['passenger', 'driver'],
+    items: [
+      'Si tu ubicación está bloqueada, se abre «Activa tu ubicación» con los pasos exactos para tu iPhone o Android.',
+      'Al terminar, toca «Ya la activé, volver a intentar» y la app comprueba al instante si ya funciona.',
+    ],
+  },
+  {
     id: '2026-11-06-ubicacion-real',
     date: '2026-11-06',
     title: 'Tu ubicación, siempre la real',
@@ -10,8 +20,7 @@ export const CHANGELOG = [
     items: [
       'Si la app no logra leer tu GPS, ya no te ubica en la Colonia Kennedy: te pide escribir dónde te recogen o mover el pin a tu posición.',
       'Si el celular da una ubicación aproximada (en iPhone, con «Ubicación exacta» apagada), te avisa para que revises el pin.',
-      'Conductores: sin GPS no se puede ponerse disponible hasta activar la ubicación o marcar en el mapa dónde están.',
-    ],
+      'Conductores: sin GPS no se puede ponerse disponible hasta activar la ubicación o marcar en el mapa dónde están.',    ],
   },
   {
     id: '2026-11-06-entre-ciudades-panel',

@@ -226,7 +226,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
         {showTips && <Tips token={token} onClose={() => setShowTips(false)} />}
         {showIntercity && <IntercityBoard token={token} socket={socket} pos={guessed ? null : pos} onClose={() => setShowIntercity(false)} />}
         {tipCele && <TipCelebration tip={tipCele} onClose={() => setTipCele(null)} />}
-        {denied && guessed && !online && <div className="hint danger" role="alert">📍 <b>No tenemos tu ubicación.</b> Activa la ubicación para Ktracho GO, o arrastra tu carro en el mapa hasta donde estás, para ponerte disponible.</div>}
+        {denied && guessed && !online && <div className="hint danger" role="alert">📍 <b>No tenemos tu ubicación.</b> Activa la ubicación para Ktracho GO, o arrastra tu carro en el mapa hasta donde estás, para ponerte disponible. <button type="button" className="link" onClick={() => window.dispatchEvent(new Event('ktracho:geo-help'))}>Cómo activar mi ubicación</button></div>}
         {denied && !guessed && <div className="hint">Sin GPS: tu posición es la que marcaste con el carro. Arrástralo si te mueves.</div>}
 
         {!active && (

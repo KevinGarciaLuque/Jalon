@@ -1069,3 +1069,15 @@ button.link.danger { color: var(--danger); }
 .ic-card a.sm { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--r-1); color: var(--text); font-weight: 600; text-decoration: none; font-size: 14px; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ic-tag.women { background: #4a1530; color: #fbcfe8; } }
 .ic-form .seg button { font-size: 14px; padding: 10px 8px; }
+
+/* Pantalla guiada para activar la ubicación */
+.geo-help .overlay-body { gap: 12px; }
+.geo-why { margin: 0; font-size: 16px; font-weight: 600; }
+.geo-help p { margin: 0; }
+.geo-device button { min-height: 40px; border-radius: 999px; font-size: 14px; }
+.geo-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.geo-steps li { display: flex; gap: 12px; align-items: flex-start; border: 1px solid var(--line); border-radius: var(--r-2); padding: 12px; background: var(--card); }
+.geo-steps li > i { flex: 0 0 auto; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-weight: 800; background: var(--brand); color: var(--on-brand); }
+.geo-steps li > span { display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
+.geo-go { min-height: 52px; font-size: 16px; }
+.hint .link { padding: 0; min-height: 0; text-decoration: underline; font-weight: 700; }

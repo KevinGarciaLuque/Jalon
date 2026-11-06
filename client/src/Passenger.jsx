@@ -414,7 +414,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
 
       <div className={`sheet${compact ? ' compact' : ''}`}>
         <Grab compact={compact} setCompact={setCompact} />
-        {!active && !ended && guessed && pos && <div className="hint danger" role="alert">📍 <b>No sabemos dónde estás.</b> Escribe abajo dónde te recogemos, o arrastra el pin verde del mapa hasta tu posición.</div>}
+        {!active && !ended && guessed && pos && <div className="hint danger" role="alert">📍 <b>No sabemos dónde estás.</b> Escribe abajo dónde te recogemos, o arrastra el pin verde del mapa hasta tu posición. <button type="button" className="link" onClick={() => window.dispatchEvent(new Event('ktracho:geo-help'))}>Cómo activar mi ubicación</button></div>}
         {!active && !ended && !guessed && !origin && vague && <div className="hint" role="status">📍 Tu ubicación es aproximada (±{(accuracy / 1000).toFixed(1)} km). Revisa que el pin verde esté donde estás: si no, arrástralo o escribe la dirección. En iPhone, activa «Ubicación exacta» para Ktracho GO en Ajustes → Privacidad → Localización.</div>}
 
         {!active && !ended && (
