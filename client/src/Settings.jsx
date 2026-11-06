@@ -47,7 +47,7 @@ export default function Settings({ call, onError }) {
   const KEYS = {
     commission: ['commission_enabled', 'commission_percent', 'welcome_credit', 'min_balance', 'topup_min', 'topup_max'],
     fares: Object.keys(s).filter((k) => k.startsWith('fare_')),
-    rides: ['tips_enabled', 'map_rotation', 'intercity_enabled', 'intercity_base', 'intercity_km', 'intercity_minimum', 'intercity_commission_percent'],
+    rides: ['nearby_km', 'tips_enabled', 'map_rotation', 'intercity_enabled', 'intercity_base', 'intercity_km', 'intercity_minimum', 'intercity_commission_percent'],
     security: ['staff_2fa_required', 'ride_pin_required', 'ride_safety_checks', 'driver_selfie_required', 'driver_selfie_hours'],
     rentals: ['rental_enabled', 'rental_price_min', 'rental_price_max', 'rental_max_days', 'rental_advance_days'],
     banks: [],
@@ -116,6 +116,9 @@ export default function Settings({ call, onError }) {
         </section>
 
         <section role="tabpanel" id="set-panel-rides" aria-labelledby="set-tab-rides" hidden={tab !== 'rides'}>
+          <b>Solicitudes cercanas</b>
+          <label>Radio para recibir solicitudes (km)<input inputMode="decimal" value={s.nearby_km} onChange={set('nearby_km')} /></label>
+          <p className="muted small">Un conductor recibe la solicitud si está a esta distancia o menos (en línea recta) de donde recogen al pasajero. También es lo que el pasajero ve como «conductores cerca». De 1 a 30 km; súbelo cuando haya pocos conductores (por ejemplo, en la noche). Se aplica al instante.</p>
           <b>Propinas</b>
           <label className="check">
             <input type="checkbox" role="switch" className="switch" checked={on('tips_enabled')} onChange={set('tips_enabled')} />

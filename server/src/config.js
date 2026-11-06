@@ -49,6 +49,7 @@ if (JWT_SECRET === 'dev-secret' || JWT_SECRET.startsWith('cambia-esto')) {
   if (process.env.NODE_ENV === 'production') throw new Error('Define un JWT_SECRET real en .env');
   console.warn('⚠ JWT_SECRET de desarrollo: cámbialo antes de publicar la app');
 }
+// Radio inicial (km) en que un conductor recibe solicitudes y el pasajero ve carros cerca. Se cambia en Ajustes → Viajes (nearby_km).
 export const NEARBY_KM = 5;
 // Una oferta de un conductor vale este tiempo: así el pasajero no acepta una oferta vieja de alguien que ya se fue
 export const OFFER_TTL_SECONDS = Number(process.env.OFFER_TTL_SECONDS || 90);

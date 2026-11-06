@@ -3,6 +3,16 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-06-radio-solicitudes',
+    date: '2026-11-06',
+    title: 'Radio para recibir solicitudes, en Ajustes',
+    for: ['staff'],
+    items: [
+      'En Ajustes → Viajes → «Solicitudes cercanas» eliges a cuántos km (de 1 a 30, en línea recta) un conductor recibe las solicitudes. Antes era fijo en 5 km.',
+      'También cambia los «conductores cerca» que ve el pasajero. Se aplica al instante, sin reiniciar nada.',
+    ],
+  },
+  {
     id: '2026-11-06-viajes-en-curso',
     date: '2026-11-06',
     title: 'Mapa en vivo: avance de cada viaje',

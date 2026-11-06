@@ -2,6 +2,7 @@
 // El conductor recarga transfiriendo a la cuenta de Ktracho GO y subiendo el comprobante; el personal lo autoriza y se acredita el saldo.
 // De ese saldo se descuenta la comisión de cada viaje cobrado en efectivo. Todo movimiento queda en un libro de cuentas que nunca se edita.
 import { CATEGORIES, CATEGORY_LABEL, FARE_DEFAULTS } from './fares.js';
+import { NEARBY_KM } from './config.js';
 
 export const SETTING_DEFAULTS = {
   commission_enabled: '0', // apagado hasta que el superadmin lo active
@@ -35,6 +36,7 @@ export const SETTING_DEFAULTS = {
   referral_driver_rides: '5', // viajes que debe terminar un conductor invitado para que se pague el premio
   referral_monthly_max: '10', // premios por persona al mes
   tips_enabled: '1', // el pasajero puede dejar propina en efectivo al terminar (sin comisión)
+  nearby_km: String(NEARBY_KM), // radio (km, en línea recta) en que el conductor recibe solicitudes y el pasajero ve carros cerca
   // Viajes entre ciudades (apagado hasta que el superadmin lo active). Precio sugerido = base + por km, nunca menos que la mínima
   intercity_enabled: '0',
   intercity_base: '100',
@@ -48,6 +50,10 @@ export const commissionFor = (price, percent) => money((Number(price) * Number(p
 
 let cache = null;
 let cacheAt = 0;
+// El radio se usa en cálculos que no pueden esperar a la base (cada pocos segundos, por cada conductor): se guarda aquí
+// cada vez que se leen los ajustes (al arrancar, al guardar Ajustes y cada vez que algo los consulta).
+let liveNearby = NEARBY_KM;
+export const nearbyKm = () => liveNearby;
 export const clearSettingsCache = () => { cache = null; };
 
 export async function getSettings(pool) {
@@ -55,6 +61,8 @@ export async function getSettings(pool) {
   const [rows] = await pool.query('SELECT name, value FROM settings');
   cache = { ...SETTING_DEFAULTS, ...Object.fromEntries(rows.map((r) => [r.name, r.value])) };
   cacheAt = Date.now();
+  const km = Number(cache.nearby_km);
+  liveNearby = Number.isFinite(km) && km > 0 ? km : NEARBY_KM;
   return cache;
 }
 
@@ -103,6 +111,7 @@ export function validateSettings(input, current) {
     referral_driver_rides: () => num('referral_driver_rides', 1, 50, 'Los viajes del conductor invitado'),
     referral_monthly_max: () => num('referral_monthly_max', 1, 100, 'Los premios por mes'),
     tips_enabled: () => { values.tips_enabled = [false, '0', 0].includes(input.tips_enabled) ? '0' : '1'; return null; },
+    nearby_km: () => num('nearby_km', 1, 30, 'El radio para recibir solicitudes (km)'),
     intercity_enabled: () => { values.intercity_enabled = [true, '1', 1].includes(input.intercity_enabled) ? '1' : '0'; return null; },
     intercity_base: () => num('intercity_base', 0, 2000, 'La tarifa base entre ciudades'),
     intercity_km: () => num('intercity_km', 0, 100, 'El precio por km entre ciudades'),

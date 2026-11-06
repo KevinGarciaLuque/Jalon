@@ -2,13 +2,13 @@
 import { pool } from '../db.js';
 import { distanceKm } from '../geo.js';
 import { getRoute } from '../maps.js';
-import { NEARBY_KM, ETA_EVERY_MS, SHOW_PARTNER_PHONES, REQUEST_TTL_MIN } from '../config.js';
+import { ETA_EVERY_MS, SHOW_PARTNER_PHONES, REQUEST_TTL_MIN } from '../config.js';
 import { io } from '../app.js';
 import { drivers, passengers, openRides, declined, room } from '../live.js';
 import { push } from '../notify.js';
 import { openSafetyCheck } from './safety.js';
 import { promoOf, rideDiscount } from './promos.js';
-import { money } from '../wallet.js';
+import { money, nearbyKm } from '../wallet.js';
 import { tipOpen } from './tips.js';
 
 export async function getRide(id) {
@@ -71,7 +71,7 @@ export function nearbyDrivers(lat, lng) {
   for (const d of drivers.values()) {
     if (!d.available || d.disconnected || d.lat == null) continue; // los que solo se alcanzan por notificación no se muestran en el mapa
     const km = distanceKm(lat, lng, d.lat, d.lng);
-    if (km <= NEARBY_KM) near.push({ km, d });
+    if (km <= nearbyKm()) near.push({ km, d });
   }
   return near
     .sort((a, b) => a.km - b.km)
@@ -85,14 +85,14 @@ export const canTake = (d, ride) => !Number(ride.women_only) || !!d?.woman;
 export function announceRide(ride) {
   openRides.set(ride.id, ride);
   for (const d of drivers.values()) {
-    if (!d.available || (d.category || 'car') !== (ride.category || 'car') || !canTake(d, ride) || distanceKm(d.lat, d.lng, ride.origin_lat, ride.origin_lng) > NEARBY_KM) continue;
+    if (!d.available || (d.category || 'car') !== (ride.category || 'car') || !canTake(d, ride) || distanceKm(d.lat, d.lng, ride.origin_lat, ride.origin_lng) > nearbyKm()) continue;
     if (!d.disconnected) io.to(room(d.id)).emit('ride:new', ride);
     else push(d.id, { bell: false, title: 'Nuevo viaje cerca de ti', body: `${ride.dest_text ? `A ${ride.dest_text}` : 'Viaje disponible'} · L ${Math.round(ride.offered_price)}`, tag: `ride-${ride.id}`, url: '/' });
   }
 }
 
 export function openRidesNear(lat, lng, driverId, category = 'car', woman = false) {
-  return [...openRides.values()].filter((r) => (r.category || 'car') === category && canTake({ woman }, r) && distanceKm(lat, lng, r.origin_lat, r.origin_lng) <= NEARBY_KM && !declined.get(r.id)?.has(driverId));
+  return [...openRides.values()].filter((r) => (r.category || 'car') === category && canTake({ woman }, r) && distanceKm(lat, lng, r.origin_lat, r.origin_lng) <= nearbyKm() && !declined.get(r.id)?.has(driverId));
 }
 
 export function closeOpenRide(rideId) {

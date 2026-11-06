@@ -15,6 +15,12 @@ import { escalateSafety } from './services/safety.js';
 import { purgeSelfies } from './routes/selfies.js';
 import { scheduleBackups } from './services/backups.js';
 import { intercitySweep } from './routes/intercity.js';
+import { getSettings } from './wallet.js';
+
+// Carga los ajustes al arrancar: el radio para recibir solicitudes (Ajustes → Viajes) queda listo desde el primer momento
+await getSettings(pool).catch(reportError);
+// Y se vuelven a leer cada minuto (por si se cambiaron desde otro servidor)
+setInterval(() => getSettings(pool).catch(reportError), 60000).unref();
 
 // Las ofertas vencidas se revisan cada OFFER_SWEEP_MS (5 s por defecto)
 setInterval(() => expireOffers().catch(reportError), Number(process.env.OFFER_SWEEP_MS || 5000)).unref();

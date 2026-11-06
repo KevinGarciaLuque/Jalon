@@ -2,11 +2,11 @@
 import crypto from 'crypto';
 import { pool } from './db.js';
 import { distanceKm } from './geo.js';
-import { getSettings } from './wallet.js';
+import { getSettings, nearbyKm } from './wallet.js';
 import { fareFor, isCategory } from './fares.js';
 import { getRoute, reversePlace } from './maps.js';
 import { chatOpen, chatAllowed, CHAT_MAX } from './chat.js';
-import { reportError, SESSION_COOKIE, trustedOrigin, NEARBY_KM, OFFER_TTL_SECONDS, RAISE_COOLDOWN_MS, MAX_PRICE, SOCKET_WINDOW_MS, SOCKET_LIMIT_DEFAULT, SOCKET_LIMITS, SCHEDULE_MIN_AHEAD, SCHEDULE_MAX_DAYS } from './config.js';
+import { reportError, SESSION_COOKIE, trustedOrigin, OFFER_TTL_SECONDS, RAISE_COOLDOWN_MS, MAX_PRICE, SOCKET_WINDOW_MS, SOCKET_LIMIT_DEFAULT, SOCKET_LIMITS, SCHEDULE_MIN_AHEAD, SCHEDULE_MAX_DAYS } from './config.js';
 import { normalizePhone } from './phone.js';
 import { io } from './app.js';
 import { drivers, passengers, openRides, declined, room } from './live.js';
@@ -377,7 +377,7 @@ io.on('connection', async (socket) => {
       openRides.set(ride.id, view);
       declined.delete(ride.id); // con el precio nuevo, quienes la rechazaron la vuelven a ver
       for (const d of drivers.values()) {
-        if (!d.available || (d.category || 'car') !== ride.category || !canTake(d, ride) || distanceKm(d.lat, d.lng, ride.origin_lat, ride.origin_lng) > NEARBY_KM) continue;
+        if (!d.available || (d.category || 'car') !== ride.category || !canTake(d, ride) || distanceKm(d.lat, d.lng, ride.origin_lat, ride.origin_lng) > nearbyKm()) continue;
         if (!d.disconnected) io.to(room(d.id)).emit('ride:new', view); // el cliente reemplaza la solicitud por la del precio nuevo
         else push(d.id, { bell: false, title: 'El pasajero subió su oferta', body: `${ride.dest_text ? `A ${ride.dest_text}` : 'Viaje cercano'} · L ${Math.round(price)}`, tag: `ride-${ride.id}`, url: '/' });
       }
