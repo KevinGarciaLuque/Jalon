@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Ktracho GO</string>
+    <string name="title_activity_main">Ktracho GO</string>
+    <string name="package_name">com.ktrachogo.app</string>
+    <string name="custom_url_scheme">com.ktrachogo.app</string>
+</resources>

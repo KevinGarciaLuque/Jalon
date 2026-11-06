@@ -3,6 +3,17 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-06-app-android',
+    date: '2026-11-06',
+    title: 'App de Android (prueba, todavía no está en Play Store)',
+    for: ['staff'],
+    items: [
+      'Ya se arma la app de Android: GitHub → Actions → «App de Android» → Artifacts → «ktracho-go-android» (archivo .apk para instalar en un teléfono de prueba).',
+      'La app abre ktrachogo.com por dentro: cada cambio que se publica llega solo, igual que en la web, sin pasar por la tienda.',
+      'Conductores en la app: con la pantalla bloqueada o la app minimizada se sigue mandando su ubicación (Android muestra un aviso fijo mientras está en línea).',
+    ],
+  },
+  {
     id: '2026-11-06-radio-solicitudes',
     date: '2026-11-06',
     title: 'Radio para recibir solicitudes, en Ajustes',

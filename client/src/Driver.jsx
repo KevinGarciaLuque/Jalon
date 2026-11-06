@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
+import { isNative, startBackgroundGps, stopBackgroundGps } from './native.js';
 import { useGeo, distanceKm, lempiras, minutes, useChat, useNow, wazeUrl, mapsUrl, apiGet, money2, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
 import { CarMarker, FitTo, MapControls, RouteLine, icons, rotateOptions, showAt } from './mapParts.jsx';
 import DriverWallet from './DriverWallet.jsx';
@@ -169,6 +170,21 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
   const preview = requests.find((q) => q.id === previewId) || null;
   // Si recarga la página con un viaje activo, queda como "en línea"
   useEffect(() => { if (active) setOnline(true); }, [active]);
+
+  // App de Android/iPhone: en línea o con viaje, el GPS sigue mandando la ubicación con la pantalla bloqueada o la app minimizada
+  // (en el navegador eso no se puede: al bloquear el teléfono deja de mandarla)
+  const gpsOn = isNative() && (online || active);
+  useEffect(() => {
+    if (!gpsOn) return;
+    let last = 0;
+    startBackgroundGps((fix) => {
+      posRef.current = fix;
+      if (Date.now() - last < 3000) return;
+      last = Date.now();
+      socket.emit('driver:location', fix);
+    });
+    return () => { stopBackgroundGps(); };
+  }, [gpsOn, socket]);
 
   const offer = (r, price) => socket.emit('offer:make', { rideId: r.id, price: Number(price) });
   // Rechazar: deja de verla (el servidor la vuelve a mandar si el pasajero sube el precio)

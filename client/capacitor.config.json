@@ -1,0 +1,13 @@
+{
+  "appId": "com.ktrachogo.app",
+  "appName": "Ktracho GO",
+  "webDir": "dist",
+  "server": {
+    "url": "https://ktrachogo.com",
+    "androidScheme": "https"
+  },
+  "android": {
+    "backgroundColor": "#ffffff",
+    "useLegacyBridge": true
+  }
+}

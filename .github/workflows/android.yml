@@ -1,0 +1,55 @@
+name: App de Android
+
+# Arma la app de Android (archivo .apk de prueba) en cada subida a main que toque la app o el cliente.
+# La app carga ktrachogo.com por dentro: los cambios de la web llegan solos, sin volver a armarla.
+# El .apk queda en GitHub → Actions → «App de Android» → la corrida → Artifacts → «ktracho-go-android».
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'client/android/**'
+      - 'client/capacitor.config.json'
+      - 'client/package.json'
+      - 'client/package-lock.json'
+      - 'client/src/native.js'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Instalar dependencias y compilar la web
+        run: |
+          npm ci --prefix client
+          npm --prefix client run build
+
+      - name: Copiar la configuración y los complementos a Android
+        working-directory: client
+        run: npx cap sync android
+
+      - name: Armar el .apk de prueba
+        working-directory: client/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ktracho-go-android
+          path: client/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30

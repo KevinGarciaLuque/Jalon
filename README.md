@@ -695,3 +695,12 @@ Cada aviso que antes solo llegaba al celular (`push()` / `pushStaff()` en `serve
   consulta el número cada 20 s.
 - `GET /api/notifications` (las últimas 50 y el número sin leer), `GET /api/notifications/unread`, `POST /api/notifications/read`
   (`{ ids }` o todas). Se borran a los 30 días y al eliminar la cuenta (dicho en la política de privacidad). Prueba: `test/phase25.mjs`.
+
+## App de Android (etapa 1: prueba)
+
+La app de las tiendas es la misma web dentro de **Capacitor** (`client/android`, `client/capacitor.config.json`): abre `https://ktrachogo.com`, así que los cambios que se suben a main llegan solos. Solo hay que armar una versión nueva cuando cambia algo nativo (ícono, permisos, complementos).
+
+- **Armar el .apk:** lo hace GitHub (`.github/workflows/android.yml`) al subir cambios de la app, o a mano en Actions → «App de Android» → *Run workflow*. Queda en *Artifacts* → `ktracho-go-android` (30 días). Es un .apk de prueba (debug): se instala en Android permitiendo «orígenes desconocidos».
+- **GPS en segundo plano:** `client/src/native.js` (complemento `@capacitor-community/background-geolocation`). Con el conductor en línea o con viaje, sigue mandando `driver:location` con la pantalla bloqueada; Android muestra una notificación fija mientras tanto. En la web no cambia nada.
+- **Íconos:** salen de `client/assets` con `npx @capacitor/assets generate --android`.
+- **Falta:** notificaciones nativas (Firebase), versión firmada para Play Store (.aab) y la de iPhone.
