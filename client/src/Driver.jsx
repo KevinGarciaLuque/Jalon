@@ -10,6 +10,7 @@ import ReportForm from './ReportForm.jsx';
 import DriverDocs from './DriverDocs.jsx';
 import DriverSelfie from './DriverSelfie.jsx';
 import PermsBar from './PermsBar.jsx';
+import { playRideAlert, unlockRideAlert, rideSoundOn, setRideSound } from './rideAlert.js';
 
 function Recenter({ pos }) {
   const map = useMap();
@@ -38,6 +39,8 @@ const QUICK = ['Ya llegué', 'Estoy afuera', 'Voy en camino', 'Llego en 5 minuto
 export default function Driver({ socket, token, status, userId, perms = [], onWallet }) {
   const { pos, setPos, denied, course, retry: retryGeo } = useGeo();
   const [online, setOnline] = useState(false);
+  const [sound, setSound] = useState(rideSoundOn); // sonido al llegar una solicitud (se puede silenciar)
+  const seenIds = useRef(new Set()); // solicitudes que ya está viendo: solo suenan las nuevas
   const [requests, setRequests] = useState([]);
   const [sent, setSent] = useState({}); // rideId -> { price, until } de la oferta hecha (vale unos segundos)
   const [eta, setEta] = useState(null); // tiempo y camino hacia el pasajero (o al destino)
@@ -90,7 +93,11 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
 
   useEffect(() => {
     socket.on('rides:open', setRequests);
-    socket.on('ride:new', (r) => setRequests((cur) => [...cur.filter((x) => x.id !== r.id), r]));
+    socket.on('ride:new', (r) => {
+      // Solicitud nueva (o que vuelve porque el pasajero subió el precio): suena y vibra
+      if (!seenIds.current.has(r.id)) playRideAlert();
+      setRequests((cur) => [...cur.filter((x) => x.id !== r.id), r]);
+    });
     socket.on('ride:closed', ({ rideId }) => setRequests((cur) => cur.filter((x) => x.id !== rideId)));
     socket.on('offer:sent', ({ rideId, price, ttl }) => setSent((cur) => ({ ...cur, [rideId]: { price, ttl: ttl || 90, until: Date.now() + (ttl || 90) * 1000 } })));
     // Si la oferta venció sin respuesta, puede volver a ofertar
@@ -126,6 +133,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
 
   function toggle() {
     if (!pos) return;
+    unlockRideAlert(); // el toque permite que después suene el aviso de solicitudes
     if (online) {
       socket.emit('driver:offline');
       setRequests([]);
@@ -136,6 +144,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
     setOnline(!online);
   }
 
+  useEffect(() => { seenIds.current = new Set(requests.map((r) => r.id)); }, [requests]);
   const active = ride && ['accepted', 'arrived', 'started'].includes(ride.status);
   const preview = requests.find((q) => q.id === previewId) || null;
   // Si recarga la página con un viaje activo, queda como "en línea"
@@ -276,7 +285,12 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
 
             {online && (
               <>
-                <b>Solicitudes cercanas ({requests.length})</b>
+                <div className="row between">
+                  <b>Solicitudes cercanas ({requests.length})</b>
+                  <button type="button" className="sm sound-toggle" aria-pressed={sound} onClick={() => { const on = !sound; setRideSound(on); setSound(on); if (on) { unlockRideAlert(); playRideAlert(); } }} title={sound ? 'Silenciar el aviso de solicitudes' : 'Activar el sonido de solicitudes'}>
+                    {sound ? '🔔 Sonido' : '🔕 Silencio'}
+                  </button>
+                </div>
                 {requests.length === 0 && <div className="pulse">Esperando pasajeros…</div>}
                 {requests.map((r) => {
                   const away = pos ? distanceKm(pos, { lat: r.origin_lat, lng: r.origin_lng }) : 0;

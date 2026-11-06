@@ -3,6 +3,17 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-06-sonido-solicitudes',
+    date: '2026-11-06',
+    title: 'Suena cuando llega una solicitud',
+    for: ['driver'],
+    items: [
+      'Con la app abierta y estando disponible, cada solicitud nueva suena y hace vibrar el celular (en iPhone, solo el sonido).',
+      'Si no lo quieres, toca «🔔 Sonido» junto a «Solicitudes cercanas» para silenciarlo. La app lo recuerda.',
+      'Con la app cerrada te sigue llegando la notificación del celular, si la activaste.',
+    ],
+  },
+  {
     id: '2026-11-06-pedir-viaje',
     date: '2026-11-06',
     title: 'Nueva pantalla para pedir viaje',

@@ -940,3 +940,7 @@ header { gap: 8px; background: linear-gradient(135deg, var(--card), var(--bg)); 
 .price-meter.lvl-fast .pm-title { color: var(--ok); }
 .price-meter.lvl-none .pm-title { color: var(--muted); }
 @media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } .price-meter .pm-mark { transition: none; } }
+
+/* Aviso de solicitudes del conductor: sonido / silencio */
+.sound-toggle { border-radius: 999px; min-height: 34px; padding: 4px 12px; font-size: 13px; }
+.sound-toggle[aria-pressed="false"] { color: var(--muted); }
