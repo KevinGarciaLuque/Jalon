@@ -3,6 +3,18 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-06-pedir-viaje',
+    date: '2026-11-06',
+    title: 'Nueva pantalla para pedir viaje',
+    for: ['passenger'],
+    items: [
+      'Ves cuántos conductores hay cerca y en cuántos minutos llega el primero, en vivo.',
+      'Moto, Carro y Carro amplio salen en tarjetas con su precio y en cuánto llega cada uno.',
+      'Nuevo medidor de precio: te dice si tu oferta «Puede tardar», es un «Precio justo» o «Te aceptan rápido», según los conductores que hay cerca.',
+      'Tus lugares guardados salen con su ícono, y según la hora te sugerimos primero «¿Casa?» o «¿Trabajo?».',
+    ],
+  },
+  {
     id: '2026-11-06-modo-prueba',
     date: '2026-11-06',
     title: 'El superadmin puede usar la app como pasajero o conductor',

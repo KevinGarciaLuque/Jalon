@@ -50,8 +50,8 @@ const see = (page, text, timeout = 15000) => page.waitForFunction((t) => documen
 try {
   // ---------- Pasajero ----------
   const pass = await open({ token: P.token, user: P.user });
-  await pass.waitForSelector('input[placeholder^="¿A dónde vas?"]', { timeout: 20000 });
-  await pass.type('input[placeholder^="¿A dónde vas?"]', 'Mall Multiplaza Tegucigalpa');
+  await pass.waitForSelector('input[placeholder^="¿A dónde vamos hoy?"]', { timeout: 20000 });
+  await pass.type('input[placeholder^="¿A dónde vamos hoy?"]', 'Mall Multiplaza Tegucigalpa');
   await (await pass.waitForSelector('::-p-text(Mall Multiplaza,)', { timeout: 20000 })).click(); // la sugerencia (no lo escrito)
   check('aparece el botón para pedir', await see(pass, 'Pedir viaje por', 25000));
   await (await pass.waitForSelector('button::-p-text(¿Tienes un código promocional?)')).click();

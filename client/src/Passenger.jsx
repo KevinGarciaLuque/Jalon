@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
-import { useGeo, apiGet, apiPost, promoDiscount, lempiras, minutes, useChat, useNow, CATEGORIES, CATEGORY_LABEL, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
+import { useGeo, apiGet, apiPost, promoDiscount, lempiras, minutes, useChat, useNow, CATEGORY_LABEL, TILE_URL, TILE_ATTRIBUTION } from './lib.js';
 import { CarMarker, FitTo, MapControls, RouteLine, icons, rotateOptions, showAt } from './mapParts.jsx';
 import ReportForm from './ReportForm.jsx';
 import Rentals from './Rentals.jsx';
 import Tip from './Tip.jsx';
 import PermsBar from './PermsBar.jsx';
+import { NearbyLine, CategoryCards, PriceMeter, QuickPlaces, etaMinutes } from './RideOptions.jsx';
 import { AddressSearch, Avatar, Chat, PriceStepper, Rate, SafetyBar, Stars, TimeRing, Grab } from './components.jsx';
 
 function Recenter({ pos }) {
@@ -400,22 +401,14 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
 
         {!active && !ended && (
           <>
-            <div className="row between">
-              <b>{near.length}{drivers.length >= 25 ? '+' : ''} conductor{near.length === 1 ? '' : 'es'} de {CATEGORY_LABEL[category].toLowerCase()} cerca</b>
-              <span className="dot" />
-            </div>
+            <NearbyLine count={near.length} capped={drivers.length >= 25} label={CATEGORY_LABEL[category]} eta={etaMinutes(from, near)} />
+            {/* Con destino, los tipos de viaje (con su precio) van arriba para que se vean sin bajar */}
+            {dest && preview && <CategoryCards value={category} onChange={pickCategory} drivers={drivers} from={from} prices={preview.prices} />}
 
             <AddressSearch icon={<i className="dot-o" />} token={token} near={pos} placeholder="¿Dónde te recogemos?" value={origin ? origin.text : 'Mi ubicación'} onPick={setOrigin} />
             {origin && <button className="link left" onClick={() => setOrigin(null)}>📍 Usar mi ubicación</button>}
-            {(favs.length > 0 || recent.length > 0) && !dest && (
-              <div className="quick">
-                {favs.map((f) => <button key={f.id} className="sm" onClick={() => pickDest({ lat: f.lat, lng: f.lng, text: f.text })}>⭐ {f.label}</button>)}
-                {recent.filter((r) => !favs.some((f) => Math.abs(f.lat - r.lat) < 1e-4 && Math.abs(f.lng - r.lng) < 1e-4)).map((r) => (
-                  <button key={`${r.lat},${r.lng}`} className="sm recent" title={r.text} onClick={() => pickDest(r)}>🕘 {r.text.split(',')[0]}</button>
-                ))}
-              </div>
-            )}
-            <AddressSearch icon={<i className="dot-d" />} token={token} near={from} placeholder="¿A dónde vas? (o toca el mapa)" value={dest?.text || ''} onPick={pickDest} />
+            {!dest && <QuickPlaces favs={favs} recent={recent} onPick={pickDest} />}
+            <AddressSearch icon={<i className="dot-d" />} token={token} near={from} placeholder="¿A dónde vamos hoy? (o toca el mapa)" value={dest?.text || ''} onPick={pickDest} />
             {dest && !favs.some((f) => Math.abs(f.lat - dest.lat) < 1e-4 && Math.abs(f.lng - dest.lng) < 1e-4) && (
               <button className="link left" onClick={saveFav}>⭐ Guardar este lugar</button>
             )}
@@ -432,23 +425,14 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
                 ))}
               </div>
             )}
+            {/* Tipos de viaje: antes de elegir destino muestran quién está cerca; con destino, también el precio */}
+            {!dest && <CategoryCards value={category} onChange={pickCategory} drivers={drivers} from={from} />}
             {!dest && perms.includes('rent') && <button className="link left" onClick={() => setRenting(true)}>¿Necesitas un carro todo el día? Alquila uno con conductor</button>}
             {dest && !preview && !previewError && <div className="pulse">Calculando ruta…</div>}
             {previewError && <div className="error">{previewError}</div>}
             {dest && preview && (
               <>
-                <div className="row between">
-                  <span className="muted">{preview.distanceKm.toFixed(1)} km · {minutes(preview.durationMin)}{preview.estimated && ' (estimado)'}</span>
-                  <span className="muted">Sugerido <b>{lempiras(preview.prices?.[category] ?? preview.suggestedPrice)}</b></span>
-                </div>
-                <div className="cats" role="radiogroup" aria-label="Tipo de vehículo">
-                  {CATEGORIES.map(([k, label]) => (
-                    <button type="button" key={k} role="radio" aria-checked={category === k} className={category === k ? 'on' : ''} onClick={() => pickCategory(k)}>
-                      <span>{label}</span>
-                      <b>{lempiras(preview.prices?.[k] ?? preview.suggestedPrice)}</b>
-                    </button>
-                  ))}
-                </div>
+                <p className="muted small trip-size">{preview.distanceKm.toFixed(1)} km · {minutes(preview.durationMin)} de viaje{preview.estimated && ' (estimado)'}</p>
                 {gender === 'f' && (
                   <label className="check women-only">
                     <input type="checkbox" checked={womenOnly} onChange={(e) => setWomenOnly(e.target.checked)} />
@@ -488,6 +472,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
                 {/* Precio y botón fijos abajo del panel: se ven sin bajar */}
                 <div className="ask-bar">
                   <PriceStepper value={price} label="Tu oferta en lempiras" onChange={(v) => { priceEdited.current = true; setPrice(v); }} />
+                  <PriceMeter price={price} suggested={preview.prices?.[category] ?? preview.suggestedPrice} nearCount={near.length} />
                   <PromoField token={token} price={price} promo={promo} onChange={setPromo} />
                   {error && <div className="error">{error}</div>}
                   <button className="primary" disabled={!price} onClick={request}>

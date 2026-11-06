@@ -56,6 +56,8 @@ const click = async (page, text, timeout = 15000) => {
   await settled(page);
   const byName = await page.waitForSelector(`::-p-aria([name="${text}"][role="button"])`, { timeout: 1500 }).catch(() => null);
   const el = byName || (await page.waitForSelector(`button::-p-text(${text}), a::-p-text(${text})`, { timeout }));
+  // Al centro de la pantalla: la barra del precio (fija abajo de la hoja) no debe quedar encima
+  await el.evaluate((e) => e.scrollIntoView({ block: 'center' }));
   await el.click();
 };
 // Historial, cuenta y cerrar sesión están en el menú ☰ (sale de la izquierda; se espera a que termine de cerrarse)
@@ -235,7 +237,7 @@ try {
   check('pasajero ve al conductor libre en el mapa', await see(pass, '1 conductor de carro cerca', 20000));
 
   // Buscar el destino por nombre
-  await pass.type('input[placeholder^="¿A dónde vas?"]', 'Mall Multiplaza Tegucigalpa');
+  await pass.type('input[placeholder^="¿A dónde vamos hoy?"]', 'Mall Multiplaza Tegucigalpa');
   check('aparecen sugerencias de direcciones', await see(pass, 'Mall Multiplaza', 15000));
   await click(pass, 'Mall Multiplaza');
   check('muestra distancia, tiempo y precio sugerido', await see(pass, 'Sugerido', 20000));
@@ -392,8 +394,8 @@ try {
   check('el pasajero envía el reporte', await see(pass, 'Recibimos tu reporte'));
   await click(pass, 'Listo');
   await click(pass, 'Nuevo viaje');
-  check('el lugar guardado aparece como atajo en el viaje siguiente', await see(pass, '⭐ Trabajo'));
-  await click(pass, '⭐ Trabajo');
+  check('el lugar guardado aparece como atajo en el viaje siguiente', await see(pass, 'Trabajo'));
+  await click(pass, 'Trabajo');
   check('al tocarlo se llena el destino y se calcula la ruta', await see(pass, 'Sugerido', 20000));
   await shot(driver, '6-conductor-termino');
 

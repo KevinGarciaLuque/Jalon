@@ -909,3 +909,34 @@ header { gap: 8px; background: linear-gradient(135deg, var(--card), var(--bg)); 
 .test-mode-bar button { flex: none; background: #1f1300; color: #fff; border-color: #1f1300; }
 .profile-pop .staff-modes { display: grid; gap: 6px; padding: 10px 20px 12px; border-bottom: 1px solid var(--line); }
 .profile-pop .staff-modes .seg button { min-height: 40px; font-size: 14px; }
+
+/* ---- Pedir viaje: conductores cerca, tipos de viaje, medidor de precio y destinos rápidos ---- */
+.nearby-line { display: flex; align-items: center; gap: 10px; font-size: 14px; line-height: 1.35; }
+.live-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--brand); box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand) 60%, transparent); animation: live-ping 1.8s ease-out infinite; }
+.live-dot.off { background: var(--muted); animation: none; }
+@keyframes live-ping { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand) 55%, transparent); } 100% { box-shadow: 0 0 0 9px transparent; } }
+.cat-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.cat-cards button { display: grid; justify-items: start; gap: 1px; padding: 10px 10px 9px; border-radius: var(--r-2); text-align: left; min-height: 0; }
+.cat-cards button.on { border: 2px solid var(--brand); background: color-mix(in srgb, var(--brand) 9%, var(--card)); padding: 9px 9px 8px; }
+.cat-cards .cat-ico { font-size: 20px; line-height: 1.1; }
+.cat-cards b { font-size: 14px; }
+.cat-cards .cat-price { font-size: 15px; font-weight: 700; color: var(--text); }
+.cat-cards .cat-eta { font-size: 12px; color: var(--muted); font-weight: 600; }
+.cat-cards .cat-eta.none { font-weight: 500; }
+.quick-places button.suggested { border-color: var(--brand); color: var(--brand); font-weight: 700; }
+.trip-size { margin: 0; }
+.price-meter { display: flex; align-items: center; gap: 10px; min-height: 24px; }
+.price-meter .pm-title { flex: none; font-size: 14px; }
+.price-meter .pm-sug { flex: none; }
+.price-meter .pm-track { position: relative; flex: 1; min-width: 60px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; height: 8px; }
+.price-meter .pm-track i { border-radius: 4px; opacity: .35; }
+.price-meter .pm-slow { background: var(--danger); }
+.price-meter .pm-fair { background: var(--mango); }
+.price-meter .pm-fast { background: var(--ok); }
+.price-meter.lvl-slow .pm-slow, .price-meter.lvl-fair .pm-fair, .price-meter.lvl-fast .pm-fast { opacity: 1; }
+.price-meter .pm-mark { position: absolute; top: 50%; width: 16px; height: 16px; margin-left: -8px; transform: translateY(-50%); border-radius: 50%; background: var(--card); border: 3px solid var(--text); transition: left var(--slow) ease-out; }
+.price-meter.lvl-slow .pm-title { color: var(--danger); }
+.price-meter.lvl-fair .pm-title { color: var(--mango-ink, #8a5a00); }
+.price-meter.lvl-fast .pm-title { color: var(--ok); }
+.price-meter.lvl-none .pm-title { color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } .price-meter .pm-mark { transition: none; } }

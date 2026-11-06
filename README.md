@@ -626,6 +626,16 @@ el permiso `settings`). Necesita la **comisión encendida**, igual que los códi
 Tablas: `referrals`; columnas `users.referral_code` y `promo_codes.user_id`; movimiento `referral` en `wallet_entries`.
 Pruebas: `test/phase41.mjs` y, en pantalla, `test/referral-ui.mjs`.
 
+## Pantalla para pedir viaje (diseño, etapa A)
+
+Lo que ve el pasajero antes de pedir (`client/src/RideOptions.jsx`), todo con datos que ya existían, sin cambios en la base:
+
+- **Conductores cerca, en vivo:** «5 conductores de carro cerca · el primero llega en 3 min». El tiempo se calcula en la app con la distancia en línea recta al conductor más cercano (~22 km/h en ciudad, más un minuto).
+- **Tipos de viaje en tarjetas** (Moto, Carro, Carro amplio): en cuánto llega el primero y, con destino, el precio sugerido de cada uno. Con destino suben arriba para que se vean sin bajar.
+- **Medidor de precio** junto a la oferta: compara con el sugerido (70 %–130 %) y se ajusta por cuántos conductores hay cerca (con 1–2 hace falta ofrecer más; con 6 o más, un poco menos). Dice «Puede tardar», «Precio justo», «Te aceptan rápido» o «Sin conductores cerca». Es una guía, no una promesa.
+- **Destinos rápidos:** los lugares guardados con ícono (Casa 🏠, Trabajo 💼…) y los recientes. De 5 a 11 de la mañana sugiere primero «¿Trabajo?»; de 4 de la tarde a 2 de la mañana, «¿Casa?».
+- Prueba: `test/ride-ui.mjs` (con conductores de carro y moto en línea).
+
 ## Propinas
 
 Al terminar el viaje, el pasajero puede dejarle propina en efectivo al conductor (`POST /api/rides/:id/tip`, en `server/src/services/tips.js`).

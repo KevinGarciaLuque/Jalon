@@ -80,8 +80,8 @@ try {
 
   // ---------- El invitado ve su bienvenida al pedir ----------
   const pb = await open({ token: B.token, user: B.user });
-  await pb.waitForSelector('input[placeholder^="¿A dónde vas?"]', { timeout: 20000 });
-  await pb.type('input[placeholder^="¿A dónde vas?"]', 'Mall Multiplaza Tegucigalpa');
+  await pb.waitForSelector('input[placeholder^="¿A dónde vamos hoy?"]', { timeout: 20000 });
+  await pb.type('input[placeholder^="¿A dónde vamos hoy?"]', 'Mall Multiplaza Tegucigalpa');
   await (await pb.waitForSelector('::-p-text(Mall Multiplaza,)', { timeout: 20000 })).click();
   check('aparece el botón para pedir', await see(pb, 'Pedir viaje por', 25000));
   check('le ofrece su descuento de bienvenida sin escribir el código', await see(pb, 'Usar tu descuento de L 20'));

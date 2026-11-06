@@ -26,6 +26,8 @@ try {
   if (process.env.THEME) await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: process.env.THEME }]);
   await page.setGeolocation({ latitude: 14.0723, longitude: -87.1921, accuracy: 5 });
   await page.goto(CLIENT, { waitUntil: 'domcontentloaded' });
+  // Aparato nuevo: primero pregunta si ya tiene cuenta
+  await (await page.waitForSelector('button::-p-text(Ya tengo cuenta)', { timeout: 20000 })).click();
   await page.waitForSelector('input[placeholder^="Teléfono"]', { timeout: 20000 });
   await page.type('input[placeholder^="Teléfono"]', phone);
   await page.type('input[placeholder="Contraseña"]', 'Cielo-azul-77');

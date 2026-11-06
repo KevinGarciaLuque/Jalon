@@ -61,7 +61,7 @@ try {
   await avatarMode(page, 'Pasajero');
   await closeNotice(page);
   check('en modo pasajero sale la barra de prueba', await see(page, 'Modo de prueba: pasajero'));
-  check('y la pantalla del pasajero', !!(await page.waitForSelector('input[placeholder^="¿A dónde vas?"]', { timeout: 15000 }).catch(() => null)));
+  check('y la pantalla del pasajero', !!(await page.waitForSelector('input[placeholder^="¿A dónde vamos hoy?"]', { timeout: 15000 }).catch(() => null)));
   check('sin el panel', !(await page.$('nav.sidebar')) && !(await visible(page, 'Indicadores')));
   await wait(600);
   await shot(page, 'modo-pasajero');

@@ -37,6 +37,8 @@ try {
     };
   });
   await page.goto(CLIENT, { waitUntil: 'domcontentloaded' });
+  // Aparato nuevo: primero pregunta si ya tiene cuenta
+  await (await page.waitForSelector('button::-p-text(Ya tengo cuenta)', { timeout: 20000 })).click();
   // Entra por la pantalla normal, con cookie de sesión como cualquier usuario
   await page.waitForSelector('input[placeholder^="Teléfono"]', { timeout: 20000 });
   await page.type('input[placeholder^="Teléfono"]', phone);
