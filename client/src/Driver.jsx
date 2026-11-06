@@ -40,7 +40,7 @@ const POWER = <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke
 const QUICK = ['Ya llegué', 'Estoy afuera', 'Voy en camino', 'Llego en 5 minutos', 'No te encuentro'];
 
 export default function Driver({ socket, token, status, userId, perms = [], onWallet, intercity = false }) {
-  const { pos, setPos, denied, course, retry: retryGeo } = useGeo();
+  const { pos, setPos, denied, guessed, course, retry: retryGeo } = useGeo();
   const [online, setOnline] = useState(false);
   const [sound, setSound] = useState(rideSoundOn); // sonido al llegar una solicitud (se puede silenciar)
   const seenIds = useRef(new Set()); // solicitudes que ya está viendo: solo suenan las nuevas
@@ -70,7 +70,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
   const [renting, setRenting] = useState(false); // tiene un alquiler en curso: no recibe viajes
   const [today, setToday] = useState(null); // lo que le quedó hoy y cuántos viajes (tarjeta «Hoy»)
   const posRef = useRef(pos);
-  posRef.current = pos;
+  posRef.current = guessed ? null : pos; // sin GPS, el centro de Tegucigalpa no se manda como su ubicación
 
   const loadWallet = () => apiGet('driver/wallet', token).then(setWallet).catch(() => {});
   // «Mi saldo y recargas» en el menú, con el saldo a la vista
@@ -152,14 +152,14 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
   useEffect(() => { if (status === 'active') setNotApproved(false); }, [status]);
 
   function toggle() {
-    if (!pos) return;
+    if (!pos || (guessed && !online)) return;
     unlockRideAlert(); // el toque permite que después suene el aviso de solicitudes
     if (online) {
       socket.emit('driver:offline');
       setRequests([]);
       setSent({});
     } else {
-      socket.emit('driver:online', pos);
+      socket.emit('driver:online', posRef.current);
     }
     setOnline(!online);
   }
@@ -224,9 +224,10 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
       <div className={`sheet${compact ? ' compact' : ''}${online && !active && requests.length ? ' has-requests' : ''}`}>
         <Grab compact={compact} setCompact={setCompact} />
         {showTips && <Tips token={token} onClose={() => setShowTips(false)} />}
-        {showIntercity && <IntercityBoard token={token} socket={socket} pos={pos} onClose={() => setShowIntercity(false)} />}
+        {showIntercity && <IntercityBoard token={token} socket={socket} pos={guessed ? null : pos} onClose={() => setShowIntercity(false)} />}
         {tipCele && <TipCelebration tip={tipCele} onClose={() => setTipCele(null)} />}
-        {denied && <div className="hint">Sin GPS: arrastra tu carro para simular tu posición.</div>}
+        {denied && guessed && !online && <div className="hint danger" role="alert">📍 <b>No tenemos tu ubicación.</b> Activa la ubicación para Ktracho GO, o arrastra tu carro en el mapa hasta donde estás, para ponerte disponible.</div>}
+        {denied && !guessed && <div className="hint">Sin GPS: tu posición es la que marcaste con el carro. Arrástralo si te mueves.</div>}
 
         {!active && (
           <>
@@ -246,7 +247,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
             {ride?.status === 'completed' && <button onClick={() => setReporting(true)}>⚠ Reportar un problema con este viaje</button>}
             {showWallet && wallet && <DriverWallet wallet={wallet} reload={loadWallet} onClose={() => setShowWallet(false)} />}
             {showRental && <DriverRental token={token} socket={socket} onClose={() => { setShowRental(false); setRenting(false); }} />}
-            {selfie && <DriverSelfie onClose={() => setSelfie(false)} onDone={() => { setSelfie(false); if (pos) { socket.emit('driver:online', pos); setOnline(true); } }} />}
+            {selfie && <DriverSelfie onClose={() => setSelfie(false)} onDone={() => { setSelfie(false); if (posRef.current) { socket.emit('driver:online', posRef.current); setOnline(true); } }} />}
             {menuNote && <div className="hint" role="status">{menuNote} <button className="link" onClick={() => setMenuNote('')}>Entendido</button></div>}
             {renting && <div className="hint">Tienes un alquiler en curso: no recibes viajes hasta terminarlo en «Alquiler de mi carro».</div>}
             {reporting && ride && <ReportForm rideId={ride.id} token={token} onClose={() => setReporting(false)} />}
@@ -303,7 +304,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
             {status === 'active' && !online && perms.includes('rent.offer') && <button className="sm left" onClick={() => setShowRental(true)}>Alquiler de mi carro por días</button>}
             {online ? null : (
               <div className="ask-bar">
-                <button className="primary go" onClick={toggle} disabled={!pos || status === 'pending'}>{POWER} Ponerme disponible</button>
+                <button className="primary go" onClick={toggle} disabled={!pos || guessed || status === 'pending'}>{POWER} Ponerme disponible</button>
               </div>
             )}
 

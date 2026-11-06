@@ -85,28 +85,37 @@ export const lempiras = (n) => `L ${Number(n).toFixed(0)}`;
 // el mapa aparece al instante ahí, sin esperar a que el GPS vuelva a responder
 let lastFix = null;
 
+// `guessed`: sin GPS, `pos` es solo el centro de Tegucigalpa (para mostrar el mapa): NO es dónde está la persona hasta que
+// el GPS responda o ella mueva el pin a mano. `accuracy`: metros de error que da el GPS (en iPhone, con «Ubicación exacta»
+// apagada, puede ser de varios km).
 export function useGeo() {
-  const [pos, setPos] = useState(lastFix);
+  const [pos, setRawPos] = useState(lastFix);
+  const [exact, setExact] = useState(!!lastFix);
+  const [accuracy, setAccuracy] = useState(null);
   const [denied, setDenied] = useState(false);
   // Rumbo (grados desde el norte) y velocidad (m/s) que da el GPS al moverse; null si no los da (quieto o en computadora)
   const [course, setCourse] = useState({ heading: null, speed: null });
   const [tries, setTries] = useState(0); // retry(): volver a pedir la ubicación (después de activarla)
   useEffect(() => {
-    if (!navigator.geolocation) { setPos(DEFAULT_POS); setDenied(true); return; }
+    if (!navigator.geolocation) { setRawPos((cur) => cur || DEFAULT_POS); setDenied(true); return; }
     const id = navigator.geolocation.watchPosition(
       (p) => {
         lastFix = { lat: p.coords.latitude, lng: p.coords.longitude };
-        setPos(lastFix);
+        setRawPos(lastFix);
+        setExact(true);
+        setAccuracy(Number.isFinite(p.coords.accuracy) ? p.coords.accuracy : null);
         setDenied(false);
         const { heading, speed } = p.coords;
         setCourse({ heading: Number.isFinite(heading) ? heading : null, speed: Number.isFinite(speed) ? speed : null });
       },
-      () => { setDenied(true); setPos((cur) => cur || DEFAULT_POS); },
+      () => { setDenied(true); setRawPos((cur) => cur || DEFAULT_POS); },
       { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 }
     );
     return () => navigator.geolocation.clearWatch(id);
   }, [tries]);
-  return { pos, setPos, denied, course, retry: () => setTries((n) => n + 1) };
+  // La persona fija su posición a mano (arrastrando el pin): desde ahí cuenta como real
+  const setPos = (p) => { setRawPos(p); setExact(true); setAccuracy(null); };
+  return { pos, setPos, denied, guessed: !exact, accuracy, course, retry: () => setTries((n) => n + 1) };
 }
 
 // "Instalar app": Chrome/Android avisa con beforeinstallprompt; iPhone no tiene botón y hay que explicarlo

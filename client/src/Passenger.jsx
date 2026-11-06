@@ -164,7 +164,8 @@ function PromoField({ token, price, promo, onChange }) {
 }
 
 export default function Passenger({ socket, token, userId, perms = [], gender = null, intercity = false }) {
-  const { pos, setPos, denied, course, retry: retryGeo } = useGeo();
+  const { pos, setPos, denied, guessed, accuracy, course, retry: retryGeo } = useGeo();
+  const vague = !guessed && accuracy > 1000; // el GPS da la ubicación con más de 1 km de error (en iPhone: «Ubicación exacta» apagada)
   const [drivers, setDrivers] = useState([]);
   const [origin, setOrigin] = useState(null); // punto de recogida elegido a mano; null = mi GPS
   const [dest, setDest] = useState(null);
@@ -216,7 +217,9 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
 
   const chat = useChat(socket, ride, userId);
   const active = ride && ['requested', 'accepted', 'arrived', 'started'].includes(ride.status);
-  const from = origin || (pos && { ...pos, text: 'Mi ubicación' });
+  // Sin GPS no se pide con «Mi ubicación» (sería el centro de Tegucigalpa, no donde está): tiene que escribirla o mover el pin
+  const from = origin || (pos && !guessed && { ...pos, text: 'Mi ubicación' });
+  const me = from || pos;
   // Se redondea (~100 m) para no recalcular la ruta por pequeños saltos del GPS
   const fromKey = from && `${from.lat.toFixed(3)},${from.lng.toFixed(3)}`;
   const destKey = dest && `${dest.lat.toFixed(5)},${dest.lng.toFixed(5)}`;
@@ -390,11 +393,11 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
             <Recenter pos={pos} />
             <FitTo points={fitPoints} />
             <Picker onPick={pickDest} enabled={!active} />
-            {from && (
+            {me && (
               <Marker
-                position={[from.lat, from.lng]}
+                position={[me.lat, me.lng]}
                 icon={meIcon}
-                draggable={denied && !origin && !active}
+                draggable={(denied || guessed || vague) && !origin && !active}
                 eventHandlers={{ dragend: (e) => setPos({ lat: e.target.getLatLng().lat, lng: e.target.getLatLng().lng }) }}
               />
             )}
@@ -411,7 +414,8 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
 
       <div className={`sheet${compact ? ' compact' : ''}`}>
         <Grab compact={compact} setCompact={setCompact} />
-        {denied && <div className="hint">Sin GPS: arrastra el pin verde para fijar tu posición, o busca tu dirección.</div>}
+        {!active && !ended && guessed && pos && <div className="hint danger" role="alert">📍 <b>No sabemos dónde estás.</b> Escribe abajo dónde te recogemos, o arrastra el pin verde del mapa hasta tu posición.</div>}
+        {!active && !ended && !guessed && !origin && vague && <div className="hint" role="status">📍 Tu ubicación es aproximada (±{(accuracy / 1000).toFixed(1)} km). Revisa que el pin verde esté donde estás: si no, arrástralo o escribe la dirección. En iPhone, activa «Ubicación exacta» para Ktracho GO en Ajustes → Privacidad → Localización.</div>}
 
         {!active && !ended && (
           <>
@@ -433,7 +437,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
             {/* Con destino, los tipos de viaje (con su precio) van arriba para que se vean sin bajar */}
             {dest && preview && <CategoryCards value={category} onChange={pickCategory} drivers={drivers} from={from} prices={preview.prices} />}
 
-            <AddressSearch icon={<i className="dot-o" />} token={token} near={pos} placeholder="¿Dónde te recogemos?" value={origin ? origin.text : 'Mi ubicación'} onPick={setOrigin} />
+            <AddressSearch icon={<i className="dot-o" />} token={token} near={pos} placeholder="¿Dónde te recogemos?" value={origin ? origin.text : guessed ? '' : 'Mi ubicación'} onPick={setOrigin} />
             {origin && <button className="link left" onClick={() => setOrigin(null)}>📍 Usar mi ubicación</button>}
             {!dest && <QuickPlaces favs={favs} recent={recent} onPick={pickDest} />}
             <AddressSearch icon={<i className="dot-d" />} token={token} near={from} placeholder="¿A dónde vamos hoy? (o toca el mapa)" value={dest?.text || ''} onPick={pickDest} />
@@ -503,7 +507,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
                   <PriceMeter price={price} suggested={preview.prices?.[category] ?? preview.suggestedPrice} nearCount={near.length} />
                   <PromoField token={token} price={price} promo={promo} onChange={setPromo} />
                   {error && <div className="error">{error}</div>}
-                  <button className="primary" disabled={!price} onClick={request}>
+                  <button className="primary" disabled={!price || !from} onClick={request}>
                     {when ? 'Programar viaje por' : 'Pedir viaje por'} {lempiras(price || 0)}{promo ? ` · pagas ${lempiras(Number(price || 0) - promoDiscount(promo, price))}` : ''}
                   </button>
                 </div>
@@ -607,7 +611,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
         )}
       </div>
       {renting && <Rentals token={token} socket={socket} onClose={() => setRenting(false)} />}
-      {longTrip && <Intercity token={token} socket={socket} pos={pos} gender={gender} onClose={() => setLongTrip(false)} />}
+      {longTrip && <Intercity token={token} socket={socket} pos={guessed ? null : pos} gender={gender} onClose={() => setLongTrip(false)} />}
       {(safety || ride?.safetyCheck) && ride?.status === 'started' && <SafetyCheck key={(safety || ride.safetyCheck).eventId} check={safety || ride.safetyCheck} socket={socket} onDone={() => { setSafety(null); setRide((r) => (r ? { ...r, safetyCheck: null } : r)); }} />}
     </div>
   );
