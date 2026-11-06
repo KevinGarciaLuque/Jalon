@@ -306,9 +306,11 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
               <>
                 <div className="row between">
                   <b>Solicitudes cercanas ({requests.length})</b>
-                  <button type="button" className="sm sound-toggle" aria-pressed={sound} onClick={() => { const on = !sound; setRideSound(on); setSound(on); if (on) { unlockRideAlert(); playRideAlert(); } }} title={sound ? 'Silenciar el aviso de solicitudes' : 'Activar el sonido de solicitudes'}>
-                    {sound ? '🔔 Sonido' : '🔕 Silencio'}
-                  </button>
+                  <label className="sound-toggle" title={sound ? 'Silenciar el aviso de solicitudes' : 'Activar el sonido de solicitudes'}>
+                    <span aria-hidden="true">{sound ? '🔔 Sonido' : '🔕 Silencio'}</span>
+                    <input type="checkbox" role="switch" className="switch sm" aria-label="Sonido de las solicitudes" checked={sound}
+                      onChange={(e) => { const on = e.target.checked; setRideSound(on); setSound(on); if (on) { unlockRideAlert(); playRideAlert(); } }} />
+                  </label>
                 </div>
                 {requests.length === 0 && <div className="pulse">Esperando pasajeros…</div>}
                 {requests.map((r) => {

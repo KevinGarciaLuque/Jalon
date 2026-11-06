@@ -79,7 +79,7 @@ export default function Settings({ call, onError }) {
         <section role="tabpanel" id="set-panel-commission" aria-labelledby="set-tab-commission" hidden={tab !== 'commission'}>
           <b>Comisión y saldo de los conductores</b>
           <label className="check">
-            <input type="checkbox" checked={s.commission_enabled === '1'} onChange={set('commission_enabled')} />
+            <input type="checkbox" role="switch" className="switch" checked={s.commission_enabled === '1'} onChange={set('commission_enabled')} />
             <span><b>Cobrar comisión</b>: los conductores necesitan saldo para recibir viajes y se les descuenta la comisión de cada viaje en efectivo.</span>
           </label>
           {bankWarning}
@@ -118,12 +118,12 @@ export default function Settings({ call, onError }) {
         <section role="tabpanel" id="set-panel-rides" aria-labelledby="set-tab-rides" hidden={tab !== 'rides'}>
           <b>Propinas</b>
           <label className="check">
-            <input type="checkbox" checked={on('tips_enabled')} onChange={set('tips_enabled')} />
+            <input type="checkbox" role="switch" className="switch" checked={on('tips_enabled')} onChange={set('tips_enabled')} />
             <span><b>Dejar que el pasajero dé propina</b> al terminar el viaje (en efectivo, en los primeros 15 minutos). La propina es toda del conductor: no se le cobra comisión.</span>
           </label>
           <b>Mapa</b>
           <label className="check">
-            <input type="checkbox" checked={on('map_rotation')} onChange={set('map_rotation')} />
+            <input type="checkbox" role="switch" className="switch" checked={on('map_rotation')} onChange={set('map_rotation')} />
             <span><b>El mapa puede girar</b> según hacia dónde va la persona (como Waze) y con dos dedos. Si en algún celular da problemas, apágalo: el mapa queda con el norte arriba (se aplica al volver a abrir la app).</span>
           </label>
         </section>
@@ -131,15 +131,15 @@ export default function Settings({ call, onError }) {
         <section role="tabpanel" id="set-panel-security" aria-labelledby="set-tab-security" hidden={tab !== 'security'}>
           <b>Seguridad de los viajes</b>
           <label className="check">
-            <input type="checkbox" checked={on('ride_pin_required')} onChange={set('ride_pin_required')} />
+            <input type="checkbox" role="switch" className="switch" checked={on('ride_pin_required')} onChange={set('ride_pin_required')} />
             <span><b>Pedir el PIN en todos los viajes</b>: el pasajero ve un PIN de 4 dígitos y se lo dice al conductor al subir; sin él no se puede iniciar el viaje. Apagado, se usa solo para quien lo activó en Mi cuenta y en los viajes «Solo conductoras».</span>
           </label>
           <label className="check">
-            <input type="checkbox" checked={on('ride_safety_checks')} onChange={set('ride_safety_checks')} />
+            <input type="checkbox" role="switch" className="switch" checked={on('ride_safety_checks')} onChange={set('ride_safety_checks')} />
             <span><b>Preguntar «¿Todo bien?» durante el viaje</b> si el carro se desvía de la ruta o se queda detenido mucho tiempo. Si el pasajero pide ayuda o no responde en 2 minutos, se crea una alerta como la de emergencia.</span>
           </label>
           <label className="check">
-            <input type="checkbox" checked={on('driver_selfie_required')} onChange={set('driver_selfie_required')} />
+            <input type="checkbox" role="switch" className="switch" checked={on('driver_selfie_required')} onChange={set('driver_selfie_required')} />
             <span><b>Pedir selfie al conductor para ponerse disponible</b>: se la toma con la cámara frontal y la revisas en «Selfies» comparándola con su foto aprobada. Apagado, se conecta sin selfie.</span>
           </label>
           {on('driver_selfie_required') && (
@@ -147,7 +147,7 @@ export default function Settings({ call, onError }) {
           )}
           <b>Seguridad del personal</b>
           <label className="check">
-            <input type="checkbox" checked={on('staff_2fa_required')} onChange={set('staff_2fa_required')} />
+            <input type="checkbox" role="switch" className="switch" checked={on('staff_2fa_required')} onChange={set('staff_2fa_required')} />
             <span><b>Exigir verificación en dos pasos</b> al superadmin, administradores y soporte. Si la apagas, entran solo con su contraseña (quien ya la tenía configurada la vuelve a usar si la enciendes de nuevo).</span>
           </label>
         </section>
@@ -155,7 +155,7 @@ export default function Settings({ call, onError }) {
         <section role="tabpanel" id="set-panel-rentals" aria-labelledby="set-tab-rentals" hidden={tab !== 'rentals'}>
           <b>Alquiler de carros por días</b>
           <label className="check">
-            <input type="checkbox" checked={s.rental_enabled === '1'} onChange={set('rental_enabled')} />
+            <input type="checkbox" role="switch" className="switch" checked={s.rental_enabled === '1'} onChange={set('rental_enabled')} />
             <span><b>Activar el alquiler</b>: los conductores pueden ofrecer su carro (con ellos como conductor) y los pasajeros alquilarlo por días. También se alquilan los carros de la flota de Ktracho GO.</span>
           </label>
           {s.rental_enabled === '1' && bankWarning}

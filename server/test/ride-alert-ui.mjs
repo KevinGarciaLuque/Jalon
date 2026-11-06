@@ -51,7 +51,7 @@ try {
   await (await page.waitForSelector('button.go', { timeout: 20000 })).click();
   await page.waitForSelector('.sound-toggle', { timeout: 10000 });
   await wait(800);
-  check('al ponerse disponible el sonido está activado', (await page.$eval('.sound-toggle', (b) => b.getAttribute('aria-pressed'))) === 'true');
+  check('al ponerse disponible el sonido está activado', (await page.$eval('.sound-toggle input', (i) => i.checked)) === true);
 
   // ---------- Llega una solicitud: suena ----------
   const p1 = await connect(passengers[0].token);

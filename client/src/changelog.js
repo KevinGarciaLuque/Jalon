@@ -3,6 +3,16 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-06-interruptores',
+    date: '2026-11-06',
+    title: 'Interruptores más fáciles de usar',
+    for: ['all'],
+    items: [
+      'Lo que se enciende y se apaga ahora es un interruptor como el del iPhone, verde cuando está activo: sonido de solicitudes, notificaciones, sonido de los avisos, PIN de viaje, «Solo conductoras» y «para otra persona».',
+      'Los ajustes del panel (comisión, propinas, mapa, seguridad y alquiler) y la opción «Solo para el primer viaje» de los códigos promocionales usan el mismo interruptor.',
+    ],
+  },
+  {
     id: '2026-11-06-mis-propinas',
     date: '2026-11-06',
     title: 'Mis propinas y celebración al recibirlas',

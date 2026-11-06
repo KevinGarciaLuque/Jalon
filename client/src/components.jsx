@@ -328,7 +328,12 @@ export function PushToggle({ token, why, compact = false }) {
   if (state === null) return null;
   if (compact && state === 'on') {
     const off = () => window.confirm('¿Desactivar las notificaciones en este aparato? Dejarás de recibir viajes con la app cerrada.') && toggle();
-    return <button type="button" className="sm push-chip" disabled={busy} onClick={off} title="Notificaciones activadas en este aparato. Tocar para desactivarlas">🔔 Avisos activos</button>;
+    return (
+      <label className="push-chip" title="Notificaciones activadas en este aparato. Tocar para desactivarlas">
+        <span>🔔 Avisos</span>
+        <input type="checkbox" role="switch" className="switch sm" aria-label="Notificaciones en este aparato" checked disabled={busy} onChange={off} />
+      </label>
+    );
   }
   if (state === 'unsupported') return <p className="muted small">Las notificaciones funcionan en la app instalada o en el sitio publicado (en iPhone, primero agrégala a la pantalla de inicio).</p>;
   return (
@@ -337,9 +342,10 @@ export function PushToggle({ token, why, compact = false }) {
       {state === 'denied' ? (
         <div className="error small">Bloqueaste las notificaciones de este sitio. Actívalas en la configuración del navegador.</div>
       ) : (
-        <button className={state === 'on' ? '' : 'primary'} disabled={busy} onClick={toggle}>
-          {state === 'on' ? '🔔 Notificaciones activadas (tocar para desactivar)' : '🔔 Activar notificaciones'}
-        </button>
+        <label className="check switch-line">
+          <span>🔔 Notificaciones {state === 'on' ? <span className="muted">· activadas en este aparato</span> : <span className="muted">· apagadas</span>}</span>
+          <input type="checkbox" role="switch" className="switch" checked={state === 'on'} disabled={busy} onChange={toggle} />
+        </label>
       )}
       {error && <div className="error small">{error}</div>}
     </div>

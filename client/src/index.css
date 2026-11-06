@@ -29,12 +29,13 @@
   --fast: 160ms; /* tocar un botón */
   --slow: 280ms; /* abrir o cerrar algo grande */
   --tap: 44px; /* alto mínimo de lo que se toca con el dedo */
+  --switch-off: #d9e0dc; /* interruptor apagado */
 }
 @media (prefers-color-scheme: dark) {
   :root {
     --brand: #3ccf68; --brand-dark: #2fbf5a; --brand-soft: #11301b; --on-brand: #04170d;
     --mango: #f5b544; --mango-soft: #3a2a0c; --mango-ink: #ffd48a;
-    --bg: #0b120e; --card: #131c17; --text: #e8f0eb; --muted: #95a89d; --line: #24322a;
+    --bg: #0b120e; --card: #131c17; --text: #e8f0eb; --muted: #95a89d; --line: #24322a; --switch-off: #34433a;
     --ok: #3ccf7d; --warn: #f0b13c; --danger: #ff6b6b; --on-danger: #2a0606; --danger-soft: #3a1717; --info: #6b9bff;
     --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .35);
     --shadow-sheet: 0 -6px 24px rgba(0, 0, 0, .5);
@@ -276,7 +277,7 @@ textarea { width: 100%; font: inherit; padding: 12px 14px; border: 1.5px solid v
 .drv-status .push { flex-basis: 100%; }
 .drv-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
 .drv-dot.on { background: var(--brand); box-shadow: 0 0 0 4px var(--brand-soft); }
-button.push-chip { width: auto; min-height: 0; padding: 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.push-chip { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; }
 .drv-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
 .drv-card { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px 12px; border-radius: var(--r-2); text-align: left; font-weight: 400; }
 .drv-card span { font-size: 13px; color: var(--muted); font-weight: 600; }
@@ -942,8 +943,8 @@ header { gap: 8px; background: linear-gradient(135deg, var(--card), var(--bg)); 
 @media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } .price-meter .pm-mark { transition: none; } }
 
 /* Aviso de solicitudes del conductor: sonido / silencio */
-.sound-toggle { border-radius: 999px; min-height: 34px; padding: 4px 12px; font-size: 13px; }
-.sound-toggle[aria-pressed="false"] { color: var(--muted); }
+.sound-toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--text); cursor: pointer; }
+.sound-toggle:has(input:not(:checked)) { color: var(--muted); }
 
 /* Conductor con solicitudes: la hoja sube más y cada tarjeta es compacta, para que «Aceptar» se vea sin bajar */
 @media (max-width: 699px) and (orientation: portrait) {
@@ -1001,3 +1002,22 @@ header { gap: 8px; background: linear-gradient(135deg, var(--card), var(--bg)); 
   .tip-sparks { display: none; }
   .tip-cele-timer { animation: none; display: none; }
 }
+
+/* Interruptores estilo iPhone: un checkbox con role="switch", verde de la marca cuando está encendido */
+input.switch { -webkit-appearance: none; appearance: none; position: relative; flex: 0 0 auto; order: 2; width: 51px; height: 31px; min-height: 0; margin: 0 0 0 auto; padding: 0; border: none; border-radius: 999px; background: var(--switch-off); cursor: pointer; transition: background 200ms ease; }
+input.switch::before { content: ''; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; box-shadow: 0 3px 8px rgba(0, 0, 0, .18), 0 1px 1px rgba(0, 0, 0, .16); transition: transform 240ms cubic-bezier(.3, 1.3, .5, 1), width 160ms ease; }
+input.switch:checked { background: var(--brand); }
+input.switch:checked::before { transform: translateX(20px); }
+input.switch:active::before { width: 31px; }
+input.switch:checked:active::before { transform: translateX(16px); }
+input.switch.sm { width: 42px; height: 26px; }
+input.switch.sm::before { width: 22px; height: 22px; }
+input.switch.sm:checked::before { transform: translateX(16px); }
+input.switch.sm:active::before { width: 25px; }
+input.switch.sm:checked:active::before { transform: translateX(13px); }
+input.switch:focus { border: none; box-shadow: none; }
+input.switch:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+input.switch:disabled { opacity: .5; cursor: default; }
+.check:has(> input.switch) { justify-content: space-between; gap: 12px; cursor: pointer; }
+.switch-line { color: var(--text); font-weight: 600; padding: 4px 0; }
+@media (prefers-reduced-motion: reduce) { input.switch, input.switch::before { transition: none; } }

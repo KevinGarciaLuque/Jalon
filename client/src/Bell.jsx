@@ -134,7 +134,10 @@ export default function Bell({ socket, onGo }) {
           </div>
           <div className="overlay-body">
             <PushToggle why="Actívalas para que te lleguen al celular aunque tengas la app cerrada." />
-            <button className="sm" aria-pressed={sound} onClick={toggleSound}>{sound ? '🔊 Sonido activado (tocar para apagar)' : '🔇 Sonido apagado (tocar para activar)'}</button>
+            <label className="check switch-line">
+              <span>{sound ? '🔊' : '🔇'} Sonido de los avisos</span>
+              <input type="checkbox" role="switch" className="switch" checked={sound} onChange={toggleSound} />
+            </label>
             {error && <div className="error">{error}</div>}
             {items === null && !error && <p className="muted">Cargando…</p>}
             {items?.length === 0 && <Empty title="No tienes notificaciones">Aquí te avisamos de mensajes, ofertas, tus viajes y tu cuenta.</Empty>}

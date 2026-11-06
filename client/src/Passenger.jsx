@@ -435,7 +435,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
                 <p className="muted small trip-size">{preview.distanceKm.toFixed(1)} km · {minutes(preview.durationMin)} de viaje{preview.estimated && ' (estimado)'}</p>
                 {gender === 'f' && (
                   <label className="check women-only">
-                    <input type="checkbox" checked={womenOnly} onChange={(e) => setWomenOnly(e.target.checked)} />
+                    <input type="checkbox" role="switch" className="switch" checked={womenOnly} onChange={(e) => setWomenOnly(e.target.checked)} />
                     <span><b>🚺 Solo conductoras</b> · {near.filter((d) => d.woman).length} cerca. Solo te ofrecerán viaje conductoras confirmadas por el equipo.</span>
                   </label>
                 )}
@@ -453,7 +453,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
                     {stops.length < 2 && !addingStop && <button className="link left" onClick={() => setAddingStop(true)}>+ Agregar parada</button>}
                     <input aria-label="Punto de referencia para el conductor" placeholder="Punto de referencia (opcional): frente a la pulpería, portón verde…" maxLength={160} value={note} onChange={(e) => setNote(e.target.value)} />
                     <label className="check">
-                      <input type="checkbox" checked={forOther} onChange={(e) => setForOther(e.target.checked)} />
+                      <input type="checkbox" role="switch" className="switch" checked={forOther} onChange={(e) => setForOther(e.target.checked)} />
                       <span>El viaje es <b>para otra persona</b></span>
                     </label>
                     {forOther && (

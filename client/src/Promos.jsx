@@ -78,7 +78,7 @@ export default function Promos({ call, onError }) {
           <label className="grow">Vence (opcional)<input type="date" value={form.expires_at} onChange={set('expires_at')} /></label>
         </div>
         <label className="check">
-          <input type="checkbox" checked={form.first_ride_only} onChange={set('first_ride_only')} />
+          <input type="checkbox" role="switch" className="switch" checked={form.first_ride_only} onChange={set('first_ride_only')} />
           <span>Solo para el <b>primer viaje</b> del pasajero</span>
         </label>
         <p className="muted small">Cada pasajero puede usar un mismo código una sola vez. Si el viaje se cancela, el uso se le devuelve.</p>

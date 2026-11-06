@@ -27,7 +27,7 @@ function PinSection({ user }) {
     <section className="req" aria-labelledby="pin-title">
       <b id="pin-title">PIN de viaje</b>
       <label className="check">
-        <input type="checkbox" checked={on} onChange={(e) => toggle(e.target.checked)} />
+        <input type="checkbox" role="switch" className="switch" checked={on} onChange={(e) => toggle(e.target.checked)} />
         <span><b>Usar PIN en mis viajes</b>: cuando el conductor acepte, verás un PIN de 4 dígitos. Díselo al subir; sin él no puede iniciar el viaje. Así confirmas que te subes al carro correcto.</span>
       </label>
       <p className="muted small">En los viajes «Solo conductoras» el PIN se usa siempre.</p>
