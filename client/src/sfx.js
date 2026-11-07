@@ -4,7 +4,7 @@
 import notificacion from './assets/sfx/notificacion.mp3';
 import pagar from './assets/sfx/pagar.mp3';
 import propina from './assets/sfx/propina.mp3';
-import carro from './assets/sfx/carro.mp3';
+import carro from './assets/sfx/carro2.mp3';
 import impacto from './assets/sfx/impacto.mp3';
 
 const URLS = { notificacion, pagar, propina, carro, impacto };
@@ -30,6 +30,8 @@ export function preloadSfx() {
   }));
   return loading;
 }
+// Se empiezan a bajar al abrir la app (sin esperar un toque), para que estén listos cuando hagan falta
+if (typeof window !== 'undefined') setTimeout(preloadSfx, 1200);
 if (typeof document !== 'undefined') {
   const first = () => { preloadSfx(); document.removeEventListener('pointerdown', first, true); };
   document.addEventListener('pointerdown', first, true);
@@ -53,6 +55,7 @@ export function playSfx(ctx, name, { at = 0, gain = 0.9, fadeAt = null, dest = n
     }
     src.connect(g).connect(dest || ctx.destination);
     src.start(t);
+    if (fadeAt !== null) src.stop(ctx.currentTime + fadeAt + 0.2); // ya calló: se libera
     return true;
   } catch { return false; }
 }

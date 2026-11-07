@@ -15,13 +15,17 @@ const setSfx = (on) => { try { localStorage.setItem(SFX_KEY, on ? 'on' : 'off');
 
 // Las imágenes se bajan y se preparan antes de empezar (así no aparecen a medias)
 export function preload() {
-  preloadSfx();
+  const snd = preloadSfx();
   return Promise.all([imgSide, imgFall, imgTop].map((src) => {
     const img = new Image();
     img.decoding = 'async';
     img.src = src;
     return img.decode().then(() => img);
-  }));
+  })).then(async (imgs) => {
+    // Que los sonidos estén decodificados antes de empezar (si tardan más de 1,2 s, la animación sigue y usa los de repuesto)
+    await Promise.race([snd, new Promise((r) => setTimeout(r, 1200))]);
+    return imgs;
+  });
 }
 
 // ---- Sonidos hechos en el momento (sin archivos): aire, golpe suave y un acelerón corto ----
@@ -63,7 +67,7 @@ function sounds(ctx) {
       src.stop(t + dur);
     },
     thump(at) {
-      if (playSfx(ctx, 'impacto', { at, gain: 1, dest: master })) return; // el sonido «impacto»; si no está listo, el golpe sintético
+      if (playSfx(ctx, 'impacto', { at, gain: 1, dest: master, fadeAt: at + 1.4 })) return; // el sonido «impacto»; si no está listo, el golpe sintético
       const t = ctx.currentTime + at;
       const o = ctx.createOscillator();
       o.type = 'sine';
@@ -295,7 +299,6 @@ export async function playDriveIn({ audio, info = {} }) {
     // Sonidos con el reloj del audio
     sfx.whoosh(ms(D), 1.15, ms(IMPACT) - 0.05);
     sfx.thump(ms(IMPACT));
-    sfx.rev(ms(IMPACT + 260));
 
     // El aviso se va y el mapa queda a la vista
     play(card, [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(.9)' }], { duration: 300, delay: D, easing: 'ease-in', fill: 'forwards' });
