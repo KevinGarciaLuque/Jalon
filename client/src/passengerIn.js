@@ -1,4 +1,4 @@
-// Animación al activar el modo pasajero: aparece el aviso (suena «transicion») con el carro, que se va (suena «carrofuera»);
+// Animación al activar el modo pasajero: aparece el aviso (suena «pop») con el carro, que se va (suena «carrofuera»);
 // en su lugar queda el pin, que sale del aviso, cae sobre el mapa y aterriza en tu ubicación (suena «ding»),
 // donde se convierte en el pin del mapa. Va aparte (se descarga solo al cambiar de modo).
 // Si algo falla, la promesa se rechaza y la app muestra el aviso normal. Nada de esto toca el mapa ni el GPS.
@@ -15,7 +15,7 @@ export function preload() {
   return Promise.all([img.decode().then(() => img), Promise.race([preloadSfx(), new Promise((r) => setTimeout(r, 1200))])]).then(([i]) => i);
 }
 
-// Si «transicion» o «ding» todavía no están listos, se usan estos sonidos hechos en el momento
+// Si «pop» o «ding» todavía no están listos, se usan estos sonidos hechos en el momento
 function blip(player, at, from, to, dur, peak) {
   const ctx = player.ctx;
   if (!ctx) return;
@@ -117,8 +117,8 @@ export async function playPassengerIn({ audio }) {
   const guard = setTimeout(finish, 4500);
 
   try {
-    // 1) El aviso con el carro adentro. Al aparecer el aviso suena «transicion»; cuando el carro arranca, suena «carrofuera» (completo, ya trae su cola)
-    if (!sfx.play('transicion')) blip(sfx, 0, 520, 900, 0.14, 0.5);
+    // 1) El aviso con el carro adentro. Al aparecer el aviso suena «pop»; cuando el carro arranca, suena «carrofuera» (completo, ya trae su cola)
+    if (!sfx.play('pop')) blip(sfx, 0, 520, 900, 0.14, 0.5);
     sfx.play('carrofuera', { at: CAR_GO / 1000 });
     const h = hero.getBoundingClientRect();
     const s0 = (h.height * 0.78) / PIN_H;

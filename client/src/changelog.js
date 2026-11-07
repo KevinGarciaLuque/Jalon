@@ -8,7 +8,7 @@ export const CHANGELOG = [
     title: 'Animación al pasar a modo pasajero',
     for: ['passenger', 'driver'],
     items: [
-      'Al cambiar a modo pasajero, el aviso aparece con un sonido de transición, el carro se va con su propio sonido y en su lugar queda tu pin, que cae sobre el mapa en tu ubicación con un «ding». Si prefieres silencio, el botón del parlante del aviso apaga los sonidos.',
+      'Al cambiar a modo pasajero, el aviso aparece con un «pop», el carro se va con su propio sonido y en su lugar queda tu pin, que cae sobre el mapa en tu ubicación con un «ding». Si prefieres silencio, el botón del parlante del aviso apaga los sonidos.',
     ],
   },
   {

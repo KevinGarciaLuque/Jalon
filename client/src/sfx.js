@@ -8,11 +8,11 @@ import carro from './assets/sfx/carro2.mp3';
 import impacto from './assets/sfx/impacto.mp3';
 
 import impacto2 from './assets/sfx/impacto2.mp3';
-import transicion from './assets/sfx/transicion.mp3';
+import pop from './assets/sfx/pop.mp3';
 import carrofuera from './assets/sfx/carrofuera.mp3';
 import ding from './assets/sfx/ding.mp3';
 
-const URLS = { notificacion, pagar, propina, carro, impacto, impacto2, transicion, carrofuera, ding };
+const URLS = { notificacion, pagar, propina, carro, impacto, impacto2, pop, carrofuera, ding };
 const buffers = {};
 let loading = null;
 
