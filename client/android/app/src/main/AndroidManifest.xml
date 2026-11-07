@@ -7,6 +7,9 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
+
+        <!-- Canal de las notificaciones de Firebase (con el sonido propio, ver native.js): también es el que usa Android si la app está cerrada -->
+        <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="ktracho_avisos" />
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
             android:name=".MainActivity"

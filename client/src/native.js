@@ -45,9 +45,19 @@ export async function stopBackgroundGps() {
 const TOKEN_KEY = 'jalon-fcm-token';
 const getToken = () => { try { return localStorage.getItem(TOKEN_KEY); } catch { return null; } };
 const setToken = (t) => { try { t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY); } catch { /* sin almacenamiento */ } };
+export const PUSH_CHANNEL = 'ktracho_avisos'; // el servidor manda cada aviso por este canal (android.notification.channel_id)
 let listening = false;
 let onToken = null;
 let onError = null;
+
+// Android: el canal de avisos con nuestro sonido (res/raw/notificacion.mp3). Un canal no se puede cambiar una vez creado en el celular,
+// por eso si un día cambia el sonido hay que usar otro nombre de canal.
+async function ensureChannel() {
+  if (Capacitor.getPlatform() !== 'android') return;
+  try {
+    await PushNotifications.createChannel({ id: PUSH_CHANNEL, name: 'Avisos de Ktracho GO', description: 'Viajes, mensajes y alertas', importance: 5, visibility: 1, sound: 'notificacion.mp3', vibration: true });
+  } catch { /* si falla, Android usa su sonido normal */ }
+}
 
 function listen() {
   if (listening) return;
@@ -72,6 +82,7 @@ export async function nativePushState() {
 // Pide el permiso, registra el celular en Firebase y manda el token al servidor. `send(token)` lo guarda en el servidor.
 export async function nativePushEnable(send) {
   listen();
+  await ensureChannel();
   let p = await PushNotifications.checkPermissions();
   if (p.receive !== 'granted') p = await PushNotifications.requestPermissions();
   if (p.receive !== 'granted') throw new Error('Permiso denegado. Actívalo en «Información de la app» → «Notificaciones».');
@@ -88,6 +99,7 @@ export async function nativePushEnable(send) {
 export async function nativePushSync(send) {
   if (!isNative()) return;
   listen();
+  await ensureChannel();
   const p = await PushNotifications.checkPermissions();
   if (p.receive !== 'granted') return;
   onToken = (t) => send(t, Capacitor.getPlatform()).catch(() => {});

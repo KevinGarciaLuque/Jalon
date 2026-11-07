@@ -2,6 +2,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { API, authFetch, lazyPage, lempiras } from './lib.js';
 import { Avatar, Empty, Loading, PushToggle, Stars } from './components.jsx';
 import DocsModal from './DocsModal.jsx';
+import { playSfx } from './sfx.js';
 import Topups from './Topups.jsx';
 import Settings from './Settings.jsx';
 // El mapa en vivo trae Leaflet: se descarga solo al abrir esa pestaña
@@ -47,6 +48,7 @@ const savedTab = () => { try { return localStorage.getItem(TAB_KEY) || ''; } cat
 const isActive = (s) => ['requested', 'accepted', 'arrived', 'started'].includes(s);
 // Tres pitidos para llamar la atención (el navegador solo deja sonar tras un clic, por eso el botón "Activar avisos")
 function beep(ctx) {
+  if (playSfx(ctx, 'notificacion')) return; // el sonido de notificación (si no está listo, los tres pitidos)
   [0, 0.35, 0.7].forEach((delay) => {
     const o = ctx.createOscillator();
     const g = ctx.createGain();

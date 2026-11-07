@@ -3,6 +3,8 @@
 // Los celulares solo dejan sonar audio después de un toque: `unlockRideAlert()` se llama en un toque (p. ej. «Ponerme disponible»)
 // y además con el primer toque en cualquier parte de la pantalla.
 
+import { playSfx } from './sfx.js';
+
 const KEY = 'jalon-ride-sound';
 let ctx = null;
 
@@ -25,6 +27,7 @@ if (typeof document !== 'undefined') {
 // Tres notas que suben (tipo «¡din-din-din!»), claras pero no estridentes, ~0,6 s
 function chime() {
   if (!ctx || ctx.state !== 'running') return false;
+  if (playSfx(ctx, 'notificacion')) return true; // el sonido de notificación (si no está listo, el «din-din-din» de abajo)
   const t0 = ctx.currentTime + 0.02;
   const master = ctx.createGain();
   master.gain.value = 0.55;
@@ -63,6 +66,7 @@ export function playRideAlert() {
 // Respeta el mismo silencio que el aviso de solicitudes.
 function coins() {
   if (!ctx || ctx.state !== 'running') return false;
+  if (playSfx(ctx, 'propina')) return true; // el sonido de propina (si no está listo, el «cha-ching» de abajo)
   const t0 = ctx.currentTime + 0.02;
   const master = ctx.createGain();
   master.gain.value = 0.45;
@@ -156,4 +160,11 @@ export function playRaiseCoin() {
   }
   window.dispatchEvent(new CustomEvent('ktracho:raise-coin', { detail: { sound, vibrate } }));
   return { sound, vibrate };
+}
+
+// Un efecto de sonido suelto (pagar, propina…) que respeta el interruptor «Sonido de los avisos». Devuelve si sonó.
+export function playSound(name) {
+  if (!appSoundOn()) return false;
+  unlockRideAlert();
+  return playSfx(ctx, name);
 }

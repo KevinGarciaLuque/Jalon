@@ -56,7 +56,8 @@ export async function sendFcm(deviceToken, payload) {
             priority: 'HIGH',
             ttl: '3600s',
             // El mismo tag reemplaza la notificación anterior (no se acumulan), igual que en la web
-            notification: { ...(payload.tag ? { tag: String(payload.tag).slice(0, 80) } : {}), sound: 'default' },
+            // channel_id: el canal de la app con el sonido propio (si el celular aún no lo tiene, Android usa el normal)
+            notification: { channel_id: 'ktracho_avisos', ...(payload.tag ? { tag: String(payload.tag).slice(0, 80) } : {}), sound: 'default' },
           },
           apns: { headers: { 'apns-priority': '10' }, payload: { aps: { sound: 'default' } } },
         },

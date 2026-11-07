@@ -8,7 +8,7 @@ import Rentals from './Rentals.jsx';
 import Intercity from './Intercity.jsx';
 import Tip from './Tip.jsx';
 import PermsBar from './PermsBar.jsx';
-import { playRaiseCoin } from './rideAlert.js';
+import { playRaiseCoin, playSound } from './rideAlert.js';
 import { NearbyLine, CategoryCards, PriceMeter, QuickPlaces, etaMinutes } from './RideOptions.jsx';
 import { AddressSearch, Avatar, Chat, PriceStepper, Rate, SafetyBar, Stars, TimeRing, Grab } from './components.jsx';
 
@@ -228,6 +228,14 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
 
   const loadFavs = () => apiGet('favorites', token).then(setFavs).catch(() => {});
   useEffect(() => { loadFavs(); }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Al terminar el viaje (llega el total a pagar): suena «pagar». No al reabrir la app con un viaje que ya estaba terminado.
+  const payStatus = useRef({});
+  useEffect(() => {
+    if (!ride) return;
+    const before = payStatus.current[ride.id];
+    if (before && before !== 'completed' && ride.status === 'completed') playSound('pagar');
+    payStatus.current[ride.id] = ride.status;
+  }, [ride?.id, ride?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     socket.on('drivers:nearby', setDrivers);

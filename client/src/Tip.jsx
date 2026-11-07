@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { apiPost, lempiras } from './lib.js';
+import { playSound } from './rideAlert.js';
 
 // Propina al terminar el viaje: se da en efectivo al conductor y queda anotada (es toda suya, sin comisión)
 const AMOUNTS = [10, 20, 50];
@@ -17,6 +18,7 @@ export default function Tip({ token, ride, onDone }) {
     setError('');
     try {
       const r = await apiPost(`rides/${ride.id}/tip`, token, { amount });
+      playSound('propina'); // la propina quedó registrada
       onDone(r.ride);
     } catch (e) {
       setError(e.message);

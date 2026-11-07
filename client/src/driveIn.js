@@ -7,12 +7,15 @@ import imgSide from './assets/drive-34.webp';
 import imgFall from './assets/drive-fall.webp';
 import imgTop from './assets/drive-top.webp';
 
+import { playSfx, preloadSfx } from './sfx.js';
+
 const SFX_KEY = 'ktracho:sfx';
 export const sfxOn = () => { try { return localStorage.getItem(SFX_KEY) !== 'off'; } catch { return true; } };
 const setSfx = (on) => { try { localStorage.setItem(SFX_KEY, on ? 'on' : 'off'); } catch { /* sin almacenamiento */ } };
 
 // Las imágenes se bajan y se preparan antes de empezar (así no aparecen a medias)
 export function preload() {
+  preloadSfx();
   return Promise.all([imgSide, imgFall, imgTop].map((src) => {
     const img = new Image();
     img.decoding = 'async';
@@ -42,7 +45,9 @@ function sounds(ctx) {
     g.gain.exponentialRampToValueAtTime(0.0001, t + attack + release);
   };
   return {
-    whoosh(at, dur = 1.1) {
+    // `fadeAt`: cuándo debe callar el sonido del carro (justo al tocar el mapa, para dejarle lugar al impacto)
+    whoosh(at, dur = 1.1, fadeAt = null) {
+      if (playSfx(ctx, 'carro', { at, gain: 1, fadeAt, dest: master })) return; // el sonido «carro»; si no está listo, el aire sintético
       const t = ctx.currentTime + at;
       const src = noise(dur);
       const bp = ctx.createBiquadFilter();
@@ -58,6 +63,7 @@ function sounds(ctx) {
       src.stop(t + dur);
     },
     thump(at) {
+      if (playSfx(ctx, 'impacto', { at, gain: 1, dest: master })) return; // el sonido «impacto»; si no está listo, el golpe sintético
       const t = ctx.currentTime + at;
       const o = ctx.createOscillator();
       o.type = 'sine';
@@ -287,7 +293,7 @@ export async function playDriveIn({ audio, info = {} }) {
     marker?.classList.add('drive-in-hide');
 
     // Sonidos con el reloj del audio
-    sfx.whoosh(ms(D), 1.15);
+    sfx.whoosh(ms(D), 1.15, ms(IMPACT) - 0.05);
     sfx.thump(ms(IMPACT));
     sfx.rev(ms(IMPACT + 260));
 

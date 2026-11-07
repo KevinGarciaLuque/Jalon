@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { apiGet, apiPost } from './lib.js';
 import { Empty, PushToggle } from './components.jsx';
 import { Icon, Panel } from './Menu.jsx';
+import { playSfx } from './sfx.js';
 
 // La campanita: avisos de chat, ofertas, viajes, saldo, alquileres, reportes y emergencias (lo que corresponda a cada persona)
 const ICON = { chat: '💬', offer: '💵', ride: '🚗', wallet: '💰', report: '📝', rental: '🔑', sos: '🆘', docs: '📄', rating: '⭐', account: '✅', info: '🔔' };
@@ -26,6 +27,7 @@ if (typeof window !== 'undefined') {
 }
 export function chime() {
   if (!audio || !soundOn() || document.hidden) return;
+  if (playSfx(audio, 'notificacion')) return; // el sonido de notificación (si no está listo, las dos notas de abajo)
   const now = audio.currentTime;
   [[880, 0], [1318.5, 0.13]].forEach(([freq, at]) => {
     const o = audio.createOscillator();
