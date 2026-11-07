@@ -7,7 +7,7 @@ import imgSide from './assets/drive-34.webp';
 import imgFall from './assets/drive-fall.webp';
 import imgTop from './assets/drive-top.webp';
 
-import { playSfx, preloadSfx } from './sfx.js';
+import { playSfx, preloadSfx, sfxDuration } from './sfx.js';
 
 const SFX_KEY = 'ktracho:sfx';
 export const sfxOn = () => { try { return localStorage.getItem(SFX_KEY) !== 'off'; } catch { return true; } };
@@ -78,7 +78,11 @@ function sounds(ctx) {
       src.stop(t + dur);
     },
     thump(at) {
-      if (sample('impacto', { at })) return; // el sonido «impacto»; si no está listo, el golpe sintético
+      // El sonido «impacto» y, justo al terminar, «impacto2»; si no está listo, el golpe sintético
+      if (sample('impacto', { at })) {
+        sample('impacto2', { at: at + sfxDuration('impacto') });
+        return;
+      }
       const t = ctx.currentTime + at;
       const o = ctx.createOscillator();
       o.type = 'sine';
@@ -125,7 +129,7 @@ function sounds(ctx) {
       }
     },
     mute(off) { master.gain.setTargetAtTime(off ? 0 : 0.9, ctx.currentTime, 0.03); },
-    // Se cierra cuando terminó de sonar el último sonido (el impacto dura unos 3 s); si algo falla, a los 10 s se cierra igual
+    // Se cierra cuando terminó de sonar el último sonido (impacto e impacto2 duran unos segundos); si algo falla, a los 10 s se cierra igual
     close() {
       closing = true;
       if (active <= 0) setTimeout(shut, 1500);

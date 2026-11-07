@@ -7,7 +7,9 @@ import propina from './assets/sfx/propina.mp3';
 import carro from './assets/sfx/carro2.mp3';
 import impacto from './assets/sfx/impacto.mp3';
 
-const URLS = { notificacion, pagar, propina, carro, impacto };
+import impacto2 from './assets/sfx/impacto2.mp3';
+
+const URLS = { notificacion, pagar, propina, carro, impacto, impacto2 };
 const buffers = {};
 let loading = null;
 
@@ -36,6 +38,9 @@ if (typeof document !== 'undefined') {
   const first = () => { preloadSfx(); document.removeEventListener('pointerdown', first, true); };
   document.addEventListener('pointerdown', first, true);
 }
+
+// Cuánto dura un sonido ya decodificado (segundos); 0 si todavía no está listo
+export const sfxDuration = (name) => buffers[name]?.duration || 0;
 
 // `at`: segundos desde ahora · `gain`: volumen (0 a 1) · `fadeAt`: segundos desde ahora en que empieza a bajar hasta callar (0,12 s)
 // `dest`: a dónde conectar el sonido (por defecto, la salida); la animación del carro usa su propio volumen general

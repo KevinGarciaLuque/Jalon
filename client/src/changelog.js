@@ -3,6 +3,15 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-07-impacto2',
+    date: '2026-11-07',
+    title: 'Un sonido más en la animación del carro',
+    for: ['driver'],
+    items: [
+      'En la animación del modo conductor, después del sonido del impacto suena un segundo efecto (impacto2) para cerrar la caída del carro.',
+    ],
+  },
+  {
     id: '2026-11-07-chat-inicio-viaje',
     date: '2026-11-07',
     title: 'El chat se cierra al empezar el viaje',
