@@ -102,6 +102,10 @@ export const SESSION_HEADER = 'x-jalon-session';
 export const MAX_PRICE = 5000; // L
 export const REQUEST_TTL_MIN = 10; // un viaje sin conductor se cancela solo
 // Viajes programados: de 30 minutos a 7 días; salen a buscar conductor 20 minutos antes de la hora
+// Cómo puede pagar el pasajero (se elige al pedir el viaje y el conductor lo ve). Por ahora solo efectivo: para habilitar otra forma
+// de pago, se pone en true aquí y en client/src/payMethods.js (y se construye el cobro, que hoy no existe).
+export const PAY_METHODS = { cash: true, transfer: false, card: false };
+
 export const SCHEDULE_MIN_AHEAD = Number(process.env.SCHEDULE_MIN_AHEAD || 30);
 export const SCHEDULE_MAX_DAYS = 7;
 export const SCHEDULE_LEAD_MIN = Number(process.env.SCHEDULE_LEAD_MIN || 20);

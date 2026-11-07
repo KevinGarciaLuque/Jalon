@@ -9,6 +9,8 @@ import Intercity from './Intercity.jsx';
 import Tip from './Tip.jsx';
 import PermsBar from './PermsBar.jsx';
 import { playRaiseCoin, playSound } from './rideAlert.js';
+import PayCard from './PayCard.jsx';
+import { PayMethodPicker } from './payMethods.jsx';
 import { NearbyLine, CategoryCards, PriceMeter, QuickPlaces, etaMinutes } from './RideOptions.jsx';
 import { AddressSearch, Avatar, Chat, PriceStepper, Rate, SafetyBar, Stars, TimeRing, Grab } from './components.jsx';
 
@@ -176,6 +178,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
   const [category, setCategory] = useState('car'); // moto, carro o carro amplio
   const priceEdited = useRef(false);
   const [ride, setRide] = useState(null);
+  const [payMethod, setPayMethod] = useState('cash'); // cómo va a pagar (hoy solo efectivo)
   const [offers, setOffers] = useState([]);
   const [eta, setEta] = useState(null); // tiempo estimado de llegada del conductor
   const [favs, setFavs] = useState([]); // lugares guardados
@@ -326,6 +329,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
       rider: forOther ? { name: rider.name.trim(), phone: rider.phone.trim() } : undefined,
       scheduledFor: when ? new Date(when).toISOString() : undefined,
       promoCode: promo?.code,
+      payMethod,
     };
     socket.emit('ride:request', payload, (res) => {
       if (res?.error) {
@@ -515,6 +519,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
                   <PriceStepper value={price} label="Tu oferta en lempiras" onChange={(v) => { priceEdited.current = true; setPrice(v); }} />
                   <PriceMeter price={price} suggested={preview.prices?.[category] ?? preview.suggestedPrice} nearCount={near.length} />
                   <PromoField token={token} price={price} promo={promo} onChange={setPromo} />
+                  <PayMethodPicker value={payMethod} onChange={setPayMethod} />
                   {error && <div className="error">{error}</div>}
                   <button className="primary" disabled={!price || !from} onClick={request}>
                     {when ? 'Programar viaje por' : 'Pedir viaje por'} {lempiras(price || 0)}{promo ? ` · pagas ${lempiras(Number(price || 0) - promoDiscount(promo, price))}` : ''}
@@ -603,10 +608,9 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
             <b>{ride.status === 'cancelled' ? CANCELLED[ride.cancelled_by] || STATUS.cancelled : STATUS[ride.status]}</b>
             {ride.status === 'completed' && (
               <>
-                <p>Total a pagar en efectivo: <b>{lempiras((ride.toPay ?? ride.final_price) + (ride.tip || 0))}</b>{ride.discount > 0 && <span className="muted small"> (precio {lempiras(ride.final_price)} − {lempiras(ride.discount)} del código {ride.promo?.code})</span>}</p>
-                {ride.tip > 0 && <p className="tip-done" role="status">💚 Le dejaste <b>{lempiras(ride.tip)}</b> de propina: viaje {lempiras(ride.toPay ?? ride.final_price)} + propina {lempiras(ride.tip)}</p>}
-                {ride.driver && <Rate token={token} rideId={ride.id} who={ride.driver.name} title="¡Llegaste!" />}
+                <PayCard ride={ride} role="passenger" />
                 {ride.driver && ride.tipOpen && <Tip token={token} ride={ride} onDone={setRide} />}
+                {ride.driver && <Rate token={token} rideId={ride.id} who={ride.driver.name} title="¡Llegaste!" />}
                 {chat.chatable && !chat.closed && (
                   <button className={chat.unread ? 'chat-new' : ''} onClick={chat.open ? chat.closeChat : chat.openChat}>💬 ¿Olvidaste algo? Escribe al conductor{chat.unread ? ` (${chat.unread})` : ''}</button>
                 )}

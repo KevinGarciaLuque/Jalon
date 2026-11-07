@@ -6,7 +6,7 @@ import { getSettings, nearbyKm } from './wallet.js';
 import { fareFor, isCategory } from './fares.js';
 import { getRoute, reversePlace } from './maps.js';
 import { chatOpen, chatAllowed, CHAT_MAX } from './chat.js';
-import { reportError, SESSION_COOKIE, trustedOrigin, OFFER_TTL_SECONDS, RAISE_COOLDOWN_MS, MAX_PRICE, SOCKET_WINDOW_MS, SOCKET_LIMIT_DEFAULT, SOCKET_LIMITS, SCHEDULE_MIN_AHEAD, SCHEDULE_MAX_DAYS } from './config.js';
+import { reportError, SESSION_COOKIE, trustedOrigin, OFFER_TTL_SECONDS, RAISE_COOLDOWN_MS, MAX_PRICE, SOCKET_WINDOW_MS, SOCKET_LIMIT_DEFAULT, SOCKET_LIMITS, SCHEDULE_MIN_AHEAD, SCHEDULE_MAX_DAYS, PAY_METHODS } from './config.js';
 import { normalizePhone } from './phone.js';
 import { io } from './app.js';
 import { drivers, passengers, openRides, declined, room } from './live.js';
@@ -238,7 +238,7 @@ io.on('connection', async (socket) => {
       socket.emit('drivers:nearby', nearbyDrivers(lat, lng));
     });
 
-    on('ride:request', async ({ origin, dest, price, category: cat, womenOnly, stops: rawStops, pickupNote, rider, scheduledFor, promoCode }, ack) => {
+    on('ride:request', async ({ origin, dest, price, category: cat, womenOnly, stops: rawStops, pickupNote, rider, scheduledFor, promoCode, payMethod }, ack) => {
       try {
         if (!isPoint(origin) || !isPoint(dest)) return ack?.({ error: 'Ubicación inválida' });
         // Si ya hay uno (p. ej. pedido desde otro celular), se le muestra para que lo vea o lo cancele
@@ -276,6 +276,9 @@ io.on('connection', async (socket) => {
         const route = await getRoute(origin, dest, cleanStops);
         const km = route.distanceKm;
         const category = isCategory(cat) ? cat : 'car';
+        // Forma de pago: la app manda la que eligió; solo se acepta una que esté habilitada (hoy, efectivo). Sin indicar = efectivo.
+        const pay = payMethod == null || payMethod === '' ? 'cash' : payMethod;
+        if (!Object.hasOwn(PAY_METHODS, pay) || !PAY_METHODS[pay]) return ack?.({ error: 'Por ahora solo se puede pagar en efectivo' });
         // «Solo conductoras»: para pasajeras (lo indican en Mi cuenta)
         let women = 0;
         if (womenOnly) {
@@ -288,10 +291,10 @@ io.on('connection', async (socket) => {
         const pickup = await pickupText(origin);
         const insert = (promo) => pool.query(
           `INSERT INTO rides (passenger_id, origin_lat, origin_lng, origin_text, dest_lat, dest_lng, dest_text, distance_km, duration_min, route_json, offered_price, category, women_only,
-                              stops_json, pickup_note, rider_name, rider_phone, scheduled_for, status, promo_id)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+                              stops_json, pickup_note, rider_name, rider_phone, scheduled_for, status, promo_id, pay_method)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
           [user.id, origin.lat, origin.lng, pickup, dest.lat, dest.lng, clean(dest.text), km, route.durationMin, JSON.stringify(route.coords), offered, category, women,
-           cleanStops.length ? JSON.stringify(cleanStops) : null, note, riderName, riderPhone, when, when ? 'scheduled' : 'requested', promo?.id ?? null]
+           cleanStops.length ? JSON.stringify(cleanStops) : null, note, riderName, riderPhone, when, when ? 'scheduled' : 'requested', promo?.id ?? null, pay]
         );
         // Con código promocional, se revisa y se guarda el viaje en un solo paso (para no pasarse de los usos del código)
         let r;

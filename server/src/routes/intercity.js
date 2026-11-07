@@ -12,7 +12,7 @@ import { authUser, driverOnly, passengerOnly } from '../access.js';
 import { isPoint, clean, serial } from '../util.js';
 import { push } from '../notify.js';
 import { drivers, room } from '../live.js';
-import { reportError } from '../config.js';
+import { reportError, PAY_METHODS } from '../config.js';
 import { ratingsOf, activeRideFor, rideView, getRide } from '../services/rides.js';
 import { walletGate } from '../services/balance.js';
 
@@ -73,7 +73,7 @@ app.post('/api/intercity/quote', authUser, passengerOnly, needOn, handle(async (
 
 app.post('/api/intercity', authUser, passengerOnly, needOn, handle(async (req, res) => {
   const u = req.user;
-  const { origin, dest, departAt, seats: rawSeats, luggage, price: rawPrice, note: rawNote, womenOnly } = req.body || {};
+  const { origin, dest, departAt, seats: rawSeats, luggage, price: rawPrice, note: rawNote, womenOnly, payMethod } = req.body || {};
   if (!isPoint(origin) || !isPoint(dest)) return res.status(400).json({ error: 'Elige el origen y el destino' });
   const straight = distanceKm(origin.lat, origin.lng, dest.lat, dest.lng);
   if (straight < INTERCITY.MIN_KM) return res.status(400).json({ error: `Para viajes de menos de ${INTERCITY.MIN_KM} km usa «En la ciudad»` });
@@ -85,6 +85,9 @@ app.post('/api/intercity', authUser, passengerOnly, needOn, handle(async (req, r
     ahead = secondsUntil(departAt);
     if (!Number.isFinite(ahead) || ahead < 30 * 60 || ahead > INTERCITY.MAX_DAYS * 86400) return res.status(400).json({ error: `Elige una salida entre 30 minutos y ${INTERCITY.MAX_DAYS} días desde ahora` });
   }
+  // Forma de pago: solo se acepta una habilitada (hoy, efectivo). Sin indicar = efectivo.
+  const pay = payMethod == null || payMethod === '' ? 'cash' : payMethod;
+  if (!Object.hasOwn(PAY_METHODS, pay) || !PAY_METHODS[pay]) return res.status(400).json({ error: 'Por ahora solo se puede pagar en efectivo' });
   let women = 0;
   if (womenOnly) {
     if (u.gender !== 'f') return res.status(400).json({ error: '«Solo conductoras» es para pasajeras: indícalo en Mi cuenta' });
@@ -97,10 +100,10 @@ app.post('/api/intercity', authUser, passengerOnly, needOn, handle(async (req, r
   if (!isMoney(price)) return res.status(400).json({ error: `El precio debe estar entre L 1 y L ${INTERCITY.MAX_PRICE}` });
   const [r] = await pool.query(
     `INSERT INTO rides (passenger_id, origin_lat, origin_lng, origin_text, dest_lat, dest_lng, dest_text, distance_km, duration_min, route_json,
-                        offered_price, category, women_only, pickup_note, scheduled_for, status, kind, seats, luggage)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?, IF(? IS NULL, NULL, NOW() + INTERVAL ? SECOND), 'board', 'intercity', ?, ?)`,
+                        offered_price, category, women_only, pickup_note, scheduled_for, status, kind, seats, luggage, pay_method)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?, IF(? IS NULL, NULL, NOW() + INTERVAL ? SECOND), 'board', 'intercity', ?, ?, ?)`,
     [u.id, origin.lat, origin.lng, await placeText(origin, 'Punto de salida'), dest.lat, dest.lng, await placeText(dest, 'Destino'), route.distanceKm, route.durationMin,
-     JSON.stringify(route.coords), price, categoryFor(seats), women, clean(rawNote)?.slice(0, 160) || null, ahead, ahead ?? 0, seats, luggage ? 1 : 0]
+     JSON.stringify(route.coords), price, categoryFor(seats), women, clean(rawNote)?.slice(0, 160) || null, ahead, ahead ?? 0, seats, luggage ? 1 : 0, pay]
   );
   // Aviso a los conductores aprobados que lo pueden tomar (con la app abierta les llega al instante; si no, notificación)
   notifyDrivers(r.insertId).catch(reportError);
@@ -137,7 +140,7 @@ async function passengerView(rows) {
   return rows.map((r) => ({
     id: r.id, status: r.status, origin: r.origin_text, dest: r.dest_text, departAt: r.scheduled_for, asap: !r.scheduled_for,
     seats: r.seats, luggage: !!r.luggage, price: Number(r.offered_price), finalPrice: r.final_price != null ? Number(r.final_price) : null,
-    distanceKm: Number(r.distance_km), durationMin: Number(r.duration_min), note: r.pickup_note, womenOnly: !!r.women_only,
+    distanceKm: Number(r.distance_km), durationMin: Number(r.duration_min), note: r.pickup_note, womenOnly: !!r.women_only, payMethod: r.pay_method,
     offers: offers.get(r.id) || [], driver: r.driver_id ? byId[r.driver_id] : null, createdAt: r.created_at,
   }));
 }
@@ -231,7 +234,7 @@ app.get('/api/intercity/board', authUser, driverOnly, needOn, handle(async (req,
       id: r.id, origin: r.origin_text, dest: r.dest_text, departAt: r.scheduled_for, asap: !r.scheduled_for,
       originPoint: { lat: r.origin_lat, lng: r.origin_lng }, destPoint: { lat: r.dest_lat, lng: r.dest_lng },
       seats: r.seats, luggage: !!r.luggage, price: Number(r.offered_price), distanceKm: Number(r.distance_km), durationMin: Number(r.duration_min),
-      note: r.pickup_note, womenOnly: !!r.women_only, publishedAt: r.created_at,
+      note: r.pickup_note, womenOnly: !!r.women_only, payMethod: r.pay_method, publishedAt: r.created_at,
       passenger: { name: firstName(r.passenger_name), rating: ratings.get(r.passenger_id) || { avg: null, count: 0 } },
       awayKm: here ? Math.round(distanceKm(lat, lng, r.origin_lat, r.origin_lng) * 10) / 10 : null,
       myOffer: myOffer.get(r.id) || null,

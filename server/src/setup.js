@@ -793,6 +793,7 @@ await addColumn('promo_codes', 'user_id', 'INT NULL');
 // Propinas: el pasajero la da en efectivo al terminar y queda anotada (es toda del conductor, sin comisión)
 await addColumn('rides', 'tip', 'DECIMAL(10,2) NULL');
 await addColumn('rides', 'tipped_at', 'TIMESTAMP NULL');
+await addColumn('rides', 'pay_method', "ENUM('cash','transfer','card') NOT NULL DEFAULT 'cash'"); // cómo va a pagar el pasajero (los viajes de antes fueron en efectivo)
 
 // ---- Viajes entre ciudades (etapa 1: viaje privado). Solo se agrega: los viajes de antes quedan como 'city' y funcionan igual ----
 await addColumn('rides', 'kind', "ENUM('city','intercity') NOT NULL DEFAULT 'city'");

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { apiGet, apiPost, lempiras, minutes, wazeUrl } from './lib.js';
 import { AddressSearch, Empty, Loading, PriceStepper, Stars } from './components.jsx';
 import { Panel } from './Menu.jsx';
+import { PayMethodPicker, payLabel } from './payMethods.jsx';
 
 // Viajes entre ciudades (etapa 1: viaje privado).
 // Pasajero: publica su viaje con fecha, personas y precio; recibe ofertas (tarifa y hora) y elige una.
@@ -36,6 +37,7 @@ function Tags({ t }) {
   return (
     <div className="ic-tags">
       <span className="ic-tag private">Viaje privado</span>
+      <span className="ic-tag">{payLabel(t.payMethod).icon} Paga en {payLabel(t.payMethod).label.toLowerCase()}</span>
       {t.luggage && <span className="ic-tag">🧳 Con maletas</span>}
       {t.womenOnly && <span className="ic-tag women">🚺 Solo conductoras</span>}
     </div>
@@ -51,6 +53,7 @@ function NewTrip({ token, pos, gender, onDone }) {
   const [seats, setSeats] = useState(1);
   const [luggage, setLuggage] = useState(false);
   const [womenOnly, setWomenOnly] = useState(false);
+  const [payMethod, setPayMethod] = useState('cash'); // cómo va a pagar (hoy solo efectivo)
   const [note, setNote] = useState('');
   const [quote, setQuote] = useState(null);
   const [price, setPrice] = useState('');
@@ -73,7 +76,7 @@ function NewTrip({ token, pos, gender, onDone }) {
     setError('');
     try {
       await apiPost('intercity', token, {
-        origin, dest, departAt: asap ? null : new Date(at).toISOString(), seats, luggage, womenOnly: gender === 'f' && womenOnly, note, price: Number(price),
+        origin, dest, departAt: asap ? null : new Date(at).toISOString(), seats, luggage, womenOnly: gender === 'f' && womenOnly, note, price: Number(price), payMethod,
       });
       onDone();
     } catch (e) {
@@ -126,6 +129,7 @@ function NewTrip({ token, pos, gender, onDone }) {
           <p className="muted small">Es por el carro entero (viaje privado), en efectivo al terminar. Los conductores pueden aceptar tu precio o proponerte otro.</p>
         </div>
       )}
+      <PayMethodPicker value={payMethod} onChange={setPayMethod} />
       {error && <div className="error" role="alert">{error}</div>}
       <button className="primary" disabled={!quote || busy || !(Number(price) > 0)} onClick={publish}>{busy ? 'Publicando…' : 'Publicar mi viaje'}</button>
     </section>

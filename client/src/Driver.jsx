@@ -11,7 +11,9 @@ import ReportForm from './ReportForm.jsx';
 import DriverDocs from './DriverDocs.jsx';
 import DriverSelfie from './DriverSelfie.jsx';
 import PermsBar from './PermsBar.jsx';
-import { playRideAlert, playTipSound, unlockRideAlert, rideSoundOn, setRideSound } from './rideAlert.js';
+import { playRideAlert, playTipSound, playSound, unlockRideAlert, rideSoundOn, setRideSound } from './rideAlert.js';
+import PayCard from './PayCard.jsx';
+import { payLabel } from './payMethods.jsx';
 import Tips from './Tips.jsx';
 import TipCelebration from './TipCelebration.jsx';
 import { IntercityBoard } from './Intercity.jsx';
@@ -94,6 +96,14 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
     }
     tipSeen.current[ride.id] = tip;
   }, [ride?.id, ride?.tip]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Al terminar el viaje (ya toca cobrar): suena «pagar». No al reabrir la app con un viaje que ya estaba terminado.
+  const payStatus = useRef({});
+  useEffect(() => {
+    if (!ride) return;
+    const before = payStatus.current[ride.id];
+    if (before && before !== 'completed' && ride.status === 'completed') playSound('pagar');
+    payStatus.current[ride.id] = ride.status;
+  }, [ride?.id, ride?.status]); // eslint-disable-line react-hooks/exhaustive-deps
   const doneRideId = ride?.status === 'completed' ? ride.id : 0;
   useEffect(() => {
     if (status === 'active') apiGet('driver/earnings?period=day', token).then(setToday).catch(() => {});
@@ -247,13 +257,16 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
 
         {!active && (
           <>
-            {ride && (ride.status === 'completed' || ride.status === 'cancelled') && (
+            {ride?.status === 'completed' && (
+              <div className="pay-wrap">
+                <b>{STATUS.completed}</b>
+                <PayCard ride={ride} role="driver" />
+                <button className="primary" onClick={() => setRide(null)}>Cobrado ✓</button>
+              </div>
+            )}
+            {ride?.status === 'cancelled' && (
               <div className="offer">
-                <div>
-                  <b>{STATUS[ride.status]}</b>
-                  {ride.status === 'completed' && <div className="muted">Cobrar en efectivo: {lempiras((ride.toPay ?? ride.final_price) + (ride.tip || 0))}{ride.discount > 0 ? ` · Ktracho GO te puso ${lempiras(ride.discount)} en tu saldo` : ''}</div>}
-                  {ride.status === 'completed' && ride.tip > 0 && <div className="tip-done" role="status">💚 Te dejó <b>{lempiras(ride.tip)}</b> de propina (ya va en el total). Es toda tuya.</div>}
-                </div>
+                <div><b>{STATUS.cancelled}</b></div>
                 <button className="primary sm" onClick={() => setRide(null)}>OK</button>
               </div>
             )}
@@ -347,6 +360,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
                         <span className="row"><Avatar name={r.passenger?.name} /><span><b>{r.passenger?.name}</b> <Stars rating={r.passenger?.rating} /></span></span>
                         <span className="tag">{lempiras(r.offered_price)}</span>
                       </div>
+                      <span className="pill pay" title="Cómo te va a pagar el pasajero">{payLabel(r.pay_method).icon} Paga en {payLabel(r.pay_method).label.toLowerCase()}</span>
                       {!!r.women_only && <span className="pill women">🚺 Solo conductoras</span>}
                       {r.scheduled_for && <span className="pill">🗓 Programado: {new Date(r.scheduled_for).toLocaleTimeString('es-HN', { hour: 'numeric', minute: '2-digit' })}</span>}
                       {r.rider_name && <div className="small">Recoger a: <b>{r.rider_name}</b></div>}
@@ -404,7 +418,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
                 {ride.rider_name && ride.status !== 'started' && <span className="small"><span className="muted">Recoger a:</span> <b>{ride.rider_name}</b></span>}
                 {ride.pickup_note && ride.status !== 'started' && <span className="small">📍 {ride.pickup_note}</span>}
                 {ride.stops?.length > 0 && <span className="small"><span className="muted">Paradas:</span> {ride.stops.map((p, i) => `${i + 1}. ${p.text || 'en el mapa'}`).join(' · ')}</span>}
-                <span className="muted small">{ride.distance_km.toFixed(1)} km de viaje · efectivo</span>
+                <span className="muted small">{ride.distance_km.toFixed(1)} km de viaje · paga en {payLabel(ride.pay_method).label.toLowerCase()}</span>
               </div>
               <div className="row">
                 {ride.passenger?.phone && <a className="sm" href={`tel:${ride.passenger.phone}`}>Llamar</a>}

@@ -67,7 +67,7 @@ function sounds(ctx) {
       src.stop(t + dur);
     },
     thump(at) {
-      if (playSfx(ctx, 'impacto', { at, gain: 1, dest: master, fadeAt: at + 1.4 })) return; // el sonido «impacto»; si no está listo, el golpe sintético
+      if (playSfx(ctx, 'impacto', { at, gain: 1, dest: master })) return; // el sonido «impacto»; si no está listo, el golpe sintético
       const t = ctx.currentTime + at;
       const o = ctx.createOscillator();
       o.type = 'sine';
@@ -114,7 +114,8 @@ function sounds(ctx) {
       }
     },
     mute(off) { master.gain.setTargetAtTime(off ? 0 : 0.9, ctx.currentTime, 0.03); },
-    close() { setTimeout(() => ctx.close?.().catch?.(() => {}), 1500); },
+    // El audio se cierra cuando ya sonó todo: el impacto dura unos 3 s y empieza al caer, con la animación casi terminando
+    close() { setTimeout(() => ctx.close?.().catch?.(() => {}), 3600); },
   };
 }
 
