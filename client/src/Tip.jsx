@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { apiPost, lempiras } from './lib.js';
 import { playSound } from './rideAlert.js';
 
@@ -6,12 +6,15 @@ import { playSound } from './rideAlert.js';
 const AMOUNTS = [10, 20, 50];
 const MAX = 500;
 
-export default function Tip({ token, ride, onDone }) {
+export default function Tip({ token, ride, onDone, onChange }) {
   const [amount, setAmount] = useState(0);
   const [other, setOther] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const ok = Number.isInteger(amount) && amount >= 1 && amount <= MAX;
+  // Lo que va eligiendo se suma al total de la tarjeta de arriba (todavía sin confirmar); al cerrarse la caja, se quita
+  useEffect(() => { onChange?.(ok ? amount : 0); }, [amount, ok]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => onChange?.(0), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function give() {
     setBusy(true);

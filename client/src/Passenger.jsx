@@ -179,6 +179,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
   const priceEdited = useRef(false);
   const [ride, setRide] = useState(null);
   const [payMethod, setPayMethod] = useState('cash'); // cómo va a pagar (hoy solo efectivo)
+  const [tipDraft, setTipDraft] = useState(0); // propina que está eligiendo al terminar (se suma al total mientras tanto)
   const [offers, setOffers] = useState([]);
   const [eta, setEta] = useState(null); // tiempo estimado de llegada del conductor
   const [favs, setFavs] = useState([]); // lugares guardados
@@ -608,8 +609,8 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
             <b>{ride.status === 'cancelled' ? CANCELLED[ride.cancelled_by] || STATUS.cancelled : STATUS[ride.status]}</b>
             {ride.status === 'completed' && (
               <>
-                <PayCard ride={ride} role="passenger" />
-                {ride.driver && ride.tipOpen && <Tip token={token} ride={ride} onDone={setRide} />}
+                <PayCard ride={ride} role="passenger" draftTip={tipDraft} />
+                {ride.driver && ride.tipOpen && <Tip token={token} ride={ride} onDone={setRide} onChange={setTipDraft} />}
                 {ride.driver && <Rate token={token} rideId={ride.id} who={ride.driver.name} title="¡Llegaste!" />}
                 {chat.chatable && !chat.closed && (
                   <button className={chat.unread ? 'chat-new' : ''} onClick={chat.open ? chat.closeChat : chat.openChat}>💬 ¿Olvidaste algo? Escribe al conductor{chat.unread ? ` (${chat.unread})` : ''}</button>

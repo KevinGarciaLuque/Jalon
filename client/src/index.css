@@ -269,13 +269,13 @@ button.chat-new { animation: chat-ping 1.4s ease-out infinite, chat-wiggle 2.8s 
 @media (prefers-reduced-motion: reduce) { .pill.raised { animation: none; } }
 
 /* ---- Cobro al terminar el viaje (PayCard): el total grande, con una entrada animada y un resplandor ---- */
-.pay-card { display: grid; gap: 8px; padding: 16px; border-radius: 18px; border: 2px solid var(--brand); text-align: center;
+.pay-card { display: grid; gap: 4px; padding: 10px 14px; border-radius: 16px; border: 2px solid var(--brand); text-align: center;
   background: linear-gradient(165deg, color-mix(in srgb, var(--brand) 18%, var(--card)), var(--card) 70%);
   animation: pay-in .55s cubic-bezier(.2, 1.25, .3, 1) both, pay-glow 1.6s ease-out .4s 2; }
-.pay-head { display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700; color: var(--muted); font-size: 14px; letter-spacing: .02em; text-transform: uppercase; }
-.pay-coin { font-size: 24px; display: inline-block; animation: pay-coin 1.1s ease-in-out .3s 2; }
-.pay-total { font-family: var(--font-display); font-size: 46px; font-weight: 800; line-height: 1.05; color: var(--brand); animation: pay-pop .5s cubic-bezier(.2, 1.4, .3, 1) .15s both; }
-.pay-lines { list-style: none; margin: 4px 0 0; padding: 8px 0 0; border-top: 1px dashed var(--line); display: grid; gap: 4px; font-size: 14px; }
+.pay-head { display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700; color: var(--muted); font-size: 12px; letter-spacing: .02em; text-transform: uppercase; }
+.pay-coin { font-size: 20px; display: inline-block; animation: pay-coin 1.1s ease-in-out .3s 2; }
+.pay-total { font-family: var(--font-display); font-size: 36px; font-weight: 800; line-height: 1.05; color: var(--brand); animation: pay-pop .5s cubic-bezier(.2, 1.4, .3, 1) .15s both; }
+.pay-lines { list-style: none; margin: 2px 0 0; padding: 6px 0 0; border-top: 1px dashed var(--line); display: grid; gap: 2px; font-size: 13px; }
 .pay-lines li { display: flex; justify-content: space-between; gap: 12px; text-align: left; }
 .pay-lines li span { color: var(--muted); }
 .pay-lines li b { white-space: nowrap; }
