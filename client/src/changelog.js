@@ -3,6 +3,17 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-07-chat-fin-viaje',
+    date: '2026-11-07',
+    title: 'Al terminar el viaje, el cobro se ve primero',
+    for: ['passenger', 'driver'],
+    items: [
+      'Cuando el viaje termina, el chat se cierra solo y el panel sube al inicio, para ver primero el total, la propina y la calificación. El botón del chat sigue ahí por si necesitas escribir; si llega un mensaje, el botón late.',
+      'El chat ahora se abre en una ventana que sube desde abajo, encima de todo, y ya no empuja el resto del panel. Sigue al teclado para que el campo de escribir siempre se vea.',
+      'La calificación ocupa menos espacio: el dibujo es más chico y, ya calificado, queda una sola línea de agradecimiento.',
+    ],
+  },
+  {
     id: '2026-11-06-fecha-version',
     date: '2026-11-06',
     title: 'La versión muestra el día',

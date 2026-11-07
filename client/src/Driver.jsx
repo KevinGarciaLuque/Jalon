@@ -6,7 +6,7 @@ import { CarMarker, FitTo, MapControls, RouteLine, icons, rotateOptions, showAt 
 import DriverWallet from './DriverWallet.jsx';
 import DriverRental from './DriverRental.jsx';
 import Earnings from './Earnings.jsx';
-import { Avatar, Chat, PriceStepper, PushToggle, Rate, SafetyBar, Stars, TimeRing, Grab } from './components.jsx';
+import { Avatar, ChatSheet, PriceStepper, PushToggle, Rate, SafetyBar, Stars, TimeRing, Grab } from './components.jsx';
 import ReportForm from './ReportForm.jsx';
 import DriverDocs from './DriverDocs.jsx';
 import DriverSelfie from './DriverSelfie.jsx';
@@ -290,7 +290,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
             {menuNote && <div className="hint" role="status">{menuNote} <button className="link" onClick={() => setMenuNote('')}>Entendido</button></div>}
             {renting && <div className="hint">Tienes un alquiler en curso: no recibes viajes hasta terminarlo en «Alquiler de mi carro».</div>}
             {reporting && ride && <ReportForm rideId={ride.id} token={token} onClose={() => setReporting(false)} />}
-            {ride?.status === 'completed' && chat.open && <Chat chat={chat} meId={userId} quick={['Encontré tu objeto, ¿dónde nos vemos?']} />}
+            {ride?.status === 'completed' && <ChatSheet chat={chat} meId={userId} quick={['Encontré tu objeto, ¿dónde nos vemos?']} title={`Chat con ${ride.passenger?.name || 'el pasajero'}`} />}
             {ride?.status === 'completed' && ride.passenger && (
               <Rate token={token} rideId={ride.id} who={ride.passenger.name} title="¡Viaje terminado!" />
             )}
@@ -436,7 +436,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
                 <button className={`primary sm${chat.unread ? ' chat-new' : ''}`} onClick={chat.open ? chat.closeChat : chat.openChat}>💬 Chat{chat.unread ? ` (${chat.unread})` : ''}</button>
               </div>
             </div>
-            {chat.open && <Chat chat={chat} meId={userId} quick={QUICK} />}
+            <ChatSheet chat={chat} meId={userId} quick={QUICK} title={`Chat con ${ride.passenger?.name || 'el pasajero'}`} />
             {eta && eta.rideId === ride.id && ['accepted', 'started'].includes(ride.status) && (
               <p className="eta">{ride.status === 'started' ? '🏁 Al destino' : '📍 Al pasajero'}: <b>~{eta.minutes} min</b> <span className="muted">({eta.km} km)</span></p>
             )}

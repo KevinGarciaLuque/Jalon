@@ -196,6 +196,19 @@ export function useChat(socket, ride, myId) {
   const openRef = useRef(false);
   openRef.current = open;
 
+  // Al terminar el viaje (cambia a «completed» estando ya en pantalla): el chat se cierra y el panel vuelve arriba,
+  // para que lo primero que se vea sea el cobro (y la propina y la calificación) y no la conversación.
+  // El botón del chat sigue ahí por si hay que escribir («¿Olvidaste algo?»); si llega un mensaje, el botón avisa.
+  const status = ride?.status;
+  const prevStatus = useRef(status);
+  useEffect(() => {
+    if (prevStatus.current && prevStatus.current !== 'completed' && status === 'completed') {
+      setOpen(false);
+      document.querySelector('.sheet')?.scrollTo?.({ top: 0 });
+    }
+    prevStatus.current = status;
+  }, [status]);
+
   const load = () => {
     if (!rideId || !chatable) return;
     socket.emit('chat:history', { rideId }, (res) => {

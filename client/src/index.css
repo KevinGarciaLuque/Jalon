@@ -606,8 +606,14 @@ table.perms input[type=checkbox] { width: 20px; height: 20px; }
 .north-arrow b { position: absolute; top: 9px; font: 800 8px var(--font-text); color: #fff; }
 
 /* Al terminar el viaje: el carro con las 5 estrellas */
-.rate-art { display: block; margin: 0 auto; width: min(240px, 72%); height: auto; animation: rate-pop .6s ease-out both; }
-.rate-title { font-size: 22px; text-align: center; }
+.rate-art { display: block; flex: none; width: 96px; height: auto; animation: rate-pop .6s ease-out both; }
+.rate-title { font-size: 20px; }
+.rate-top { display: flex; align-items: center; gap: 12px; }
+.rate-text { display: grid; gap: 2px; min-width: 0; }
+.rate.compact { gap: 6px; padding: 10px 12px; }
+.rate.compact .starpick { justify-content: center; }
+.rate.done { padding: 8px 12px; }
+.rate.done .hint { margin: 0; }
 @keyframes rate-pop { from { transform: translateY(14px) scale(.9); opacity: 0; } to { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .rate-art { animation: none; } }
 
@@ -1149,3 +1155,14 @@ button.link.danger { color: var(--danger); }
 .stats .alert.danger b { color: var(--danger); }
 .lr-soon { padding: 6px 0; border-top: 1px solid var(--line); gap: 8px; }
 @media (prefers-reduced-motion: reduce) { .lr-dot.next { animation: none; } .lr-fill { transition: none; } }
+
+/* ---- Chat del viaje en una ventana que sube desde abajo (ChatSheet) ---- */
+.chat-scrim { z-index: 3100; }
+.chat-sheet { position: fixed; left: 0; right: 0; bottom: 0; margin: 0 auto; width: 100%; max-width: 640px; z-index: 3101; display: flex; flex-direction: column; gap: 8px;
+  height: min(80dvh, 640px); max-height: 88vh; padding: 12px 14px; padding-bottom: max(12px, env(safe-area-inset-bottom)); background: var(--card);
+  border-top-left-radius: var(--r-3); border-top-right-radius: var(--r-3); box-shadow: var(--shadow-sheet); animation: chat-sheet-up .25s ease-out both; }
+.chat-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.chat-sheet .chat { flex: 1; min-height: 0; border: 0; padding: 0; }
+.chat-sheet .chat-list { flex: 1; max-height: none; min-height: 0; }
+@keyframes chat-sheet-up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .chat-sheet { animation: none; } }

@@ -1,6 +1,7 @@
 import markImg from './assets/logo-marca.webp';
 import arrivedImg from './assets/valoracion.webp';
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { apiGet, apiPost, pushState, enablePush, disablePush, CATEGORIES } from './lib.js';
 import { playPriceTick } from './rideAlert.js';
 
@@ -235,13 +236,17 @@ export function Rate({ token, rideId, who, title }) {
     }
   }
 
-  const art = <img className="rate-art" src={arrivedImg} alt="" width="240" height="169" />;
-  if (state === 'done') return <div className="rate">{art}<div className="hint ok">¡Gracias por tu calificación!</div></div>;
+  // Compacta: el dibujo es chico y va junto al título (antes ocupaba medio panel); ya calificado, queda una sola línea
+  if (state === 'done') return <div className="rate done"><div className="hint ok">⭐ ¡Gracias por tu calificación!</div></div>;
   return (
-    <div className="rate">
-      {art}
-      {title && <b className="rate-title">{title}</b>}
-      <b>¿Cómo estuvo {who}?</b>
+    <div className="rate compact">
+      <div className="rate-top">
+        <img className="rate-art" src={arrivedImg} alt="" width="240" height="169" />
+        <div className="rate-text">
+          {title && <b className="rate-title">{title}</b>}
+          <b>¿Cómo estuvo {who}?</b>
+        </div>
+      </div>
       <div className="starpick">
         {[1, 2, 3, 4, 5].map((n) => (
           <button key={n} type="button" className={n <= stars ? 'on' : ''} onClick={() => setStars(n)} aria-label={`${n} estrellas`}>★</button>
@@ -350,6 +355,43 @@ export function PushToggle({ token, why, compact = false }) {
       )}
       {error && <div className="error small">{error}</div>}
     </div>
+  );
+}
+
+// El chat del viaje en una ventana que sube desde abajo, encima de todo: así no empuja ni tapa el resto del panel (cobro, propina, calificación).
+// Sigue al teclado del celular (visualViewport) para que el campo de escribir quede siempre a la vista.
+export function ChatSheet({ chat, meId, quick, title }) {
+  const [vv, setVv] = useState(null); // { h, bottom } del área visible (con el teclado abierto es más chica)
+  useEffect(() => {
+    if (!chat.open) return undefined;
+    const v = window.visualViewport;
+    if (!v) return undefined;
+    const sync = () => setVv({ h: v.height, bottom: Math.max(0, window.innerHeight - v.height - v.offsetTop) });
+    sync();
+    v.addEventListener('resize', sync);
+    v.addEventListener('scroll', sync);
+    return () => { v.removeEventListener('resize', sync); v.removeEventListener('scroll', sync); setVv(null); };
+  }, [chat.open]);
+  useEffect(() => {
+    if (!chat.open) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') chat.closeChat(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [chat.open]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!chat.open) return null;
+  return createPortal(
+    <>
+      <div className="scrim chat-scrim" onClick={chat.closeChat} />
+      <div className="chat-sheet" role="dialog" aria-modal="true" aria-label={title || 'Chat del viaje'}
+        style={vv ? { bottom: vv.bottom, maxHeight: Math.min(vv.h * 0.88, 640) } : undefined}>
+        <div className="chat-sheet-head">
+          <b>💬 {title || 'Chat del viaje'}</b>
+          <button type="button" className="sm" onClick={chat.closeChat} aria-label="Cerrar el chat">✕</button>
+        </div>
+        <Chat chat={chat} meId={meId} quick={quick} />
+      </div>
+    </>,
+    document.body
   );
 }
 

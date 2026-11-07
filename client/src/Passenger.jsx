@@ -12,7 +12,7 @@ import { playRaiseCoin, playSound } from './rideAlert.js';
 import PayCard from './PayCard.jsx';
 import { PayMethodPicker } from './payMethods.jsx';
 import { NearbyLine, CategoryCards, PriceMeter, QuickPlaces, etaMinutes } from './RideOptions.jsx';
-import { AddressSearch, Avatar, Chat, PriceStepper, Rate, SafetyBar, Stars, TimeRing, Grab } from './components.jsx';
+import { AddressSearch, Avatar, ChatSheet, PriceStepper, Rate, SafetyBar, Stars, TimeRing, Grab } from './components.jsx';
 
 function Recenter({ pos }) {
   const map = useMap();
@@ -593,7 +593,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
                 </div>
               </div>
             )}
-            {chat.open && <Chat chat={chat} meId={userId} quick={QUICK} />}
+            <ChatSheet chat={chat} meId={userId} quick={QUICK} title={`Chat con ${ride.driver?.name || 'tu conductor'}`} />
 
             {ride.status !== 'requested' && <SafetyBar token={token} rideId={ride.id} socket={socket} getPos={() => pos} />}
 
@@ -614,7 +614,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
                 {chat.chatable && !chat.closed && (
                   <button className={chat.unread ? 'chat-new' : ''} onClick={chat.open ? chat.closeChat : chat.openChat}>💬 ¿Olvidaste algo? Escribe al conductor{chat.unread ? ` (${chat.unread})` : ''}</button>
                 )}
-                {chat.open && <Chat chat={chat} meId={userId} quick={['Creo que dejé algo en tu carro']} />}
+                <ChatSheet chat={chat} meId={userId} quick={['Creo que dejé algo en tu carro']} title={`Chat con ${ride.driver?.name || 'tu conductor'}`} />
               </>
             )}
             {ride.driver && <button onClick={() => setReporting(true)}>⚠ Reportar un problema con este viaje</button>}
