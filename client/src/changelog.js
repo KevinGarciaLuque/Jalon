@@ -8,7 +8,7 @@ export const CHANGELOG = [
     title: 'Un sonido más en la animación del carro',
     for: ['driver'],
     items: [
-      'En la animación del modo conductor, después del sonido del impacto suena un segundo efecto (impacto2) para cerrar la caída del carro.',
+      'En la animación del modo conductor, el sonido del carro empieza en cuanto aparece el aviso (antes esperaba a encontrar el carro del mapa) y, poco después del impacto, entra un segundo efecto (impacto2) mientras el primero se apaga.',
     ],
   },
   {

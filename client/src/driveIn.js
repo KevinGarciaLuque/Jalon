@@ -10,6 +10,8 @@ import imgTop from './assets/drive-top.webp';
 import { playSfx, preloadSfx, sfxDuration } from './sfx.js';
 
 const SFX_KEY = 'ktracho:sfx';
+// Cuántos segundos después de empezar «impacto» entra «impacto2» (el golpe de impacto2 llega a los 0,15 s de su archivo)
+const IMPACT2_AFTER = 1.0;
 export const sfxOn = () => { try { return localStorage.getItem(SFX_KEY) !== 'off'; } catch { return true; } };
 const setSfx = (on) => { try { localStorage.setItem(SFX_KEY, on ? 'on' : 'off'); } catch { /* sin almacenamiento */ } };
 
@@ -31,7 +33,7 @@ export function preload() {
 // ---- Sonidos hechos en el momento (sin archivos): aire, golpe suave y un acelerón corto ----
 // Cada uno se programa con el reloj del audio (`at` segundos desde ahora): suenan a tiempo aunque el teléfono esté ocupado
 function sounds(ctx) {
-  if (!ctx) return { whoosh() {}, thump() {}, rev() {}, mute() {}, close() {} };
+  if (!ctx) return { whoosh() {}, fadeCarro() {}, thump() {}, rev() {}, mute() {}, close() {} };
   const master = ctx.createGain();
   master.gain.value = sfxOn() ? 0.9 : 0;
   master.connect(ctx.destination);
@@ -46,6 +48,7 @@ function sounds(ctx) {
     if (!ok) active -= 1;
     return ok;
   };
+  const carro = {};
   const noise = (secs) => {
     const buf = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * secs), ctx.sampleRate);
     const d = buf.getChannelData(0);
@@ -61,8 +64,9 @@ function sounds(ctx) {
   };
   return {
     // `fadeAt`: cuándo debe callar el sonido del carro (justo al tocar el mapa, para dejarle lugar al impacto)
+    // Empieza ya (al aparecer el aviso); más tarde `fadeCarro` lo calla al tocar el mapa, cuando ya se sabe cuándo es
     whoosh(at, dur = 1.1, fadeAt = null) {
-      if (sample('carro', { at, fadeAt })) return; // el sonido «carro»; si no está listo, el aire sintético
+      if (sample('carro', { at, fadeAt, handle: carro })) return; // el sonido «carro»; si no está listo, el aire sintético
       const t = ctx.currentTime + at;
       const src = noise(dur);
       const bp = ctx.createBiquadFilter();
@@ -78,9 +82,9 @@ function sounds(ctx) {
       src.stop(t + dur);
     },
     thump(at) {
-      // El sonido «impacto» y, justo al terminar, «impacto2»; si no está listo, el golpe sintético
+      // El sonido «impacto» y, mientras todavía se apaga su cola, «impacto2»; si no está listo, el golpe sintético
       if (sample('impacto', { at })) {
-        sample('impacto2', { at: at + sfxDuration('impacto') });
+        sample('impacto2', { at: at + Math.min(IMPACT2_AFTER, sfxDuration('impacto')) });
         return;
       }
       const t = ctx.currentTime + at;
@@ -128,6 +132,7 @@ function sounds(ctx) {
         o.stop(t + 0.9);
       }
     },
+    fadeCarro(secs) { carro.fade?.(secs); },
     mute(off) { master.gain.setTargetAtTime(off ? 0 : 0.9, ctx.currentTime, 0.03); },
     // Se cierra cuando terminó de sonar el último sonido (impacto e impacto2 duran unos segundos); si algo falla, a los 10 s se cierra igual
     close() {
@@ -296,6 +301,8 @@ export async function playDriveIn({ audio, info = {} }) {
     play(car, [{ opacity: 0, transform: pos({ ...start, y: start.y + 14 }, s0 * 0.9) }, { opacity: 1, transform: pos(start, s0) }], { duration: 380, easing: 'cubic-bezier(.2,.8,.2,1)' });
     play(scrim, [{ opacity: 0 }, { opacity: 1 }], { duration: 300 });
     play(car, [{ transform: pos(start, s0) }, { transform: pos({ ...start, y: start.y - 5 }, s0 * 1.01) }, { transform: pos(start, s0) }], { duration: 620, delay: 380, easing: 'ease-in-out', fill: 'none', composite: 'replace' });
+    // El sonido del carro arranca ya, con el aviso (no espera a encontrar el carro del mapa)
+    sfx.whoosh(0, 1.15);
     const t0 = performance.now();
     marker = await waitFor(findMarker, 1700);
     if (finished) return;
@@ -317,7 +324,8 @@ export async function playDriveIn({ audio, info = {} }) {
     marker?.classList.add('drive-in-hide');
 
     // Sonidos con el reloj del audio
-    sfx.whoosh(ms(D), 1.15, ms(IMPACT) - 0.05);
+    // (el carro ya está sonando desde el aviso: aquí solo se programa cuándo calla)
+    sfx.fadeCarro(ms(IMPACT) - 0.05);
     sfx.thump(ms(IMPACT));
 
     // El aviso se va y el mapa queda a la vista
