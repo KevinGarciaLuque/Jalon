@@ -3,6 +3,57 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-06-oferta-subio',
+    date: '2026-11-06',
+    title: 'Aviso cuando el pasajero sube su oferta',
+    for: ['driver'],
+    items: [
+      'Si el pasajero sube el precio de una solicitud que ya estás viendo, suena el aviso y la tarjeta muestra «⬆ Subió de L100 a L150» por unos segundos. Antes solo cambiaba el número, sin avisar.',
+    ],
+  },
+  {
+    id: '2026-11-06-cobro-y-forma-de-pago',
+    date: '2026-11-06',
+    title: 'Cobro más claro y forma de pago',
+    for: ['passenger', 'driver'],
+    items: [
+      'Al terminar el viaje sale una tarjeta grande con el total: el pasajero ve cuánto paga y el conductor cuánto cobra, con el descuento y la propina si los hay. Suena un aviso de pago.',
+      'La propina ahora aparece justo debajo del total, antes de la calificación (si está activada y el viaje terminó hace menos de 15 minutos).',
+      'Al pedir un viaje (en la ciudad o entre ciudades) eliges cómo pagar. Por ahora solo efectivo; transferencia y tarjeta se ven apagadas como «Próximamente». El conductor ve «Paga en efectivo» en cada solicitud.',
+    ],
+  },
+  {
+    id: '2026-11-06-chat-aviso',
+    date: '2026-11-06',
+    title: 'Chat: aviso de mensajes nuevos',
+    for: ['passenger', 'driver'],
+    items: [
+      'El botón «Chat» late y se sacude un poco mientras tengas mensajes sin leer, para que no se te pasen.',
+      'Arreglado: al llegar un mensaje, el campo para escribir ya no se mueve ni se baja; solo se desplaza la lista de mensajes.',
+    ],
+  },
+  {
+    id: '2026-11-06-sonidos-nuevos',
+    date: '2026-11-06',
+    title: 'Sonidos nuevos',
+    for: ['all'],
+    items: [
+      'Nuevos sonidos para las notificaciones (viajes, mensajes y alertas), el pago al terminar el viaje y la propina. Respetan el interruptor «Sonido de los avisos».',
+      'En la animación del modo conductor, el carro suena al caer y el impacto suena completo al tocar el mapa.',
+    ],
+  },
+  {
+    id: '2026-11-06-app-notificaciones',
+    date: '2026-11-06',
+    title: 'App de Android: notificaciones nativas',
+    for: ['staff'],
+    items: [
+      'La app de Android recibe notificaciones por Firebase, también con la pantalla bloqueada o la app cerrada, con el sonido propio de Ktracho GO. Hace falta la variable FCM_SERVICE_ACCOUNT en Railway (ya puesta) y el .apk nuevo.',
+      'En Estado del sistema aparece «Notificaciones de la app (Android/iPhone)» para comprobar que Firebase está configurado.',
+      'Ya está preparado el flujo «App de Android (Play Store)» que arma el archivo .aab firmado para subirlo a Google Play.',
+    ],
+  },
+  {
     id: '2026-11-06-app-android',
     date: '2026-11-06',
     title: 'App de Android (prueba, todavía no está en Play Store)',

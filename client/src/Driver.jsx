@@ -47,6 +47,8 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
   const [online, setOnline] = useState(false);
   const [sound, setSound] = useState(rideSoundOn); // sonido al llegar una solicitud (se puede silenciar)
   const seenIds = useRef(new Set()); // solicitudes que ya está viendo: solo suenan las nuevas
+  const seenPrices = useRef({}); // precio que ve de cada solicitud: si sube, se le avisa
+  const [raised, setRaised] = useState({}); // solicitudes cuyo precio subió el pasajero: { id: { from, at } }
   const [requests, setRequests] = useState([]);
   const [sent, setSent] = useState({}); // rideId -> { price, until } de la oferta hecha (vale unos segundos)
   const [eta, setEta] = useState(null); // tiempo y camino hacia el pasajero (o al destino)
@@ -125,8 +127,13 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
   useEffect(() => {
     socket.on('rides:open', setRequests);
     socket.on('ride:new', (r) => {
-      // Solicitud nueva (o que vuelve porque el pasajero subió el precio): suena y vibra
+      // Solicitud nueva: suena y vibra. Si ya la veía y el pasajero subió el precio, también (y se marca «Subió de L… a L…»)
+      const before = seenPrices.current[r.id];
       if (!seenIds.current.has(r.id)) playRideAlert();
+      else if (before != null && Number(r.offered_price) > Number(before)) {
+        playRideAlert();
+        setRaised((cur) => ({ ...cur, [r.id]: { from: before, at: Date.now() } }));
+      }
       setRequests((cur) => [...cur.filter((x) => x.id !== r.id), r]);
     });
     socket.on('ride:closed', ({ rideId }) => setRequests((cur) => cur.filter((x) => x.id !== rideId)));
@@ -175,7 +182,10 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
     setOnline(!online);
   }
 
-  useEffect(() => { seenIds.current = new Set(requests.map((r) => r.id)); }, [requests]);
+  useEffect(() => {
+    seenIds.current = new Set(requests.map((r) => r.id));
+    seenPrices.current = Object.fromEntries(requests.map((r) => [r.id, r.offered_price]));
+  }, [requests]);
   const active = ride && ['accepted', 'arrived', 'started'].includes(ride.status);
   const preview = requests.find((q) => q.id === previewId) || null;
   // Si recarga la página con un viaje activo, queda como "en línea"
@@ -360,6 +370,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
                         <span className="row"><Avatar name={r.passenger?.name} /><span><b>{r.passenger?.name}</b> <Stars rating={r.passenger?.rating} /></span></span>
                         <span className="tag">{lempiras(r.offered_price)}</span>
                       </div>
+                      {raised[r.id] && now - raised[r.id].at < 30000 && <span className="pill raised" role="status">⬆ Subió de {lempiras(raised[r.id].from)} a {lempiras(r.offered_price)}</span>}
                       <span className="pill pay" title="Cómo te va a pagar el pasajero">{payLabel(r.pay_method).icon} Paga en {payLabel(r.pay_method).label.toLowerCase()}</span>
                       {!!r.women_only && <span className="pill women">🚺 Solo conductoras</span>}
                       {r.scheduled_for && <span className="pill">🗓 Programado: {new Date(r.scheduled_for).toLocaleTimeString('es-HN', { hour: 'numeric', minute: '2-digit' })}</span>}

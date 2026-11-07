@@ -262,6 +262,11 @@ button.chat-new { animation: chat-ping 1.4s ease-out infinite, chat-wiggle 2.8s 
 .pay-methods .seg button:disabled { opacity: .5; cursor: not-allowed; }
 .pill.pay { background: var(--brand-soft); color: var(--text); }
 .pill.pay::before { display: none; }
+/* El pasajero subió su oferta: la etiqueta destella un momento para que el conductor lo note */
+.pill.raised { background: var(--mango-soft, #fff1d6); color: var(--mango-ink, #7a4a00); animation: raised-flash 1s ease-in-out 3; }
+.pill.raised::before { display: none; }
+@keyframes raised-flash { 0%, 100% { transform: none; } 50% { transform: scale(1.08); } }
+@media (prefers-reduced-motion: reduce) { .pill.raised { animation: none; } }
 
 /* ---- Cobro al terminar el viaje (PayCard): el total grande, con una entrada animada y un resplandor ---- */
 .pay-card { display: grid; gap: 8px; padding: 16px; border-radius: 18px; border: 2px solid var(--brand); text-align: center;
