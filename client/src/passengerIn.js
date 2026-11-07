@@ -1,12 +1,18 @@
-// Animación al activar el modo pasajero: aparece el aviso (suena «pop»), el pin sale del aviso, cae sobre el mapa
-// y aterriza en tu ubicación (suena «ding»), donde se convierte en el pin del mapa. Va aparte (se descarga solo al cambiar de modo).
+// Animación al activar el modo pasajero: aparece el aviso (suena «pop») con el carro, que se va (suena «carro» bajito);
+// en su lugar queda el pin, que sale del aviso, cae sobre el mapa y aterriza en tu ubicación (suena «ding»),
+// donde se convierte en el pin del mapa. Va aparte (se descarga solo al cambiar de modo).
 // Si algo falla, la promesa se rechaza y la app muestra el aviso normal. Nada de esto toca el mapa ni el GPS.
 // Igual que la del conductor: solo se animan transform y opacity, y toda la secuencia se programa de una vez.
+import imgSide from './assets/drive-34.webp';
 import { preloadSfx, sfxOn, setSfx, sfxPlayer } from './sfx.js';
 
-// Los sonidos decodificados antes de empezar (si tardan más de 1,2 s, la animación sigue sin ellos)
+// La imagen del carro se baja y se prepara antes de empezar; los sonidos decodificados también
+// (si tardan más de 1,2 s, la animación sigue sin ellos)
 export function preload() {
-  return Promise.race([preloadSfx(), new Promise((r) => setTimeout(r, 1200))]);
+  const img = new Image();
+  img.decoding = 'async';
+  img.src = imgSide;
+  return Promise.all([img.decode().then(() => img), Promise.race([preloadSfx(), new Promise((r) => setTimeout(r, 1200))])]).then(([i]) => i);
 }
 
 // Si «pop» o «ding» todavía no están listos, se usan estos sonidos hechos en el momento
@@ -33,6 +39,11 @@ const PIN_SVG = `<svg viewBox="0 0 34 44" width="34" height="44" aria-hidden="tr
   <circle cx="17" cy="17.5" r="8.5" fill="#fff"/><circle cx="17" cy="17.5" r="4" fill="#14802f"/></svg>`;
 const PIN_W = 34;
 const PIN_H = 44;
+const BOX = 240; // la caja del carro mide BOX × BOX px (la imagen cabe dentro)
+const CAR_GO = 700; // cuándo arranca el carro, desde que aparece el aviso (ms)
+const CAR_LEAVE = 650; // cuánto tarda en irse (ms)
+const CAR_GAIN = 0.35; // volumen del sonido del carro (bajito)
+const PIN_IN = CAR_GO + 350; // cuándo aparece el pin donde estaba el carro (ms)
 
 // El pin del mapa (el del pasajero, con su aura): su punta es el punto exacto de tu ubicación
 const findMarker = () => document.querySelector('.leaflet-marker-icon.pin[class*=" me-"]');
@@ -61,10 +72,11 @@ const lerp = (a, b, k) => a + (b - a) * k;
 const pos = (p, s, sx = 1, sy = 1) => `translate3d(${p.x}px, ${p.y}px, 0) translate(-50%, -100%) scale(${s * sx}, ${s * sy})`;
 
 /**
- * Corre la animación completa (unos 2,7 s). Resuelve al terminar (o si la persona toca para saltarla).
+ * Corre la animación completa (unos 3 s). Resuelve al terminar (o si la persona toca para saltarla).
  * `audio`: el AudioContext creado en el toque
  */
 export async function playPassengerIn({ audio }) {
+  const side = await Promise.race([preload(), sleep(2500).then(() => { throw new Error('imagen lenta'); })]);
   const sfx = sfxPlayer(audio);
   const anims = [];
   let marker = null;
@@ -84,6 +96,10 @@ export async function playPassengerIn({ audio }) {
   paintMute();
   muteBtn.addEventListener('click', (e) => { e.stopPropagation(); setSfx(!sfxOn()); sfx.mute(!sfxOn()); paintMute(); });
 
+  const car = el('div', 'drive-in-car', root);
+  side.alt = '';
+  side.className = 'drive-in-img';
+  car.appendChild(side);
   const pin = el('div', 'pass-in-pin', root, PIN_SVG);
   const rings = [el('div', 'drive-in-ring', root), el('div', 'drive-in-ring', root)];
 
@@ -102,23 +118,36 @@ export async function playPassengerIn({ audio }) {
   const guard = setTimeout(finish, 4500);
 
   try {
-    // 1) El aviso con el pin adentro. Al aparecer el aviso suena «pop»
+    // 1) El aviso con el carro adentro. Al aparecer el aviso suena «pop»; cuando el carro arranca, suena «carro» bajito
     if (!sfx.play('pop')) blip(sfx, 0, 520, 900, 0.14, 0.5);
+    sfx.play('carro', { at: CAR_GO / 1000, gain: CAR_GAIN, fadeAt: (CAR_GO + CAR_LEAVE + 250) / 1000 });
     const h = hero.getBoundingClientRect();
     const s0 = (h.height * 0.78) / PIN_H;
     const start = { x: h.left + h.width / 2, y: h.top + h.height / 2 + (PIN_H * s0) / 2 };
     pin.style.transform = pos(start, s0);
+    pin.style.opacity = '0';
     play(card, [{ opacity: 0, transform: 'translateY(14px) scale(.92)' }, { opacity: 1, transform: 'none' }], { duration: 320, easing: 'cubic-bezier(.2,.8,.2,1)' });
-    play(pin, [{ opacity: 0, transform: pos({ ...start, y: start.y + 14 }, s0 * 0.85) }, { opacity: 1, transform: pos(start, s0) }], { duration: 380, easing: 'cubic-bezier(.2,.8,.2,1)' });
     play(scrim, [{ opacity: 0 }, { opacity: 1 }], { duration: 300 });
-    // Flota un poquito mientras espera
-    play(pin, [{ transform: pos(start, s0) }, { transform: pos({ ...start, y: start.y - 6 }, s0 * 1.02) }, { transform: pos(start, s0) }], { duration: 620, delay: 380, easing: 'ease-in-out', fill: 'none', composite: 'replace' });
+    // El carro (de lado) aparece, retrocede un poco y sale disparado hacia la derecha, fuera de la pantalla
+    const c0 = (h.width * 0.95) / BOX;
+    const cpos = (x, y, sc) => `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%) scale(${sc})`;
+    const cx = h.left + h.width / 2;
+    const cy = h.top + h.height / 2;
+    car.style.transform = cpos(cx, cy, c0);
+    play(car, [{ opacity: 0, transform: cpos(cx, cy + 14, c0 * 0.9) }, { opacity: 1, transform: cpos(cx, cy, c0) }], { duration: 380, easing: 'cubic-bezier(.2,.8,.2,1)' });
+    play(car, [
+      { opacity: 1, transform: cpos(cx, cy, c0) },
+      { opacity: 1, transform: cpos(cx - 10, cy, c0), offset: 0.18, easing: 'ease-out' },
+      { opacity: 1, transform: cpos(cx + innerWidth * 0.5 + BOX, cy, c0), offset: 1 },
+    ], { duration: CAR_LEAVE, delay: CAR_GO, easing: 'cubic-bezier(.6,0,.9,.5)', fill: 'forwards' });
+    // El pin aparece donde estaba el carro, con un saltito
+    play(pin, [{ opacity: 0, transform: pos(start, s0 * 0.5) }, { opacity: 1, transform: pos(start, s0) }], { duration: 300, delay: PIN_IN, easing: 'cubic-bezier(.2,1.4,.4,1)', fill: 'both' });
     const t0 = performance.now();
     marker = await waitFor(findMarker, 1700);
     if (finished) return;
     const target = marker ? markerTip(marker) : mapCenter();
-    // Lo que falte para completar el segundo del aviso
-    const wait0 = Math.max(0, 1000 - (performance.now() - t0));
+    // Lo que falte para que el carro se vaya y el pin se vea un momento
+    const wait0 = Math.max(0, PIN_IN + 450 - (performance.now() - t0));
 
     // ---- Desde aquí todo se programa de una vez (cada parte con su retraso) ----
     const D = wait0; // cuándo empieza a salir del aviso

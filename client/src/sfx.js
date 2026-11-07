@@ -101,7 +101,7 @@ export function sfxPlayer(ctx) {
     master,
     play(name, opts) {
       active += 1;
-      const ok = playSfx(ctx, name, { ...opts, gain: 1, dest: master, onEnd: () => { active -= 1; if (closing && active <= 0) shut(); } });
+      const ok = playSfx(ctx, name, { gain: 1, ...opts, dest: master, onEnd: () => { active -= 1; if (closing && active <= 0) shut(); } });
       if (!ok) active -= 1;
       return ok;
     },
