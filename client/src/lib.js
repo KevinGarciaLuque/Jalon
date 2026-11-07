@@ -196,15 +196,17 @@ export function useChat(socket, ride, myId) {
   const openRef = useRef(false);
   openRef.current = open;
 
-  // Al terminar el viaje (cambia a «completed» estando ya en pantalla): el chat se cierra y el panel vuelve arriba,
-  // para que lo primero que se vea sea el cobro (y la propina y la calificación) y no la conversación.
-  // El botón del chat sigue ahí por si hay que escribir («¿Olvidaste algo?»); si llega un mensaje, el botón avisa.
+  // El chat se cierra solo en dos momentos (cuando el estado cambia estando ya en pantalla):
+  //  · Al empezar el viaje («started»): el pasajero ya va con el conductor, no hace falta la conversación abierta.
+  //  · Al terminarlo («completed»): además el panel vuelve arriba, para ver primero el cobro (propina y calificación).
+  // El botón del chat sigue ahí en los dos casos, por si hay que escribir (p. ej. «¿Olvidaste algo?»); si llega un mensaje, el botón avisa.
   const status = ride?.status;
   const prevStatus = useRef(status);
   useEffect(() => {
-    if (prevStatus.current && prevStatus.current !== 'completed' && status === 'completed') {
+    const prev = prevStatus.current;
+    if (prev && prev !== status && (status === 'started' || status === 'completed')) {
       setOpen(false);
-      document.querySelector('.sheet')?.scrollTo?.({ top: 0 });
+      if (status === 'completed') document.querySelector('.sheet')?.scrollTo?.({ top: 0 });
     }
     prevStatus.current = status;
   }, [status]);
