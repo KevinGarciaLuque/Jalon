@@ -8,8 +8,10 @@ import carro from './assets/sfx/carro2.mp3';
 import impacto from './assets/sfx/impacto.mp3';
 
 import impacto2 from './assets/sfx/impacto2.mp3';
+import pop from './assets/sfx/pop.mp3';
+import ding from './assets/sfx/ding.mp3';
 
-const URLS = { notificacion, pagar, propina, carro, impacto, impacto2 };
+const URLS = { notificacion, pagar, propina, carro, impacto, impacto2, pop, ding };
 const buffers = {};
 let loading = null;
 
@@ -77,4 +79,38 @@ export function playSfx(ctx, name, { at = 0, gain = 0.9, fadeAt = null, dest = n
     if (fadeAt !== null) src.stop(ctx.currentTime + fadeAt + 0.2); // ya calló: se libera
     return true;
   } catch { return false; }
+}
+
+// ---- Sonidos de las animaciones al cambiar de modo ----
+const SFX_KEY = 'ktracho:sfx';
+export const sfxOn = () => { try { return localStorage.getItem(SFX_KEY) !== 'off'; } catch { return true; } };
+export const setSfx = (on) => { try { localStorage.setItem(SFX_KEY, on ? 'on' : 'off'); } catch { /* sin almacenamiento */ } };
+
+// Un reproductor con volumen general para una animación: cuenta los sonidos que están sonando y cierra el audio
+// cuando todos terminaron (no por un tiempo fijo, para no cortar el final).
+export function sfxPlayer(ctx) {
+  if (!ctx) return { play: () => false, mute() {}, close() {}, ctx: null };
+  const master = ctx.createGain();
+  master.gain.value = sfxOn() ? 0.9 : 0;
+  master.connect(ctx.destination);
+  let active = 0;
+  let closing = false;
+  const shut = () => { try { ctx.close?.().catch?.(() => {}); } catch { /* ya estaba cerrado */ } };
+  return {
+    ctx,
+    master,
+    play(name, opts) {
+      active += 1;
+      const ok = playSfx(ctx, name, { ...opts, gain: 1, dest: master, onEnd: () => { active -= 1; if (closing && active <= 0) shut(); } });
+      if (!ok) active -= 1;
+      return ok;
+    },
+    mute(off) { master.gain.setTargetAtTime(off ? 0 : 0.9, ctx.currentTime, 0.03); },
+    // Si algo falla, a los 10 s se cierra igual
+    close() {
+      closing = true;
+      if (active <= 0) setTimeout(shut, 1500);
+      else setTimeout(shut, 10000);
+    },
+  };
 }

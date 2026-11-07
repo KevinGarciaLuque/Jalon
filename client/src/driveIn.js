@@ -7,13 +7,12 @@ import imgSide from './assets/drive-34.webp';
 import imgFall from './assets/drive-fall.webp';
 import imgTop from './assets/drive-top.webp';
 
-import { playSfx, preloadSfx, sfxDuration } from './sfx.js';
+import { playSfx, preloadSfx, sfxDuration, sfxOn, setSfx } from './sfx.js';
 
-const SFX_KEY = 'ktracho:sfx';
+export { sfxOn };
+
 // Cuántos segundos después de empezar «impacto» entra «impacto2» (el golpe de impacto2 llega a los 0,15 s de su archivo)
 const IMPACT2_AFTER = 1.0;
-export const sfxOn = () => { try { return localStorage.getItem(SFX_KEY) !== 'off'; } catch { return true; } };
-const setSfx = (on) => { try { localStorage.setItem(SFX_KEY, on ? 'on' : 'off'); } catch { /* sin almacenamiento */ } };
 
 // Las imágenes se bajan y se preparan antes de empezar (así no aparecen a medias)
 export function preload() {

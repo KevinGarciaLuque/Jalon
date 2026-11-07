@@ -56,6 +56,8 @@ function newAudio() {
     return ctx || null;
   } catch { return null; }
 }
+// Las animaciones de cambio de modo se bajan solo al hacer falta (cada una en su archivo)
+const loadFx = (kind) => (kind === 'passenger' ? import('./passengerIn.js') : import('./driveIn.js')).then((m) => { m.preload().catch(() => {}); return m; });
 const reducedMotion = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
 // Aviso al cambiar de modo: confirma el cambio y se cierra solo a los 3 segundos (o al tocar fuera)
@@ -251,7 +253,9 @@ export default function App() {
     // Al pasar a conductor: la animación se empieza a descargar en el mismo toque (mientras responde el servidor)
     const toDriver = session.user.role !== 'driver';
     // La animación es para quien ya puede trabajar; con la cuenta en revisión sale el aviso de subir documentos
-    const fx = toDriver && accountStatus === 'active' && !reducedMotion() ? import('./driveIn.js').then((m) => { m.preload().catch(() => {}); return m; }) : null;
+    // Al pasar a pasajero: la animación del pin que cae al mapa (con «pop» y «ding»)
+    const kind = toDriver ? (accountStatus === 'active' ? 'driver' : null) : 'passenger';
+    const fx = kind && !reducedMotion() ? loadFx(kind) : null;
     fx?.catch(() => {});
     const audio = fx ? newAudio() : null;
     if (fx) animating.current = true;
@@ -259,8 +263,8 @@ export default function App() {
       const { user } = await apiPost('me/mode', session.token, { mode: toDriver ? 'driver' : 'passenger' });
       setWallet(null);
       applyMode(user);
-      // Solo cuando el servidor confirmó el modo conductor
-      if (fx && user.role === 'driver') setDriveIn({ fx, audio, info: { vehicle: user.vehicle, plate: user.plate } });
+      // Solo cuando el servidor confirmó el modo
+      if (fx && user.role === kind) setDriveIn({ fx, audio, kind, info: { vehicle: user.vehicle, plate: user.plate } });
       else { animating.current = false; audio?.close?.(); setModeNotice(user.role); }
     } catch (e) {
       animating.current = false;
@@ -272,8 +276,8 @@ export default function App() {
   async function staffSwitch(mode, vehicle) {
     setStaffBusy(true);
     // Como conductor: la misma animación del carro que cae al mapa (se descarga y el audio se abre en el mismo toque)
-    const toDriver = mode === 'driver' && session.user.staffMode !== 'driver';
-    const fx = toDriver && !reducedMotion() ? import('./driveIn.js').then((m) => { m.preload().catch(() => {}); return m; }) : null;
+    const kind = mode === 'driver' && session.user.staffMode !== 'driver' ? 'driver' : mode === 'passenger' && session.user.staffMode !== 'passenger' ? 'passenger' : null;
+    const fx = kind && !reducedMotion() ? loadFx(kind) : null;
     fx?.catch(() => {});
     const audio = fx ? newAudio() : null;
     if (fx) animating.current = true;
@@ -283,7 +287,7 @@ export default function App() {
       setWallet(null);
       setAccountStatus(user.status);
       save({ ...session, user: { ...session.user, ...user } });
-      if (fx && user.role === 'driver') setDriveIn({ fx, audio, info: { vehicle: user.vehicle, plate: user.plate } });
+      if (fx && user.role === kind) setDriveIn({ fx, audio, kind, info: { vehicle: user.vehicle, plate: user.plate } });
       else {
         animating.current = false;
         audio?.close?.();
@@ -318,8 +322,8 @@ export default function App() {
   useEffect(() => {
     if (!driveIn) return;
     driveIn.fx
-      .then((m) => m.playDriveIn({ audio: driveIn.audio, info: driveIn.info }))
-      .catch(() => { driveIn.audio?.close?.(); setModeNotice('driver'); })
+      .then((m) => (driveIn.kind === 'passenger' ? m.playPassengerIn({ audio: driveIn.audio }) : m.playDriveIn({ audio: driveIn.audio, info: driveIn.info })))
+      .catch(() => { driveIn.audio?.close?.(); setModeNotice(driveIn.kind); })
       .finally(() => { animating.current = false; setDriveIn(null); });
   }, [driveIn]);
 

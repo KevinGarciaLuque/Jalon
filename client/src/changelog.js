@@ -3,6 +3,15 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-07-animacion-pasajero',
+    date: '2026-11-07',
+    title: 'Animación al pasar a modo pasajero',
+    for: ['passenger', 'driver'],
+    items: [
+      'Al cambiar a modo pasajero, el aviso aparece con un «pop» y de él sale tu pin, que cae sobre el mapa en tu ubicación con un «ding». Si prefieres silencio, el botón del parlante del aviso apaga los sonidos.',
+    ],
+  },
+  {
     id: '2026-11-07-impacto2',
     date: '2026-11-07',
     title: 'Un sonido más en la animación del carro',

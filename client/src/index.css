@@ -705,6 +705,9 @@ button.drive-in-mute { position: absolute; top: 8px; right: 8px; width: auto; mi
 .drive-in-streaks i:nth-child(4) { left: 66%; height: 150px; top: 6px; }
 .drive-in-streaks i:nth-child(5) { left: 82%; height: 80px; top: 44px; }
 .leaflet-marker-icon.drive-in-hide { opacity: 0 !important; }
+.pass-in-pin { position: absolute; left: 0; top: 0; width: 34px; height: 44px; z-index: 2; transform-origin: 50% 100%; will-change: transform, opacity; pointer-events: none; backface-visibility: hidden; }
+.pass-in-pin svg { display: block; width: 100%; height: 100%; filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .3)); }
+.pass-in-shadow { position: absolute; width: 44px; height: 16px; border-radius: 50%; background: radial-gradient(closest-side, rgba(0, 0, 0, .5), rgba(0, 0, 0, 0)); opacity: 0; pointer-events: none; }
 
 /* Aviso al cambiar entre modo conductor y modo pasajero */
 .mode-notice { position: fixed; inset: 0; z-index: 5000; background: rgba(4, 10, 7, .55); display: flex; align-items: center; justify-content: center; padding: 16px; animation: fade-in var(--slow) ease-out; }
