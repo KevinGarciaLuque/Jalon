@@ -1,6 +1,7 @@
 // Avisos: se guardan en la campanita de cada persona y, si no tiene la app a la vista, le llegan al celular (Web Push)
 import { pool } from './db.js';
 import { sendPush, pushEnabled } from './push.js';
+import { sendFcm, fcmEnabled } from './fcm.js';
 import { reportError } from './config.js';
 import { io } from './app.js';
 import { room } from './live.js';
@@ -38,6 +39,13 @@ async function sendToPhone(userId, payload) {
     // 404/410: el dispositivo ya no existe (desinstalaron la app o quitaron el permiso): se borra la suscripción
     if ((await sendPush(s, payload)) === 'gone') await pool.query('DELETE FROM push_subscriptions WHERE id = ?', [s.id]);
   }));
+  // App nativa (Android/iPhone) por Firebase
+  if (fcmEnabled) {
+    const [devs] = await pool.query('SELECT id, token FROM device_tokens WHERE user_id = ?', [userId]);
+    await Promise.all(devs.map(async (d) => {
+      if ((await sendFcm(d.token, payload)) === 'gone') await pool.query('DELETE FROM device_tokens WHERE id = ?', [d.id]);
+    }));
+  }
 }
 
 // Un aviso para una persona. `always`: al celular aunque tenga la app a la vista (p. ej. una recarga aprobada)
@@ -45,7 +53,7 @@ async function notifyUser(userId, payload, { always = false, staff = false } = {
   const kind = payload.kind || kindOf(payload.tag);
   await save(userId, payload, kind, payload.target || (staff ? STAFF_TARGET[kind] : null));
   if (payload.bell !== false) io.to(room(userId)).emit('notify:new', { unread: await unreadCount(userId), title: payload.title });
-  if (pushEnabled && (always || !(await hasVisibleApp(userId)))) await sendToPhone(userId, payload);
+  if ((pushEnabled || fcmEnabled) && (always || !(await hasVisibleApp(userId)))) await sendToPhone(userId, payload);
 }
 
 // Al personal con el permiso indicado: a todos en la campanita (aunque no hayan activado las notificaciones del celular) y al celular a quien las activó
@@ -58,7 +66,9 @@ async function notifyStaff(payload, perm = 'alerts') {
 
 export const push = (userId, payload, opts) => notifyUser(userId, payload, opts).catch(reportError); // sin esperar: nunca retrasa la respuesta
 export const pushStaff = (payload, perm) => notifyStaff(payload, perm).catch(reportError);
-export const hasPushSub = async (userId) => pushEnabled && (await pool.query('SELECT 1 FROM push_subscriptions WHERE user_id = ? LIMIT 1', [userId]))[0].length > 0;
+export const hasPushSub = async (userId) =>
+  (pushEnabled && (await pool.query('SELECT 1 FROM push_subscriptions WHERE user_id = ? LIMIT 1', [userId]))[0].length > 0) ||
+  (fcmEnabled && (await pool.query('SELECT 1 FROM device_tokens WHERE user_id = ? LIMIT 1', [userId]))[0].length > 0);
 
 // Se borran a los 30 días
 export const purgeNotifications = async () => (await pool.query('DELETE FROM notifications WHERE updated_at < NOW() - INTERVAL 30 DAY'))[0].affectedRows;

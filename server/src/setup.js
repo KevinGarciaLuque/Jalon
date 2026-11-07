@@ -237,6 +237,21 @@ if (process.env.RESET_PASSWORD_FOR && process.env.RESET_PASSWORD_TO) {
   console.warn(r.affectedRows ? `⚠ Contraseña restablecida para ${ph}. Quita RESET_PASSWORD_FOR y RESET_PASSWORD_TO.` : '⚠ RESET_PASSWORD_FOR: no hay personal con ese teléfono');
 }
 
+// Fase 11: celulares con la app nativa (Android/iPhone) que reciben notificaciones por Firebase
+await conn.query(`
+  CREATE TABLE IF NOT EXISTS device_tokens (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    token VARCHAR(400) NOT NULL,
+    token_hash CHAR(64) NOT NULL,
+    platform VARCHAR(10) NOT NULL DEFAULT 'android',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY one_token (token_hash),
+    KEY by_user (user_id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  )
+`);
+
 // Fase 8A: dispositivos que reciben notificaciones push
 await conn.query(`
   CREATE TABLE IF NOT EXISTS push_subscriptions (

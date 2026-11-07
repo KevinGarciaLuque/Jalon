@@ -1,4 +1,5 @@
 import { lazy, useEffect, useRef, useState } from 'react';
+import { isNative, nativePushState, nativePushEnable, nativePushSync, nativePushDisable } from './native.js';
 
 // Desarrollo: API en :4000. Producción: el mismo servidor entrega la web, así que se usa la misma dirección ('')
 export const API = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? 'http://localhost:4000' : '');
@@ -142,7 +143,7 @@ export function useInstall() {
 // ---- Notificaciones push ----
 // Solo existen en la versión publicada (el service worker no corre en el servidor de desarrollo)
 export const pushSupported = () =>
-  import.meta.env.PROD && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  isNative() || (import.meta.env.PROD && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window);
 
 const keyToBytes = (b64) => {
   const raw = atob((b64 + '='.repeat((4 - (b64.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/'));
@@ -150,14 +151,20 @@ const keyToBytes = (b64) => {
 };
 
 // 'unsupported' | 'denied' | 'on' | 'off'
-export async function pushState() {
+export async function pushState(token) {
   if (!pushSupported()) return 'unsupported';
+  if (isNative()) {
+    const st = await nativePushState();
+    if (st === 'on' && token) nativePushSync((t, platform) => apiPost('push/device', token, { token: t, platform })).catch(() => {}); // renueva el token en silencio
+    return st;
+  }
   if (Notification.permission === 'denied') return 'denied';
   const reg = await navigator.serviceWorker.ready;
   return (await reg.pushManager.getSubscription()) ? 'on' : 'off';
 }
 
 export async function enablePush(token) {
+  if (isNative()) return nativePushEnable((t, platform) => apiPost('push/device', token, { token: t, platform }));
   const permission = await Notification.requestPermission();
   if (permission !== 'granted') throw new Error('Permiso denegado. Actívalo en la configuración de tu navegador para este sitio.');
   const { key } = await apiGet('push/key', token);
@@ -168,6 +175,7 @@ export async function enablePush(token) {
 }
 
 export async function disablePush(token) {
+  if (isNative()) return nativePushDisable((t) => apiPost('push/device/remove', token, { token: t }).catch(() => {}));
   const reg = await navigator.serviceWorker.ready;
   const sub = await reg.pushManager.getSubscription();
   if (!sub) return;

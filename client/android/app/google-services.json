@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "204266215244",
+    "project_id": "ktrachogo-53970",
+    "storage_bucket": "ktrachogo-53970.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:204266215244:android:32b34401bff935eaf561e9",
+        "android_client_info": {
+          "package_name": "com.ktrachogo.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAndXAGFaR2j7axsrZzPG4jVxWAMP-3jpc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

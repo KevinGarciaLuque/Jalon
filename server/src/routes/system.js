@@ -11,6 +11,7 @@ import { keyIsDerived } from '../secure.js';
 import { lastRekey } from '../rekey.js';
 import { mapsProvider } from '../maps.js';
 import { pushEnabled } from '../push.js';
+import { fcmEnabled } from '../fcm.js';
 import { smsConfigured } from '../sms.js';
 import { mailConfigured } from '../mail.js';
 import { TERMS_VERSION } from '../legal.js';
@@ -82,6 +83,7 @@ export async function systemStatus() {
     item('avisos', 'Teléfonos de emergencia (SOS)', SOS_PHONES.length && smsConfigured ? 'ok' : SOS_PHONES.length ? 'warn' : 'bad',
       SOS_PHONES.length ? `${SOS_PHONES.length} teléfono(s)${smsConfigured ? '' : ', pero sin Twilio no les llega el SMS'}.` : 'Sin SOS_ALERT_PHONES: las emergencias solo se ven en el panel.'),
     item('avisos', 'Notificaciones', pushEnabled ? 'ok' : 'warn', pushEnabled ? 'Llaves VAPID configuradas.' : 'Sin VAPID_*: no hay notificaciones.'),
+    item('avisos-app', 'Notificaciones de la app (Android/iPhone)', fcmEnabled ? 'ok' : 'warn', fcmEnabled ? 'Firebase configurado.' : 'Sin FCM_SERVICE_ACCOUNT: la app nativa no recibe notificaciones.'),
     // Datos
     await uploadsCheck(),
     await backupsCheck(),

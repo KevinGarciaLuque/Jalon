@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { apiGet, pushState, pushSupported, enablePush } from './lib.js';
+import { isNative } from './native.js';
 import GeoHelp, { IOS, STANDALONE, geoPermission } from './GeoHelp.jsx';
 
 // Barra que avisa cuando la ubicación o las notificaciones están apagadas, con un botón para arreglarlo.
@@ -47,9 +48,9 @@ export default function PermsBar({ token, role, geoDenied, onGeoRetry, hidden })
     async function check() {
       if (!pushSupported()) { if (alive) setPush(IOS && !STANDALONE ? 'install' : null); return; }
       try {
-        const { key } = await apiGet('push/key', token);
-        if (!key) return alive && setPush(null);
-        const st = await pushState();
+        const { key, native } = await apiGet('push/key', token);
+        if (!(isNative() ? native : key)) return alive && setPush(null);
+        const st = await pushState(token);
         if (alive) setPush(st === 'off' || st === 'denied' ? st : null);
       } catch { /* sin conexión: se revisa la próxima vez */ }
     }

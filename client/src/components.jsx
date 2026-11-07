@@ -310,7 +310,7 @@ export function PushToggle({ token, why, compact = false }) {
   const [state, setState] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  useEffect(() => { pushState().then(setState).catch(() => setState('unsupported')); }, []);
+  useEffect(() => { pushState(token).then(setState).catch(() => setState('unsupported')); }, []);
 
   async function toggle() {
     setBusy(true);

@@ -8,6 +8,7 @@ import { faresFor } from '../fares.js';
 import { searchPlaces, reversePlace, getRoute } from '../maps.js';
 import { normalizePhone } from '../phone.js';
 import { validEndpoint, publicKey as vapidPublicKey } from '../push.js';
+import { fcmEnabled } from '../fcm.js';
 import { isProd, REPORT_TYPES } from '../config.js';
 import { TERMS_VERSION } from '../legal.js';
 import { app, io, loginLimiter, mapsLimiter, trackLimiter } from '../app.js';
@@ -198,7 +199,7 @@ app.get('/api/reports/mine', authUser, async (req, res) => {
 });
 
 // ---------- Suscripción a notificaciones ----------
-app.get('/api/push/key', authUser, (_req, res) => res.json({ key: vapidPublicKey })); // null = el servidor no tiene notificaciones configuradas
+app.get('/api/push/key', authUser, (_req, res) => res.json({ key: vapidPublicKey, native: fcmEnabled })); // null = el servidor no tiene notificaciones configuradas
 
 app.post('/api/push/subscribe', authUser, async (req, res) => {
   const { endpoint, keys } = req.body?.subscription || {};
@@ -212,6 +213,27 @@ app.post('/api/push/subscribe', authUser, async (req, res) => {
   );
   // Como máximo 10 dispositivos por persona: se quitan los más antiguos
   await pool.query('DELETE FROM push_subscriptions WHERE user_id = ? AND id NOT IN (SELECT id FROM (SELECT id FROM push_subscriptions WHERE user_id = ? ORDER BY id DESC LIMIT 10) t)', [req.user.id, req.user.id]);
+  res.json({ ok: true });
+});
+
+// App nativa (Android/iPhone): el token que da Firebase a cada celular
+app.post('/api/push/device', authUser, async (req, res) => {
+  const { token, platform } = req.body || {};
+  if (typeof token !== 'string' || token.length < 20 || token.length > 400 || !/^[\w:.\-]+$/.test(token)) return res.status(400).json({ error: 'Token inválido' });
+  const hash = crypto.createHash('sha256').update(token).digest('hex');
+  await pool.query(
+    `INSERT INTO device_tokens (user_id, token, token_hash, platform) VALUES (?,?,?,?)
+     ON DUPLICATE KEY UPDATE user_id = VALUES(user_id), platform = VALUES(platform)`,
+    [req.user.id, token, hash, platform === 'ios' ? 'ios' : 'android']
+  );
+  await pool.query('DELETE FROM device_tokens WHERE user_id = ? AND id NOT IN (SELECT id FROM (SELECT id FROM device_tokens WHERE user_id = ? ORDER BY id DESC LIMIT 10) t)', [req.user.id, req.user.id]);
+  res.json({ ok: true });
+});
+
+app.post('/api/push/device/remove', authUser, async (req, res) => {
+  const token = req.body?.token;
+  if (typeof token !== 'string') return res.status(400).json({ error: 'Token inválido' });
+  await pool.query('DELETE FROM device_tokens WHERE token_hash = ? AND user_id = ?', [crypto.createHash('sha256').update(token).digest('hex'), req.user.id]);
   res.json({ ok: true });
 });
 
