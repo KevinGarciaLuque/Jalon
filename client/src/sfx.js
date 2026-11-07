@@ -39,7 +39,8 @@ if (typeof document !== 'undefined') {
 
 // `at`: segundos desde ahora · `gain`: volumen (0 a 1) · `fadeAt`: segundos desde ahora en que empieza a bajar hasta callar (0,12 s)
 // `dest`: a dónde conectar el sonido (por defecto, la salida); la animación del carro usa su propio volumen general
-export function playSfx(ctx, name, { at = 0, gain = 0.9, fadeAt = null, dest = null } = {}) {
+// `onEnd`: se llama cuando el sonido terminó de sonar (o lo cortó `fadeAt`)
+export function playSfx(ctx, name, { at = 0, gain = 0.9, fadeAt = null, dest = null, onEnd = null } = {}) {
   const buffer = buffers[name];
   if (!ctx || !buffer || ctx.state !== 'running') return false;
   try {
@@ -53,6 +54,7 @@ export function playSfx(ctx, name, { at = 0, gain = 0.9, fadeAt = null, dest = n
       g.gain.setValueAtTime(gain, f);
       g.gain.linearRampToValueAtTime(0.0001, f + 0.12);
     }
+    if (onEnd) src.onended = onEnd;
     src.connect(g).connect(dest || ctx.destination);
     src.start(t);
     if (fadeAt !== null) src.stop(ctx.currentTime + fadeAt + 0.2); // ya calló: se libera

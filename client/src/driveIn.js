@@ -35,6 +35,17 @@ function sounds(ctx) {
   const master = ctx.createGain();
   master.gain.value = sfxOn() ? 0.9 : 0;
   master.connect(ctx.destination);
+  // Los sonidos de archivo (carro, impacto) se cuentan: el audio se cierra cuando todos terminaron de sonar, no por un tiempo fijo
+  // (antes se cerraba unos segundos después de la animación y podía cortar el final del impacto).
+  let active = 0;
+  let closing = false;
+  const shut = () => { try { ctx.close?.().catch?.(() => {}); } catch { /* ya estaba cerrado */ } };
+  const sample = (name, opts) => {
+    active += 1;
+    const ok = playSfx(ctx, name, { ...opts, gain: 1, dest: master, onEnd: () => { active -= 1; if (closing && active <= 0) shut(); } });
+    if (!ok) active -= 1;
+    return ok;
+  };
   const noise = (secs) => {
     const buf = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * secs), ctx.sampleRate);
     const d = buf.getChannelData(0);
@@ -51,7 +62,7 @@ function sounds(ctx) {
   return {
     // `fadeAt`: cuándo debe callar el sonido del carro (justo al tocar el mapa, para dejarle lugar al impacto)
     whoosh(at, dur = 1.1, fadeAt = null) {
-      if (playSfx(ctx, 'carro', { at, gain: 1, fadeAt, dest: master })) return; // el sonido «carro»; si no está listo, el aire sintético
+      if (sample('carro', { at, fadeAt })) return; // el sonido «carro»; si no está listo, el aire sintético
       const t = ctx.currentTime + at;
       const src = noise(dur);
       const bp = ctx.createBiquadFilter();
@@ -67,7 +78,7 @@ function sounds(ctx) {
       src.stop(t + dur);
     },
     thump(at) {
-      if (playSfx(ctx, 'impacto', { at, gain: 1, dest: master })) return; // el sonido «impacto»; si no está listo, el golpe sintético
+      if (sample('impacto', { at })) return; // el sonido «impacto»; si no está listo, el golpe sintético
       const t = ctx.currentTime + at;
       const o = ctx.createOscillator();
       o.type = 'sine';
@@ -114,8 +125,12 @@ function sounds(ctx) {
       }
     },
     mute(off) { master.gain.setTargetAtTime(off ? 0 : 0.9, ctx.currentTime, 0.03); },
-    // El audio se cierra cuando ya sonó todo: el impacto dura unos 3 s y empieza al caer, con la animación casi terminando
-    close() { setTimeout(() => ctx.close?.().catch?.(() => {}), 3600); },
+    // Se cierra cuando terminó de sonar el último sonido (el impacto dura unos 3 s); si algo falla, a los 10 s se cierra igual
+    close() {
+      closing = true;
+      if (active <= 0) setTimeout(shut, 1500);
+      else setTimeout(shut, 10000);
+    },
   };
 }
 

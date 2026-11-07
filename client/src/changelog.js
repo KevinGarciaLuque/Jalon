@@ -12,6 +12,7 @@ export const CHANGELOG = [
       'El chat ahora se abre en una ventana que sube desde abajo, encima de todo, y ya no empuja el resto del panel. Sigue al teclado para que el campo de escribir siempre se vea.',
       'La calificación ocupa menos espacio: el dibujo es más chico y, ya calificado, queda una sola línea de agradecimiento.',
       'La tarjeta del total es más pequeña, para que la calificación quede más arriba. Al elegir una propina, el pasajero ve cómo se suma al total antes de confirmarla.',
+      'El sonido de impacto de la animación del carro ya no se corta al final: el audio se cierra cuando termina de sonar, no por un tiempo fijo.',
     ],
   },
   {
