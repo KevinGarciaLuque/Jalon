@@ -3,6 +3,15 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-06-fecha-version',
+    date: '2026-11-06',
+    title: 'La versión muestra el día',
+    for: ['all'],
+    items: [
+      'En el menú y en Mi cuenta, la versión de la app ahora dice el día completo (por ejemplo, «6 noviembre 2026») y no solo el mes y el año.',
+    ],
+  },
+  {
     id: '2026-11-06-oferta-subio',
     date: '2026-11-06',
     title: 'Aviso cuando el pasajero sube su oferta',

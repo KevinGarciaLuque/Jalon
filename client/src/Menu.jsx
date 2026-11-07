@@ -51,8 +51,9 @@ const ROLE_NAME = { passenger: 'Pasajero', driver: 'Conductor', superadmin: 'Sup
 const STAFF = ['superadmin', 'admin', 'support'];
 const CLOSE_MS = 220; // lo que dura la salida (igual que en el CSS)
 // Versión y mes de publicación de esta app (se ponen al compilar), p. ej. «versión 1.74 · noviembre 2026»
-const BUILD_MONTH = new Date(__BUILD_DATE__).toLocaleDateString('es-HN', { month: 'long', year: 'numeric' }).replace(' de ', ' ');
-const VERSION_TEXT = `Ktracho GO · versión ${__APP_VERSION__} · ${BUILD_MONTH}`;
+// Fecha de esta versión con el día («6 noviembre 2026»)
+const BUILD_DAY = new Date(__BUILD_DATE__).toLocaleDateString('es-HN', { day: 'numeric', month: 'long', year: 'numeric' }).replace(/ de /g, ' ');
+const VERSION_TEXT = `Ktracho GO · versión ${__APP_VERSION__} · ${BUILD_DAY}`;
 const DEVELOPER = 'Desarrollado por Kevin Garcia';
 
 // El botón ☰ del encabezado y el menú que sale de la izquierda (como inDrive), con las secciones.
