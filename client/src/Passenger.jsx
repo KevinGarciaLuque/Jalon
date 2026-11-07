@@ -584,7 +584,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
                 </div>
                 <div className="row">
                   {ride.driver.phone && <a className="sm" href={`tel:${ride.driver.phone}`}>Llamar</a>}
-                  <button className="primary sm" onClick={chat.open ? chat.closeChat : chat.openChat}>💬 Chat{chat.unread ? ` (${chat.unread})` : ''}</button>
+                  <button className={`primary sm${chat.unread ? ' chat-new' : ''}`} onClick={chat.open ? chat.closeChat : chat.openChat}>💬 Chat{chat.unread ? ` (${chat.unread})` : ''}</button>
                 </div>
               </div>
             )}
@@ -608,7 +608,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
                 {ride.driver && <Rate token={token} rideId={ride.id} who={ride.driver.name} title="¡Llegaste!" />}
                 {ride.driver && ride.tipOpen && <Tip token={token} ride={ride} onDone={setRide} />}
                 {chat.chatable && !chat.closed && (
-                  <button onClick={chat.open ? chat.closeChat : chat.openChat}>💬 ¿Olvidaste algo? Escribe al conductor{chat.unread ? ` (${chat.unread})` : ''}</button>
+                  <button className={chat.unread ? 'chat-new' : ''} onClick={chat.open ? chat.closeChat : chat.openChat}>💬 ¿Olvidaste algo? Escribe al conductor{chat.unread ? ` (${chat.unread})` : ''}</button>
                 )}
                 {chat.open && <Chat chat={chat} meId={userId} quick={['Creo que dejé algo en tu carro']} />}
               </>

@@ -258,7 +258,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
               </div>
             )}
             {ride?.status === 'completed' && ride.passenger && chat.chatable && !chat.closed && (
-              <button onClick={chat.open ? chat.closeChat : chat.openChat}>💬 Chat con el pasajero{chat.unread ? ` (${chat.unread})` : ''}</button>
+              <button className={chat.unread ? 'chat-new' : ''} onClick={chat.open ? chat.closeChat : chat.openChat}>💬 Chat con el pasajero{chat.unread ? ` (${chat.unread})` : ''}</button>
             )}
             {ride?.status === 'completed' && <button onClick={() => setReporting(true)}>⚠ Reportar un problema con este viaje</button>}
             {showWallet && wallet && <DriverWallet wallet={wallet} reload={loadWallet} onClose={() => setShowWallet(false)} />}
@@ -408,7 +408,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
               </div>
               <div className="row">
                 {ride.passenger?.phone && <a className="sm" href={`tel:${ride.passenger.phone}`}>Llamar</a>}
-                <button className="primary sm" onClick={chat.open ? chat.closeChat : chat.openChat}>💬 Chat{chat.unread ? ` (${chat.unread})` : ''}</button>
+                <button className={`primary sm${chat.unread ? ' chat-new' : ''}`} onClick={chat.open ? chat.closeChat : chat.openChat}>💬 Chat{chat.unread ? ` (${chat.unread})` : ''}</button>
               </div>
             </div>
             {chat.open && <Chat chat={chat} meId={userId} quick={QUICK} />}

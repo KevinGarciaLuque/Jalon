@@ -247,6 +247,11 @@ input.code::placeholder { letter-spacing: 0; font-size: 15px; font-weight: 400; 
 .quick button { white-space: nowrap; border-radius: 999px; }
 .chat-input { display: flex; gap: 8px; }
 .chat-input input { flex: 1; }
+/* Mensajes sin leer: el botón del chat late con un aro y se sacude un poquito cada tanto, para que se note (sin movimiento si la persona lo tiene desactivado) */
+@keyframes chat-ping { 0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, .75); } 70%, 100% { box-shadow: 0 0 0 12px rgba(34, 197, 94, 0); } }
+@keyframes chat-wiggle { 0%, 55%, 100% { transform: none; } 62% { transform: rotate(-4deg); } 69% { transform: rotate(4deg); } 76% { transform: rotate(-3deg); } 83% { transform: rotate(3deg); } 90% { transform: none; } }
+button.chat-new { animation: chat-ping 1.4s ease-out infinite, chat-wiggle 2.8s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { button.chat-new { animation: none; outline: 3px solid var(--brand); outline-offset: 2px; } }
 
 /* ---- Fase 8C ---- */
 .eta { margin: 0; padding: 9px 12px; border-radius: var(--r-1); background: var(--brand-soft); }

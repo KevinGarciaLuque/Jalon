@@ -357,8 +357,9 @@ export function PushToggle({ token, why, compact = false }) {
 export function Chat({ chat, meId, quick = [] }) {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
-  const end = useRef(null);
-  useEffect(() => { end.current?.scrollIntoView({ block: 'end' }); }, [chat.messages.length, chat.open]);
+  const list = useRef(null);
+  // Solo baja la lista de mensajes (scrollIntoView movía también el panel de abajo y el campo de escribir se iba de la vista)
+  useEffect(() => { const l = list.current; if (l) l.scrollTop = l.scrollHeight; }, [chat.messages.length, chat.open]);
 
   async function send(t) {
     const body = (t ?? text).trim();
@@ -372,7 +373,7 @@ export function Chat({ chat, meId, quick = [] }) {
 
   return (
     <div className="chat" data-testid="chat">
-      <div className="chat-list">
+      <div className="chat-list" ref={list}>
         {chat.messages.length === 0 && <p className="muted small center">Escribe para coordinar la recogida. Los teléfonos no se comparten.</p>}
         {chat.messages.map((m) => (
           <div key={m.id} className={`bubble ${m.senderId === meId ? 'mine' : 'theirs'}`}>
@@ -380,7 +381,6 @@ export function Chat({ chat, meId, quick = [] }) {
             <small>{time(m.at)}{m.senderId === meId && (m.read ? ' ✓✓' : ' ✓')}</small>
           </div>
         ))}
-        <div ref={end} />
       </div>
       {chat.closed ? (
         <p className="muted small center">El chat de este viaje ya está cerrado.</p>
