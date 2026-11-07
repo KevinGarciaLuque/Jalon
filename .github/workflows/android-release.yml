@@ -1,0 +1,60 @@
+name: App de Android (Play Store)
+
+# Arma el .aab FIRMADO que se sube a Google Play. Se corre a mano: GitHub → Actions → «App de Android (Play Store)» → Run workflow.
+# Necesita 4 secretos del repositorio (Settings → Secrets and variables → Actions):
+#   ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: 'Nombre de la versión que ve la gente (ej. 1.0.1)'
+        default: '1.0'
+
+jobs:
+  aab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Instalar dependencias y compilar la web
+        run: |
+          npm ci --prefix client
+          npm --prefix client run build
+
+      - name: Copiar la configuración y los complementos a Android
+        working-directory: client
+        run: npx cap sync android
+
+      - name: Preparar la llave de firma
+        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/upload.jks"
+
+      - name: Armar el .aab firmado
+        working-directory: client/android
+        env:
+          KEYSTORE_FILE: ${{ runner.temp }}/upload.jks
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          VERSION_CODE: ${{ github.run_number }}
+          VERSION_NAME: ${{ inputs.version_name }}
+        run: |
+          chmod +x gradlew
+          ./gradlew bundleRelease --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ktracho-go-play-store
+          path: client/android/app/build/outputs/bundle/release/app-release.aab
+          retention-days: 30
