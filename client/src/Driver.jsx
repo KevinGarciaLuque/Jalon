@@ -106,6 +106,15 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
     playRideTransition(before, ride.status, 'driver');
     payStatus.current[ride.id] = ride.status;
   }, [ride?.id, ride?.status]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Al terminar el viaje la hoja se abre y sube al inicio: así se ve primero el total (en pantallas chicas, como el iPhone 6s, quedaba a medias)
+  const sheetRef = useRef(null);
+  useEffect(() => {
+    if (ride?.status !== 'completed') return undefined;
+    setCompact(false);
+    const f = requestAnimationFrame(() => sheetRef.current?.scrollTo({ top: 0 }));
+    const t = setTimeout(() => sheetRef.current?.scrollTo({ top: 0 }), 350); // otra vez cuando ya aparecieron la propina y la calificación
+    return () => { cancelAnimationFrame(f); clearTimeout(t); };
+  }, [ride?.id, ride?.status]);
   const doneRideId = ride?.status === 'completed' ? ride.id : 0;
   useEffect(() => {
     if (status === 'active') apiGet('driver/earnings?period=day', token).then(setToday).catch(() => {});
@@ -257,7 +266,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
         )}
       </div>
 
-      <div className={`sheet${compact ? ' compact' : ''}${online && !active && requests.length ? ' has-requests' : ''}`}>
+      <div ref={sheetRef} className={`sheet${compact ? ' compact' : ''}${ride?.status === 'completed' ? ' done' : ''}${online && !active && requests.length ? ' has-requests' : ''}`}>
         <Grab compact={compact} setCompact={setCompact} />
         {showTips && <Tips token={token} onClose={() => setShowTips(false)} />}
         {showIntercity && <IntercityBoard token={token} socket={socket} pos={guessed ? null : pos} onClose={() => setShowIntercity(false)} />}

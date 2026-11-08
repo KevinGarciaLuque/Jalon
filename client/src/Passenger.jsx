@@ -240,6 +240,15 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
     playRideTransition(before, ride.status, 'passenger');
     payStatus.current[ride.id] = ride.status;
   }, [ride?.id, ride?.status]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Al terminar el viaje la hoja se abre y sube al inicio: así se ve primero el total (en pantallas chicas, como el iPhone 6s, quedaba a medias)
+  const sheetRef = useRef(null);
+  useEffect(() => {
+    if (ride?.status !== 'completed') return undefined;
+    setCompact(false);
+    const f = requestAnimationFrame(() => sheetRef.current?.scrollTo({ top: 0 }));
+    const t = setTimeout(() => sheetRef.current?.scrollTo({ top: 0 }), 350); // otra vez cuando ya aparecieron la propina y la calificación
+    return () => { cancelAnimationFrame(f); clearTimeout(t); };
+  }, [ride?.id, ride?.status]);
 
   useEffect(() => {
     socket.on('drivers:nearby', setDrivers);
@@ -426,7 +435,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
         )}
       </div>
 
-      <div className={`sheet${compact ? ' compact' : ''}`}>
+      <div ref={sheetRef} className={`sheet${compact ? ' compact' : ''}${ride?.status === 'completed' ? ' done' : ''}`}>
         <Grab compact={compact} setCompact={setCompact} />
         {!active && !ended && guessed && pos && <div className="hint danger" role="alert">📍 <b>No sabemos dónde estás.</b> Escribe abajo dónde te recogemos, o arrastra el pin verde del mapa hasta tu posición. <button type="button" className="link" onClick={() => window.dispatchEvent(new Event('ktracho:geo-help'))}>Cómo activar mi ubicación</button></div>}
         {!active && !ended && !guessed && !origin && vague && <div className="hint" role="status">📍 Tu ubicación es aproximada (±{(accuracy / 1000).toFixed(1)} km). Revisa que el pin verde esté donde estás: si no, arrástralo o escribe la dirección. En iPhone, activa «Ubicación exacta» para Ktracho GO en Ajustes → Privacidad → Localización.</div>}
