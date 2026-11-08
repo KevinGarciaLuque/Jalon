@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { playSound } from './rideAlert.js';
 
 // Avisa cuando se publicó una versión nueva (cada push que Railway publica) y la instala con un toque.
 // Compara el número de esta app (__BUILD_ID__, puesto al compilar) con /version.json del servidor:
@@ -44,6 +45,8 @@ export default function UpdateBar() {
   // Mientras se ve, la barra de permisos se esconde para no encimarse
   const shown = fresh && !later;
   useEffect(() => { document.body.toggleAttribute('data-update', shown); return () => document.body.removeAttribute('data-update'); }, [shown]);
+  // Al aparecer el aviso suena «pop» (respeta el interruptor «Sonido de los avisos» de la campana)
+  useEffect(() => { if (shown) playSound('pop'); }, [shown]);
   if (!shown) return null;
   return (
     <div className="update-bar" role="status">
