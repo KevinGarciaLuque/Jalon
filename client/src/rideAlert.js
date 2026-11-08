@@ -163,8 +163,21 @@ export function playRaiseCoin() {
 }
 
 // Un efecto de sonido suelto (pagar, propina…) que respeta el interruptor «Sonido de los avisos». Devuelve si sonó.
-export function playSound(name) {
+export function playSound(name, opts) {
   if (!appSoundOn()) return false;
   unlockRideAlert();
-  return playSfx(ctx, name);
+  return playSfx(ctx, name, opts);
+}
+
+// Sonido al cambiar el estado del viaje (`before` → `now`). Sin `before` (se abrió la app con el viaje ya en curso) no suena nada.
+// Pasajero: el conductor aceptó (ding), llegó (ding_dong). Ambos: el viaje empezó (carrofuera, solo el arranque),
+// terminó (final) o se canceló (cancelo).
+export function playRideTransition(before, now, role) {
+  if (!before || before === now) return false;
+  if (now === 'cancelled') return playSound('cancelo');
+  if (now === 'completed') return playSound('final');
+  if (now === 'started') return playSound('carrofuera', { fadeAt: 1.1 });
+  if (role === 'passenger' && now === 'arrived') return playSound('ding_dong');
+  if (role === 'passenger' && now === 'accepted') return playSound('ding');
+  return false;
 }

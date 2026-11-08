@@ -11,7 +11,7 @@ import ReportForm from './ReportForm.jsx';
 import DriverDocs from './DriverDocs.jsx';
 import DriverSelfie from './DriverSelfie.jsx';
 import PermsBar from './PermsBar.jsx';
-import { playRideAlert, playTipSound, playSound, unlockRideAlert, rideSoundOn, setRideSound } from './rideAlert.js';
+import { playRideAlert, playTipSound, playRideTransition, unlockRideAlert, rideSoundOn, setRideSound } from './rideAlert.js';
 import PayCard from './PayCard.jsx';
 import { payLabel } from './payMethods.jsx';
 import Tips from './Tips.jsx';
@@ -98,12 +98,12 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
     }
     tipSeen.current[ride.id] = tip;
   }, [ride?.id, ride?.tip]); // eslint-disable-line react-hooks/exhaustive-deps
-  // Al terminar el viaje (ya toca cobrar): suena «pagar». No al reabrir la app con un viaje que ya estaba terminado.
+  // Al empezar, terminar o cancelarse el viaje suena su sonido. No al reabrir la app con el viaje ya en ese estado.
   const payStatus = useRef({});
   useEffect(() => {
     if (!ride) return;
     const before = payStatus.current[ride.id];
-    if (before && before !== 'completed' && ride.status === 'completed') playSound('pagar');
+    playRideTransition(before, ride.status, 'driver');
     payStatus.current[ride.id] = ride.status;
   }, [ride?.id, ride?.status]); // eslint-disable-line react-hooks/exhaustive-deps
   const doneRideId = ride?.status === 'completed' ? ride.id : 0;

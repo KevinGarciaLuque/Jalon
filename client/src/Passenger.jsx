@@ -8,7 +8,7 @@ import Rentals from './Rentals.jsx';
 import Intercity from './Intercity.jsx';
 import Tip from './Tip.jsx';
 import PermsBar from './PermsBar.jsx';
-import { playRaiseCoin, playSound } from './rideAlert.js';
+import { playRaiseCoin, playRideTransition } from './rideAlert.js';
 import PayCard from './PayCard.jsx';
 import { PayMethodPicker } from './payMethods.jsx';
 import { NearbyLine, CategoryCards, PriceMeter, QuickPlaces, etaMinutes } from './RideOptions.jsx';
@@ -232,12 +232,12 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
 
   const loadFavs = () => apiGet('favorites', token).then(setFavs).catch(() => {});
   useEffect(() => { loadFavs(); }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
-  // Al terminar el viaje (llega el total a pagar): suena «pagar». No al reabrir la app con un viaje que ya estaba terminado.
+  // Al cambiar el estado del viaje (aceptado, llegó, empezó, terminó, cancelado) suena su sonido. No al reabrir la app con el viaje ya en ese estado.
   const payStatus = useRef({});
   useEffect(() => {
     if (!ride) return;
     const before = payStatus.current[ride.id];
-    if (before && before !== 'completed' && ride.status === 'completed') playSound('pagar');
+    playRideTransition(before, ride.status, 'passenger');
     payStatus.current[ride.id] = ride.status;
   }, [ride?.id, ride?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 

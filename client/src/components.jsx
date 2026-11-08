@@ -3,7 +3,7 @@ import arrivedImg from './assets/valoracion.webp';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { apiGet, apiPost, pushState, enablePush, disablePush, CATEGORIES } from './lib.js';
-import { playPriceTick } from './rideAlert.js';
+import { playPriceTick, playSound } from './rideAlert.js';
 
 // Mientras llegan los datos: líneas que brillan en lugar de un texto suelto. `label` lo leen los lectores de pantalla.
 // Barrita de la hoja de abajo (celular): queda fija arriba aunque se desplace el contenido.
@@ -228,6 +228,7 @@ export function Rate({ token, rideId, who, title }) {
     setState('sending');
     try {
       await apiPost(`rides/${rideId}/rate`, token, { stars, comment });
+      playSound('pop'); // calificación enviada
       setState('done');
     } catch (e) {
       if (e.message === 'Ya calificaste este viaje') return setState('done');

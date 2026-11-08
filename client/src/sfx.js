@@ -11,8 +11,11 @@ import impacto2 from './assets/sfx/impacto2.mp3';
 import pop from './assets/sfx/pop.mp3';
 import carrofuera from './assets/sfx/carrofuera.mp3';
 import ding from './assets/sfx/ding.mp3';
+import ding_dong from './assets/sfx/ding_dong.mp3';
+import final from './assets/sfx/final.mp3';
+import cancelo from './assets/sfx/cancelo.mp3';
 
-const URLS = { notificacion, pagar, propina, carro, impacto, impacto2, pop, carrofuera, ding };
+const URLS = { notificacion, pagar, propina, carro, impacto, impacto2, pop, carrofuera, ding, ding_dong, final, cancelo };
 const buffers = {};
 let loading = null;
 

@@ -3,6 +3,17 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-07-sonidos-viaje',
+    date: '2026-11-07',
+    title: 'Sonidos en cada momento del viaje',
+    for: ['passenger', 'driver'],
+    items: [
+      'El pasajero escucha un «ding» cuando un conductor acepta su viaje y un «ding-dong» cuando el conductor llega.',
+      'Al empezar el viaje suena el arranque del carro; al terminar, un sonido de cierre, y al cancelarse algo, uno distinto de aviso. Un «pop» confirma que enviaste tu calificación.',
+      'Todos respetan el interruptor «Sonido de los avisos» de la campana.',
+    ],
+  },
+  {
     id: '2026-11-07-animacion-pasajero',
     date: '2026-11-07',
     title: 'Animación al pasar a modo pasajero',
