@@ -10,6 +10,7 @@ export const CHANGELOG = [
     items: [
       'El pasajero escucha un «ding» cuando un conductor acepta su viaje y un «ding-dong» cuando el conductor llega.',
       'Al empezar el viaje suena el arranque del carro; al terminar, un sonido de cierre, y al cancelarse algo, uno distinto de aviso. Un «pop» confirma que enviaste tu calificación.',
+      'Al empezar el viaje ya no suena el aviso de la campanita encima: solo el arranque del carro, completo y sin cortarse. Lo mismo con los demás avisos del viaje.',
       'Todos respetan el interruptor «Sonido de los avisos» de la campana.',
     ],
   },
