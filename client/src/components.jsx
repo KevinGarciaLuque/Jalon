@@ -1,5 +1,6 @@
 import markImg from './assets/logo-marca.webp';
 import arrivedImg from './assets/valoracion.webp';
+import carSide from './assets/drive-34.webp';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { apiGet, apiPost, pushState, enablePush, disablePush, CATEGORIES } from './lib.js';
@@ -81,8 +82,10 @@ export function PasswordInput(props) {
 }
 
 // ⭐ 4.8 (12)
-// Línea de tiempo del viaje en curso: 📍 salida → 🚗 el carro avanza → 🏁 meta (junto al precio).
+// Línea de tiempo del viaje en curso: 📍 salida → el carro avanza por la «carretera» → 🏁 meta (junto al precio).
 // El avance sale de lo que falta para llegar (`eta.km`) contra el largo del viaje; solo avanza, nunca retrocede.
+// Lleva los minutos que faltan en un globito que viaja con el carro, marcas al 25/50/75 % que se encienden al pasarlas,
+// y la carretera se mueve hacia atrás para dar sensación de velocidad.
 export function TripLine({ ride, eta }) {
   const total = useRef(0);
   const best = useRef(0);
@@ -92,12 +95,19 @@ export function TripLine({ ride, eta }) {
     if (total.current > 0) best.current = Math.max(best.current, Math.min(1, Math.max(0, 1 - left / total.current)));
   }
   const pct = Math.round(best.current * 100);
+  const mins = left != null && eta.minutes != null ? Math.round(Number(eta.minutes)) : null;
   return (
     <div className={`trip-line${pct >= 90 ? ' near' : ''}`} role="progressbar" aria-label="Avance del viaje" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
-      <span className="tl-icon" aria-hidden="true">📍</span>
+      <span className="tl-icon tl-start" aria-hidden="true">📍</span>
       <div className="tl-track" aria-hidden="true">
         <i className="tl-fill" style={{ width: `${pct}%` }} />
-        <span className="tl-car" style={{ left: `${pct}%` }}><span>🚗</span></span>
+        <i className="tl-road" />
+        {[25, 50, 75].map((t) => <i key={t} className={`tl-tick${pct >= t ? ' on' : ''}`} style={{ left: `${t}%` }} />)}
+        <span className="tl-car" style={{ left: `${pct}%` }}>
+          <span className="tl-trail"><i /><i /><i /></span>
+          {mins != null && <em className="tl-eta">{mins <= 0 ? '¡Ya!' : `${mins} min`}</em>}
+          <img src={carSide} alt="" width="44" height="29" />
+        </span>
       </div>
       <span className="tl-icon tl-flag" aria-hidden="true">🏁</span>
     </div>
