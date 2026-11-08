@@ -621,7 +621,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
             <b>{ride.status === 'cancelled' ? CANCELLED[ride.cancelled_by] || STATUS.cancelled : STATUS[ride.status]}</b>
             {ride.status === 'completed' && (
               <>
-                <PayCard ride={ride} role="passenger" draftTip={tipDraft} />
+                <PayCard ride={ride} role="passenger" draftTip={ride.tipOpen ? tipDraft : 0} />
                 {ride.driver && ride.tipOpen && <Tip token={token} ride={ride} onDone={setRide} onChange={setTipDraft} />}
                 {ride.driver && <Rate token={token} rideId={ride.id} who={ride.driver.name} title="¡Llegaste!" />}
                 {chat.chatable && !chat.closed && (

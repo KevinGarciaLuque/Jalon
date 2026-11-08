@@ -176,6 +176,15 @@ io.on('connection', async (socket) => {
       });
     });
 
+    // El conductor tocó «Cobrado» al final del viaje: el pasajero ya no ve la propina (el viaje ya se cerró en efectivo)
+    on('ride:collected', async ({ rideId }) => {
+      const ride = await getRide(rideId);
+      if (!ride || ride.driver_id !== user.id || ride.status !== 'completed') return;
+      const [r] = await pool.query('UPDATE rides SET collected_at = NOW() WHERE id = ? AND collected_at IS NULL', [rideId]);
+      if (r.affectedRows !== 1) return;
+      io.to(room(ride.passenger_id)).to(room(user.id)).emit('ride:state', await rideView(await getRide(rideId)));
+    });
+
     // El conductor puede cancelar antes de iniciar el viaje
     on('ride:driver_cancel', async ({ rideId }) => {
       const ride = await getRide(rideId);

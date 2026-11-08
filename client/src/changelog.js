@@ -3,6 +3,15 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-07-propina-cobrado',
+    date: '2026-11-07',
+    title: 'La propina se cierra cuando el conductor cobra',
+    for: ['passenger', 'driver'],
+    items: [
+      'Cuando el conductor toca «Cobrado», al pasajero ya no le aparece la opción de dejar propina (antes seguía saliendo hasta que pasaban los 15 minutos).',
+    ],
+  },
+  {
     id: '2026-11-07-sonidos-viaje',
     date: '2026-11-07',
     title: 'Sonidos en cada momento del viaje',
