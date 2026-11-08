@@ -435,7 +435,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
         )}
       </div>
 
-      <div ref={sheetRef} className={`sheet${compact ? ' compact' : ''}${ride?.status === 'completed' ? ' done' : ''}`}>
+      <div ref={sheetRef} className={`sheet${compact ? ' compact' : ''}${ride?.status === 'completed' ? ' done' : ''}${!active && !ended && dest ? ' asking' : ''}`}>
         <Grab compact={compact} setCompact={setCompact} />
         {!active && !ended && guessed && pos && <div className="hint danger" role="alert">📍 <b>No sabemos dónde estás.</b> Escribe abajo dónde te recogemos, o arrastra el pin verde del mapa hasta tu posición. <button type="button" className="link" onClick={() => window.dispatchEvent(new Event('ktracho:geo-help'))}>Cómo activar mi ubicación</button></div>}
         {!active && !ended && !guessed && !origin && vague && <div className="hint" role="status">📍 Tu ubicación es aproximada (±{(accuracy / 1000).toFixed(1)} km). Revisa que el pin verde esté donde estás: si no, arrástralo o escribe la dirección. En iPhone, activa «Ubicación exacta» para Ktracho GO en Ajustes → Privacidad → Localización.</div>}
@@ -524,12 +524,13 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
                     {when && <input type="datetime-local" aria-label="Fecha y hora del viaje" min={minWhen} max={maxWhen} value={when} onChange={(e) => setWhen(e.target.value)} />}
                   </div>
                 </details>
-                {/* Precio y botón fijos abajo del panel: se ven sin bajar */}
+                {/* El medidor, el código y la forma de pago van en el panel (se bajan a verlos); fijos abajo solo quedan el precio y el botón,
+                    para no tapar el lugar de recogida y el destino en pantallas chicas (iPhone 6s) */}
+                <PriceMeter price={price} suggested={preview.prices?.[category] ?? preview.suggestedPrice} nearCount={near.length} />
+                <PromoField token={token} price={price} promo={promo} onChange={setPromo} />
+                <PayMethodPicker value={payMethod} onChange={setPayMethod} />
                 <div className="ask-bar">
                   <PriceStepper value={price} label="Tu oferta en lempiras" onChange={(v) => { priceEdited.current = true; setPrice(v); }} />
-                  <PriceMeter price={price} suggested={preview.prices?.[category] ?? preview.suggestedPrice} nearCount={near.length} />
-                  <PromoField token={token} price={price} promo={promo} onChange={setPromo} />
-                  <PayMethodPicker value={payMethod} onChange={setPayMethod} />
                   {error && <div className="error">{error}</div>}
                   <button className="primary" disabled={!price || !from} onClick={request}>
                     {when ? 'Programar viaje por' : 'Pedir viaje por'} {lempiras(price || 0)}{promo ? ` · pagas ${lempiras(Number(price || 0) - promoDiscount(promo, price))}` : ''}

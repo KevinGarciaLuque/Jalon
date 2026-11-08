@@ -514,6 +514,7 @@ header span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-spa
   .screen { position: relative; }
   .screen .map { position: absolute; inset: 0; z-index: 0; }
   .screen .sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: 62%; padding-top: 4px; transition: max-height var(--slow) ease-out; }
+  .screen .sheet.asking { max-height: 70%; } /* con destino elegido: un poco más alto para ver el lugar de recogida y el destino */
   .screen .sheet.done { max-height: 82%; } /* terminado el viaje: la hoja crece para que se vean el total y la calificación */
   .screen .sheet.compact { max-height: 30%; }
   .grab { display: flex; justify-content: center; align-items: center; flex: none; min-height: 24px; padding: 0; margin: 0 -16px; border: none; background: none; border-radius: 0; }
