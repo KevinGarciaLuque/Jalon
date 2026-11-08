@@ -177,6 +177,9 @@ export function playRideTransition(before, now, role) {
   if (now === 'cancelled') return playSound('cancelo');
   if (now === 'completed') return playSound('final');
   if (now === 'started') return playSound('carrofuera');
-  if (role === 'passenger' && now === 'arrived') return playSound('ding_dong');
+  if (role === 'passenger' && now === 'arrived') {
+    try { navigator.vibrate?.([140, 70, 140, 70, 260]); } catch { /* sin vibración (iPhone) */ }
+    return playSound('ding_dong');
+  }
   return false;
 }

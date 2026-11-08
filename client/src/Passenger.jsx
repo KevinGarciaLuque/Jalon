@@ -545,7 +545,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
           <>
             <div className="row between">
               {ride.status === 'arrived'
-                ? <b className="arrived-title" key="arrived"><span className="arrived-car" aria-hidden="true">🚕</span><span className="arrived-text">{STATUS.arrived}</span></b>
+                ? <b className="arrive-chip" key="arrived"><span className="arrive-badge" aria-hidden="true"><span className="arrive-car">🚕</span></span><span className="arrive-text">{STATUS.arrived}</span></b>
                 : <b>{STATUS[ride.status]}</b>}
               <span className="tag">{lempiras(ride.toPay ?? ride.final_price ?? ride.offered_price)}</span>
             </div>

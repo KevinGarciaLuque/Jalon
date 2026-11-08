@@ -420,7 +420,9 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
         {active && (
           <>
             <div className="row between">
-              <b>{STATUS[ride.status]}</b>
+              {ride.status === 'arrived'
+                ? <b className="arrive-chip wait" key="waiting"><span className="arrive-badge" aria-hidden="true"><span className="arrive-glass">⏳</span></span><span className="arrive-text">{STATUS.arrived}<span className="arrive-dots" aria-hidden="true"><i /><i /><i /></span></span></b>
+                : <b>{STATUS[ride.status]}</b>}
               <span className="tag">{lempiras(ride.final_price)}</span>
             </div>
             {/* Con código promocional el pasajero paga menos en efectivo: la diferencia la pone Ktracho GO en su saldo */}

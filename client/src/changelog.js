@@ -3,6 +3,16 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-07-animaciones-llegada-chat',
+    date: '2026-11-07',
+    title: 'Llegada más llamativa y sonidos del chat',
+    for: ['passenger', 'driver'],
+    items: [
+      '«Tu conductor llegó» (pasajero) y «Esperando al pasajero» (conductor) ahora aparecen en una cápsula animada: entra con rebote, salen ondas de la insignia, un destello la recorre y late suavemente. El pasajero además siente una vibración corta.',
+      'Chat: con la conversación abierta, cada mensaje que llega suena con un «pop». Con el chat cerrado suena el aviso de notificación de siempre.',
+    ],
+  },
+  {
     id: '2026-11-07-propina-cobrado',
     date: '2026-11-07',
     title: 'La propina se cierra cuando el conductor cobra',

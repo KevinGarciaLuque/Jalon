@@ -1,5 +1,6 @@
 import { lazy, useEffect, useRef, useState } from 'react';
 import { isNative, nativePushState, nativePushEnable, nativePushSync, nativePushDisable } from './native.js';
+import { playSound } from './rideAlert.js';
 
 // Desarrollo: API en :4000. Producción: el mismo servidor entrega la web, así que se usa la misma dirección ('')
 export const API = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? 'http://localhost:4000' : '');
@@ -195,6 +196,8 @@ export function useChat(socket, ride, myId) {
   const [error, setError] = useState('');
   const openRef = useRef(false);
   openRef.current = open;
+  // La campanita mira esto para no sonar encima del «pop» mientras la conversación está abierta
+  useEffect(() => { window.__ktChatOpen = open; return () => { window.__ktChatOpen = false; }; }, [open]);
 
   // El chat se cierra solo en dos momentos (cuando el estado cambia estando ya en pantalla):
   //  · Al empezar el viaje («started»): el pasajero ya va con el conductor, no hace falta la conversación abierta.
@@ -232,8 +235,8 @@ export function useChat(socket, ride, myId) {
       if (m.rideId !== rideId) return;
       setMessages((cur) => (cur.some((x) => x.id === m.id) ? cur : [...cur, m]));
       if (m.senderId !== myId) {
-        if (openRef.current) socket.emit('chat:read', { rideId });
-        else setUnread((n) => n + 1);
+        // Con el chat abierto el mensaje suena «pop»; con el chat cerrado suena el aviso de notificación (el de la campanita)
+        if (openRef.current) { socket.emit('chat:read', { rideId }); playSound('pop'); } else setUnread((n) => n + 1);
       }
     };
     const onRead = ({ rideId: r }) => r === rideId && setMessages((cur) => cur.map((m) => (m.senderId === myId ? { ...m, read: true } : m)));

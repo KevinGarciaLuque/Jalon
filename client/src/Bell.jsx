@@ -104,7 +104,7 @@ export default function Bell({ socket, onGo }) {
     if (socket) {
       // Los avisos del viaje (aceptado, llegó, empezó, terminó, cancelado) y las propinas ya tienen su propio sonido: la campanita no suena encima
       // Si el aviso trae su propio sonido (p. ej. «Recarga aprobada» → cobrar), suena ese en vez del de la campanita
-      const fresh = ({ unread: n, kind, tag, sound }) => { setUnread(n); if (sound) own(sound); else if (kind !== 'ride' && !String(tag || '').startsWith('tip-')) chime(); if (open) loadList(); };
+      const fresh = ({ unread: n, kind, tag, sound }) => { setUnread(n); if (sound) own(sound); else if (kind !== 'ride' && !String(tag || '').startsWith('tip-') && !(kind === 'chat' && window.__ktChatOpen)) chime(); if (open) loadList(); };
       const read = ({ unread: n }) => setUnread(n);
       socket.on('notify:new', fresh);
       socket.on('notify:read', read);
