@@ -70,14 +70,29 @@ export default function Bell({ socket, onGo }) {
   const loadList = useCallback(() => apiGet('notifications').then((r) => { setItems(r.items); setUnread(r.unread); }).catch((e) => setError(e.message)), []);
   const loadCount = useCallback(() => apiGet('notifications/unread').then((r) => setUnread(r.unread)).catch(() => {}), []);
 
-  useEffect(() => { loadCount(); }, [loadCount]);
+  const lastId = useRef(null); // el aviso más nuevo que ya se conocía (personal): para saber de qué es lo que llegó
+  useEffect(() => {
+    loadCount();
+    if (!socket) apiGet('notifications').then((r) => { lastId.current = Math.max(0, ...r.items.map((i) => i.id)); }).catch(() => {});
+  }, [loadCount, socket]);
   useEffect(() => { window.__ktUnread = unread; window.dispatchEvent(new CustomEvent('ktracho:unread', { detail: unread })); }, [unread]);
   // El panel del personal revisa cada 20 s: si hay más avisos sin leer que antes, suena
   useEffect(() => {
     if (socket) return;
-    if (lastCount.current !== null && unread > lastCount.current) chime();
+    if (lastCount.current !== null && unread > lastCount.current) staffSound();
     lastCount.current = unread;
   }, [unread, socket]);
+
+  // Personal: llegó un aviso nuevo. Si es una solicitud de recarga suena «propina»; si no, el sonido de siempre.
+  async function staffSound() {
+    try {
+      const r = await apiGet('notifications');
+      const before = lastId.current ?? Infinity;
+      lastId.current = Math.max(before === Infinity ? 0 : before, ...r.items.map((i) => i.id));
+      if (r.items.some((i) => !i.read && i.id > before && i.kind === 'wallet' && String(i.tag || '').startsWith('topup-'))) return own('propina');
+    } catch { /* sin conexión: suena el de siempre */ }
+    chime();
+  }
 
   function toggleSound() {
     const next = !sound;

@@ -15,6 +15,7 @@ export const CHANGELOG = [
       'Cuando dejan una propina, suena solo el sonido de propina (antes la campanita sonaba también). Igual en el pasajero y en el conductor.',
       'El conductor escucha un sonido de cobro al tocar «Cobrado ✓» al final del viaje.',
       'Cuando te aprueban una recarga, suena el sonido de cobro en lugar del aviso normal.',
+      'Al personal (superadmin, administradores y soporte) le suena el sonido de propina cuando un conductor solicita una recarga.',
       'Todos respetan el interruptor «Sonido de los avisos» de la campana.',
     ],
   },
