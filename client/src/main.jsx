@@ -6,6 +6,7 @@ import { Loading } from './components.jsx';
 import { lazyPage } from './lib.js';
 import UpdateBar from './UpdateBar.jsx';
 import { reportError, watchErrors } from './errors.js';
+import { setupDiag } from './diag.js';
 
 // Se descargan solo si se abren (la app normal no los necesita)
 const Track = lazyPage(() => import('./Track.jsx'));
@@ -33,6 +34,7 @@ class Crash extends Component {
 }
 
 watchErrors();
+setupDiag();
 const root = createRoot(document.getElementById('root'), {
   onCaughtError: (e) => reportError(e, 'render'),
   onUncaughtError: (e) => reportError(e, 'render'),

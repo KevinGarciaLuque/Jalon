@@ -1,6 +1,6 @@
 import markImg from './assets/logo-marca.webp';
 import arrivedImg from './assets/valoracion.webp';
-import carSide from './assets/drive-34.webp';
+import carSide from './assets/carro-lado.webp';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { apiGet, apiPost, pushState, enablePush, disablePush, CATEGORIES } from './lib.js';
@@ -89,7 +89,8 @@ export function PasswordInput(props) {
 export function TripLine({ ride, eta }) {
   const total = useRef(0);
   const best = useRef(0);
-  const left = eta && eta.rideId === ride.id && eta.km != null ? Number(eta.km) : null;
+  // Solo cuenta el tiempo «al destino» (fase dropoff): el de «al pasajero» que quedó de antes haría saltar el carro casi hasta la meta
+  const left = eta && eta.rideId === ride.id && eta.phase === 'dropoff' && eta.km != null ? Number(eta.km) : null;
   if (left != null) {
     total.current = Math.max(total.current, left, Number(ride.distance_km) || 0);
     if (total.current > 0) best.current = Math.max(best.current, Math.min(1, Math.max(0, 1 - left / total.current)));
@@ -106,7 +107,7 @@ export function TripLine({ ride, eta }) {
         <span className="tl-car" style={{ left: `${pct}%` }}>
           <span className="tl-trail"><i /><i /><i /></span>
           {mins != null && <em className="tl-eta">{mins <= 0 ? '¡Ya!' : `${mins} min`}</em>}
-          <img src={carSide} alt="" width="44" height="29" />
+          <img src={carSide} alt="" width="48" height="31" />
         </span>
       </div>
       <span className="tl-icon tl-flag" aria-hidden="true">🏁</span>
