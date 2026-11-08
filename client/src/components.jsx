@@ -81,6 +81,29 @@ export function PasswordInput(props) {
 }
 
 // ⭐ 4.8 (12)
+// Línea de tiempo del viaje en curso: 📍 salida → 🚗 el carro avanza → 🏁 meta (junto al precio).
+// El avance sale de lo que falta para llegar (`eta.km`) contra el largo del viaje; solo avanza, nunca retrocede.
+export function TripLine({ ride, eta }) {
+  const total = useRef(0);
+  const best = useRef(0);
+  const left = eta && eta.rideId === ride.id && eta.km != null ? Number(eta.km) : null;
+  if (left != null) {
+    total.current = Math.max(total.current, left, Number(ride.distance_km) || 0);
+    if (total.current > 0) best.current = Math.max(best.current, Math.min(1, Math.max(0, 1 - left / total.current)));
+  }
+  const pct = Math.round(best.current * 100);
+  return (
+    <div className={`trip-line${pct >= 90 ? ' near' : ''}`} role="progressbar" aria-label="Avance del viaje" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
+      <span className="tl-icon" aria-hidden="true">📍</span>
+      <div className="tl-track" aria-hidden="true">
+        <i className="tl-fill" style={{ width: `${pct}%` }} />
+        <span className="tl-car" style={{ left: `${pct}%` }}><span>🚗</span></span>
+      </div>
+      <span className="tl-icon tl-flag" aria-hidden="true">🏁</span>
+    </div>
+  );
+}
+
 export function Stars({ rating }) {
   if (!rating || !rating.count) return <span className="muted">Nuevo</span>;
   return <span className="stars">★ {rating.avg.toFixed(1)} <span className="muted">({rating.count})</span></span>;

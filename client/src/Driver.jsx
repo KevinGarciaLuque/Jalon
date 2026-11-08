@@ -6,7 +6,7 @@ import { CarMarker, FitTo, MapControls, RouteLine, icons, rotateOptions, showAt 
 import DriverWallet from './DriverWallet.jsx';
 import DriverRental from './DriverRental.jsx';
 import Earnings from './Earnings.jsx';
-import { Avatar, ChatSheet, PriceStepper, PushToggle, Rate, SafetyBar, Stars, TimeRing, Grab } from './components.jsx';
+import { Avatar, ChatSheet, PriceStepper, PushToggle, Rate, SafetyBar, Stars, TimeRing, Grab, TripLine } from './components.jsx';
 import ReportForm from './ReportForm.jsx';
 import DriverDocs from './DriverDocs.jsx';
 import DriverSelfie from './DriverSelfie.jsx';
@@ -109,6 +109,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
   // Al terminar el viaje la hoja se abre y sube al inicio: así se ve primero el total (en pantallas chicas, como el iPhone 6s, quedaba a medias)
   const sheetRef = useRef(null);
   useEffect(() => {
+    if (ride?.status === 'arrived') { const f = requestAnimationFrame(() => sheetRef.current?.scrollTo({ top: 0 })); return () => cancelAnimationFrame(f); } // la cápsula de llegada se ve completa
     if (ride?.status !== 'completed') return undefined;
     setCompact(false);
     const f = requestAnimationFrame(() => sheetRef.current?.scrollTo({ top: 0 }));
@@ -423,6 +424,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
               {ride.status === 'arrived'
                 ? <b className="arrive-chip wait" key="waiting"><span className="arrive-badge" aria-hidden="true"><span className="arrive-glass">⏳</span></span><span className="arrive-text">{STATUS.arrived}<span className="arrive-dots" aria-hidden="true"><i /><i /><i /></span></span></b>
                 : <b>{STATUS[ride.status]}</b>}
+              {ride.status === 'started' && <TripLine key={ride.id} ride={ride} eta={eta} />}
               <span className="tag">{lempiras(ride.final_price)}</span>
             </div>
             {/* Con código promocional el pasajero paga menos en efectivo: la diferencia la pone Ktracho GO en su saldo */}

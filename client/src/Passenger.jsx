@@ -12,7 +12,7 @@ import { playRaiseCoin, playRideTransition, playSound } from './rideAlert.js';
 import PayCard from './PayCard.jsx';
 import { PayMethodPicker } from './payMethods.jsx';
 import { NearbyLine, CategoryCards, PriceMeter, QuickPlaces, etaMinutes } from './RideOptions.jsx';
-import { AddressSearch, Avatar, ChatSheet, PriceStepper, Rate, SafetyBar, Stars, TimeRing, Grab } from './components.jsx';
+import { AddressSearch, Avatar, ChatSheet, PriceStepper, Rate, SafetyBar, Stars, TimeRing, Grab, TripLine } from './components.jsx';
 
 function Recenter({ pos }) {
   const map = useMap();
@@ -243,6 +243,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
   // Al terminar el viaje la hoja se abre y sube al inicio: así se ve primero el total (en pantallas chicas, como el iPhone 6s, quedaba a medias)
   const sheetRef = useRef(null);
   useEffect(() => {
+    if (ride?.status === 'arrived') { const f = requestAnimationFrame(() => sheetRef.current?.scrollTo({ top: 0 })); return () => cancelAnimationFrame(f); } // la cápsula de llegada se ve completa
     if (ride?.status !== 'completed') return undefined;
     setCompact(false);
     const f = requestAnimationFrame(() => sheetRef.current?.scrollTo({ top: 0 }));
@@ -547,6 +548,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
               {ride.status === 'arrived'
                 ? <b className="arrive-chip" key="arrived"><span className="arrive-badge" aria-hidden="true"><span className="arrive-car">🚕</span></span><span className="arrive-text">{STATUS.arrived}</span></b>
                 : <b>{STATUS[ride.status]}</b>}
+              {ride.status === 'started' && <TripLine key={ride.id} ride={ride} eta={eta} />}
               <span className="tag">{lempiras(ride.toPay ?? ride.final_price ?? ride.offered_price)}</span>
             </div>
             {ride.promo && ride.discount > 0 && <p className="promo-note small" role="status">🏷 Código <b className="promo-code">{ride.promo.code}</b>: pagas {lempiras(ride.toPay)} en vez de {lempiras(ride.final_price ?? ride.offered_price)}</p>}

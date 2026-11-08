@@ -3,6 +3,15 @@
 // `for` dice quién la ve: 'all', 'passenger', 'driver' o 'staff' (superadmin, administrador y soporte).
 export const CHANGELOG = [
   {
+    id: '2026-11-07-linea-viaje',
+    date: '2026-11-07',
+    title: 'Línea de tiempo del viaje en curso',
+    for: ['passenger', 'driver'],
+    items: [
+      'Mientras el viaje está en curso, entre «Viaje en curso» y el precio aparece una línea con el punto de salida, un carro que avanza según lo que falta para llegar, y la meta junto al precio. Al acercarse al destino, la meta late.',
+    ],
+  },
+  {
     id: '2026-11-07-animaciones-llegada-chat',
     date: '2026-11-07',
     title: 'Llegada más llamativa y sonidos del chat',
