@@ -170,7 +170,7 @@ export function playSound(name, opts) {
 }
 
 // Sonido al cambiar el estado del viaje (`before` → `now`). Sin `before` (se abrió la app con el viaje ya en curso) no suena nada.
-// Pasajero: el conductor aceptó (ding), llegó (ding_dong). Ambos: el viaje empezó (carrofuera, completo),
+// Pasajero: el conductor llegó (ding_dong). (Al aceptar la oferta suena «pop» en el botón, así que el estado «aceptado» no suena otra vez.) Ambos: el viaje empezó (carrofuera, completo),
 // terminó (final) o se canceló (cancelo).
 export function playRideTransition(before, now, role) {
   if (!before || before === now) return false;
@@ -178,6 +178,5 @@ export function playRideTransition(before, now, role) {
   if (now === 'completed') return playSound('final');
   if (now === 'started') return playSound('carrofuera');
   if (role === 'passenger' && now === 'arrived') return playSound('ding_dong');
-  if (role === 'passenger' && now === 'accepted') return playSound('ding');
   return false;
 }

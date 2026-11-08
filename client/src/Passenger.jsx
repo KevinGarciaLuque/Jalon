@@ -8,7 +8,7 @@ import Rentals from './Rentals.jsx';
 import Intercity from './Intercity.jsx';
 import Tip from './Tip.jsx';
 import PermsBar from './PermsBar.jsx';
-import { playRaiseCoin, playRideTransition } from './rideAlert.js';
+import { playRaiseCoin, playRideTransition, playSound } from './rideAlert.js';
 import PayCard from './PayCard.jsx';
 import { PayMethodPicker } from './payMethods.jsx';
 import { NearbyLine, CategoryCards, PriceMeter, QuickPlaces, etaMinutes } from './RideOptions.jsx';
@@ -544,7 +544,9 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
         {active && (
           <>
             <div className="row between">
-              <b>{STATUS[ride.status]}</b>
+              {ride.status === 'arrived'
+                ? <b className="arrived-title" key="arrived"><span className="arrived-car" aria-hidden="true">🚕</span><span className="arrived-text">{STATUS.arrived}</span></b>
+                : <b>{STATUS[ride.status]}</b>}
               <span className="tag">{lempiras(ride.toPay ?? ride.final_price ?? ride.offered_price)}</span>
             </div>
             {ride.promo && ride.discount > 0 && <p className="promo-note small" role="status">🏷 Código <b className="promo-code">{ride.promo.code}</b>: pagas {lempiras(ride.toPay)} en vez de {lempiras(ride.final_price ?? ride.offered_price)}</p>}
@@ -585,7 +587,7 @@ export default function Passenger({ socket, token, userId, perms = [], gender = 
                       <span className="muted small">{o.driver.vehicle} · {o.driver.plate}{o.distanceToPickupKm != null && ` · a ${o.distanceToPickupKm.toFixed(1)} km`}</span>
                     </div>
                     <TimeRing left={(o.expiresAt - now) / 1000} total={o.ttl || 90} />
-                    <button className="primary sm" aria-label={`Aceptar a ${o.driver.name} por ${lempiras(o.price)}`} onClick={() => socket.emit('offer:accept', { offerId: o.id })}>Aceptar · {lempiras(o.price)}</button>
+                    <button className="primary sm" aria-label={`Aceptar a ${o.driver.name} por ${lempiras(o.price)}`} onClick={() => { playSound('pop'); socket.emit('offer:accept', { offerId: o.id }); }}>Aceptar · {lempiras(o.price)}</button>
                   </div>
                 ))}
               </>

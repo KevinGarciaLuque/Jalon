@@ -1179,3 +1179,13 @@ button.link.danger { color: var(--danger); }
   .pay-card { padding: 8px 12px; }
   .rate-art { width: 72px; }
 }
+
+/* «Tu conductor llegó»: el carrito entra rodando desde la izquierda y frena junto al texto, que aparece con un rebote y un destello verde */
+.arrived-title { display: inline-flex; align-items: center; gap: 8px; color: var(--brand); }
+.arrived-car { display: inline-block; animation: arrived-drive .9s cubic-bezier(.15, .8, .25, 1) both, arrived-bob 1.8s ease-in-out .9s infinite; }
+.arrived-text { display: inline-block; animation: arrived-pop .7s cubic-bezier(.2, 1.5, .3, 1) .35s both, arrived-glow 1.4s ease-out .35s 2; }
+@keyframes arrived-drive { 0% { transform: translateX(-64px) scaleX(1.15); opacity: 0; } 55% { opacity: 1; } 85% { transform: translateX(3px) scaleX(.96); } 100% { transform: none; opacity: 1; } }
+@keyframes arrived-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+@keyframes arrived-pop { 0% { transform: scale(.7); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes arrived-glow { 0% { text-shadow: 0 0 0 rgba(60, 207, 104, 0); } 35% { text-shadow: 0 0 14px rgba(60, 207, 104, .85); } 100% { text-shadow: 0 0 0 rgba(60, 207, 104, 0); } }
+@media (prefers-reduced-motion: reduce) { .arrived-car, .arrived-text { animation: none; } }
