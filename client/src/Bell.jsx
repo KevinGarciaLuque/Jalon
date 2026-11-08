@@ -81,8 +81,8 @@ export default function Bell({ socket, onGo }) {
   }
   useEffect(() => {
     if (socket) {
-      // Los avisos del viaje (aceptado, llegó, empezó, terminó, cancelado) ya tienen su propio sonido: la campanita no suena encima
-      const fresh = ({ unread: n, kind }) => { setUnread(n); if (kind !== 'ride') chime(); if (open) loadList(); };
+      // Los avisos del viaje (aceptado, llegó, empezó, terminó, cancelado) y las propinas ya tienen su propio sonido: la campanita no suena encima
+      const fresh = ({ unread: n, kind, tag }) => { setUnread(n); if (kind !== 'ride' && !String(tag || '').startsWith('tip-')) chime(); if (open) loadList(); };
       const read = ({ unread: n }) => setUnread(n);
       socket.on('notify:new', fresh);
       socket.on('notify:read', read);

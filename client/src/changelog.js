@@ -12,6 +12,8 @@ export const CHANGELOG = [
       'Al empezar el viaje suena el arranque del carro; al terminar, un sonido de cierre, y al cancelarse algo, uno distinto de aviso. Un «pop» confirma que enviaste tu calificación.',
       'Al empezar el viaje ya no suena el aviso de la campanita encima: solo el arranque del carro, completo y sin cortarse. Lo mismo con los demás avisos del viaje.',
       'Cuando sale una versión nueva de Ktracho GO, el aviso de actualización aparece con un «pop».',
+      'Cuando dejan una propina, suena solo el sonido de propina (antes la campanita sonaba también). Igual en el pasajero y en el conductor.',
+      'El conductor escucha un sonido de cobro al tocar «Cobrado ✓» al final del viaje.',
       'Todos respetan el interruptor «Sonido de los avisos» de la campana.',
     ],
   },

@@ -11,7 +11,7 @@ import ReportForm from './ReportForm.jsx';
 import DriverDocs from './DriverDocs.jsx';
 import DriverSelfie from './DriverSelfie.jsx';
 import PermsBar from './PermsBar.jsx';
-import { playRideAlert, playTipSound, playRideTransition, unlockRideAlert, rideSoundOn, setRideSound } from './rideAlert.js';
+import { playRideAlert, playTipSound, playRideTransition, playSound, unlockRideAlert, rideSoundOn, setRideSound } from './rideAlert.js';
 import PayCard from './PayCard.jsx';
 import { payLabel } from './payMethods.jsx';
 import Tips from './Tips.jsx';
@@ -280,7 +280,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
               <div className="pay-wrap">
                 <b>{STATUS.completed}</b>
                 <PayCard ride={ride} role="driver" />
-                <button className="primary" onClick={() => setRide(null)}>Cobrado ✓</button>
+                <button className="primary" onClick={() => { playSound('cobrar'); setRide(null); }}>Cobrado ✓</button>
               </div>
             )}
             {ride?.status === 'cancelled' && (
