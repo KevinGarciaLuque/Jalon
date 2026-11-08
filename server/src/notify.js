@@ -52,7 +52,7 @@ async function sendToPhone(userId, payload) {
 async function notifyUser(userId, payload, { always = false, staff = false } = {}) {
   const kind = payload.kind || kindOf(payload.tag);
   await save(userId, payload, kind, payload.target || (staff ? STAFF_TARGET[kind] : null));
-  if (payload.bell !== false) io.to(room(userId)).emit('notify:new', { unread: await unreadCount(userId), title: payload.title, kind, tag: payload.tag });
+  if (payload.bell !== false) io.to(room(userId)).emit('notify:new', { unread: await unreadCount(userId), title: payload.title, kind, tag: payload.tag, sound: payload.sound });
   if ((pushEnabled || fcmEnabled) && (always || !(await hasVisibleApp(userId)))) await sendToPhone(userId, payload);
 }
 

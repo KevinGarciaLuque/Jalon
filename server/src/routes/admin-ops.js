@@ -165,7 +165,7 @@ app.post('/api/admin/topups/:id/approve', staffOnly('wallet'), async (req, res) 
   }
   await audit(req.staff, 'topup.approve', { target: t.driver_id, details: { topup: id, amount } });
   tellWallet(t.driver_id, balance, { change: amount, kind: 'topup' });
-  push(t.driver_id, { title: 'Recarga aprobada', body: `Se acreditaron L ${amount.toFixed(2)}. Tu saldo es L ${balance.toFixed(2)}`, tag: `topup-${id}`, url: '/' }, { always: true });
+  push(t.driver_id, { title: 'Recarga aprobada', sound: 'cobrar', body: `Se acreditaron L ${amount.toFixed(2)}. Tu saldo es L ${balance.toFixed(2)}`, tag: `topup-${id}`, url: '/' }, { always: true });
   res.json({ ok: true, balance });
 });
 

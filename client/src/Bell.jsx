@@ -44,6 +44,12 @@ export function chime() {
   });
 }
 
+// El sonido propio de un aviso (si todavía no está listo, suena el de siempre)
+function own(name) {
+  if (!audio || !soundOn() || document.hidden) return;
+  if (!playSfx(audio, name)) chime();
+}
+
 function ago(at) {
   const s = Math.max(0, (Date.now() - new Date(at).getTime()) / 1000);
   if (s < 60) return 'ahora';
@@ -82,7 +88,8 @@ export default function Bell({ socket, onGo }) {
   useEffect(() => {
     if (socket) {
       // Los avisos del viaje (aceptado, llegó, empezó, terminó, cancelado) y las propinas ya tienen su propio sonido: la campanita no suena encima
-      const fresh = ({ unread: n, kind, tag }) => { setUnread(n); if (kind !== 'ride' && !String(tag || '').startsWith('tip-')) chime(); if (open) loadList(); };
+      // Si el aviso trae su propio sonido (p. ej. «Recarga aprobada» → cobrar), suena ese en vez del de la campanita
+      const fresh = ({ unread: n, kind, tag, sound }) => { setUnread(n); if (sound) own(sound); else if (kind !== 'ride' && !String(tag || '').startsWith('tip-')) chime(); if (open) loadList(); };
       const read = ({ unread: n }) => setUnread(n);
       socket.on('notify:new', fresh);
       socket.on('notify:read', read);

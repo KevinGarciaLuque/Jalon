@@ -228,7 +228,7 @@ export function Rate({ token, rideId, who, title }) {
     setState('sending');
     try {
       await apiPost(`rides/${rideId}/rate`, token, { stars, comment });
-      playSound('pop'); // calificación enviada
+      playSound('estrellas'); // calificación enviada
       setState('done');
     } catch (e) {
       if (e.message === 'Ya calificaste este viaje') return setState('done');
