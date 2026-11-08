@@ -182,7 +182,8 @@ io.on('connection', async (socket) => {
       if (!ride || ride.driver_id !== user.id || ride.status !== 'completed') return;
       const [r] = await pool.query('UPDATE rides SET collected_at = NOW() WHERE id = ? AND collected_at IS NULL', [rideId]);
       if (r.affectedRows !== 1) return;
-      io.to(room(ride.passenger_id)).to(room(user.id)).emit('ride:state', await rideView(await getRide(rideId)));
+      // Solo al pasajero: el conductor ya cerró su pantalla de cobro (si se le mandara, le saldría otra vez)
+      io.to(room(ride.passenger_id)).emit('ride:state', await rideView(await getRide(rideId)));
     });
 
     // El conductor puede cancelar antes de iniciar el viaje

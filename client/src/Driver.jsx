@@ -51,6 +51,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
   const [raised, setRaised] = useState({}); // solicitudes cuyo precio subió el pasajero: { id: { from, at } }
   const [requests, setRequests] = useState([]);
   const [sent, setSent] = useState({}); // rideId -> { price, until } de la oferta hecha (vale unos segundos)
+  const collected = useRef(new Set()); // viajes que ya cobró (para no volver a mostrar su pantalla de cobro)
   const [eta, setEta] = useState(null); // tiempo y camino hacia el pasajero (o al destino)
   const now = useNow();
   const [counter, setCounter] = useState({}); // rideId -> contraoferta
@@ -151,7 +152,8 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
     // Si la oferta venció sin respuesta, puede volver a ofertar
     socket.on('offer:expired', ({ rideId }) => setSent((cur) => { const { [rideId]: _gone, ...rest } = cur; return rest; }));
     socket.on('ride:eta', setEta);
-    socket.on('ride:state', setRide);
+    // Un viaje terminado que el conductor ya cobró («Cobrado ✓») no vuelve a abrir la pantalla de cobro aunque llegue su estado otra vez
+    socket.on('ride:state', (r) => { if (r?.status === 'completed' && collected.current.has(r.id)) return; setRide(r); });
     // Sin saldo suficiente el servidor no lo deja ponerse disponible: se abre la pantalla para recargar
     socket.on('driver:denied', (d) => {
       setOnline(false);
@@ -281,7 +283,7 @@ export default function Driver({ socket, token, status, userId, perms = [], onWa
               <div className="pay-wrap">
                 <b>{STATUS.completed}</b>
                 <PayCard ride={ride} role="driver" />
-                <button className="primary" onClick={() => { playSound('cobrar'); socket.emit('ride:collected', { rideId: ride.id }); setRide(null); }}>Cobrado ✓</button>
+                <button className="primary" onClick={() => { playSound('cobrar'); collected.current.add(ride.id); socket.emit('ride:collected', { rideId: ride.id }); setRide(null); }}>Cobrado ✓</button>
               </div>
             )}
             {ride?.status === 'cancelled' && (
